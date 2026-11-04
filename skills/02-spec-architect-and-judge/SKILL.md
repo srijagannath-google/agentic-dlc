@@ -1,0 +1,77 @@
+---
+name: 02-spec-architect-and-judge
+description: "Stage 2 of the Agentic DLC v4. discovery-architect authors the holistic 5-Pillar Specification (specs/application_spec.md with the parsed §3.3 state-transition, §3.4 business-rule and §3.5 role tables; REQ-ENH-* only for legacy projects) and specs/traceability_matrix.md; spec-judge scores it against schemas/spec_rubric.json with verbatim evidence into specs/application_eval_scorecard.{md,json}; loop until 02/scripts/validate_spec_scorecard.py passes (Gate 2). Use when asked to write, score or judge the spec."
+---
+
+# Stage 2 — 5-Pillar Specification & LLM Spec Judge (Gate 2)
+
+**Read before acting:** `docs/ARCHITECTURE.md` §4.3–§4.4, `_shared/workflow_chain_of_custody.md` ("Stage 2"),
+`_shared/zero_leak.md`, `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `schemas/spec_rubric.json`.
+Subagents: `discovery-architect` (author), `spec-judge` (judge) — kept separate on purpose.
+
+## Inputs
+`specs/discovery_architecture_and_inventory.md`, `specs/input_inventory.json`, `specs/target_stack.json`,
+Gate 1 answers / `ASSUMPTION-NN` list, `resources/policies_and_statutes/` (if any), `resources/design_references/` (if any).
+
+## Outputs
+| File | Author | Checked by |
+| :-- | :-- | :-- |
+| `specs/application_spec.md` | `discovery-architect` | `02/scripts/lint_spec_structure.py` (structure), `spec-judge` (quality) |
+| `specs/traceability_matrix.md` | `discovery-architect` | `lint_spec_structure.py` (every REQ present) |
+| `specs/application_eval_scorecard.md` + `.json` | `spec-judge` | `02/scripts/validate_spec_scorecard.py` |
+
+## Procedure
+
+### 1. Author the spec (`discovery-architect`)
+Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITECTURE §4.3):
+- Header block: project name, `Input Scenario`, `Domain Slug`, accessibility standard(s), regulations, assumptions.
+- `## 1 Pillar 1 — Functionality` (`REQ-FUNC-NN`); `### 1.4 Modernization Enhancements (REQ-ENH-NN)` **legacy only**.
+- `## 2 Pillar 2 — Security` (`REQ-SEC-NN`) incl. RBAC matrix per §3.5 role and the **PII field list** to mask.
+- `## 3 Pillar 3 — Accessibility` (`REQ-A11Y-NN`) per `target_stack.json#accessibilityStandard` — **and** the
+  three parsed subsections that live under §3 in this template:
+  - `### 3.3 Lifecycle State Machine`: one `stateDiagram-v2` block + `| From | To | Trigger | Actor Role | Guard |`
+    mirroring it exactly (parsed by `dlc_common.parse_state_machine`);
+  - `### 3.4 Business Rules & Formulas`: `| Rule ID | Formula / Rule | Inputs | Source |` (`BR-NN`; numbers, not adjectives);
+  - `### 3.5 Roles`: `| Role | Kind | Views | Allowed Transitions |` (Kind = `external` or `internal`).
+- `## 4 Pillar 4 — UX & Zero Leakage` (`REQ-UX-NN`): the UX & Google Cloud UI Design guardrails by reference (`_shared/ux_guardrails.md` and `_shared/google_cloud_ui_design.md`, including Surface Mode declaration `Operate` | `Read` | `Persuade` | `Express`, Reference Layout Archetype from `skills/google-cloud-ui-design/references/*.md`, `--g-*` Light/Dark CSS tokens, Unified Surfaces without card soup, Guardrail #3 View & Tab Mutual Exclusivity, and Guardrail #11 Default Persona & Lifecycle Reachability),
+  overrides from design references (`### 4.1`), the **mandatory parsed `### 4.2 View & Component Topology` table**
+  (`| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |`, aligned
+  with `resources/design_references/reference_ui_manifest.json` when present), and the zero-leakage rule (`### 4.3`).
+- `## 5 Pillar 5 — Architecture` (`REQ-ARCH-NN`): clean architectural quality attributes (layered separation of concerns, contract-first OpenAPI 3.1 APIs, normalised 3NF relational domain model, ViewModel/DTO boundary with zero internal data leakage, `data-testid` contract, and OpenTelemetry observability — no legacy carry-over). If `specs/target_stack.json#decidedBy == "pending-stage-4a"`, keep Pillar 5 technology-agnostic so the human can select the concrete Future-State frontend, backend, and database technology when entering Stage 4A (`04-solution-architect`).
+- Every REQ id unique; every REQ in `specs/traceability_matrix.md` (REQ → capability → story → test category).
+
+**Derivation, not invention:** states/roles/rules come from the discovery blueprint and Gate 1 answers. If a
+gap remains, ask (interactive) or record `ASSUMPTION-NN` with the most restrictive reading (autonomous).
+
+**Scenario differences**
+| | `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC` |
+| :-- | :-- | :-- |
+| §1.4 `REQ-ENH-*` | required: genuine new capabilities chosen from discovered pain points (self-service, live rule calculation, status notification, duplicate guardrails, search/reporting) | **forbidden** — specify exactly the documented scope |
+| Legacy references | "replaces legacy object X" allowed in traceability, never in requirement text or UI labels | none |
+| Regulation section | if `hasPoliciesOrStatutes` or `regulations` non-empty | same rule |
+
+```bash
+python3 <PLUGIN>/skills/02-spec-architect-and-judge/scripts/lint_spec_structure.py --project-root "<PROJECT_ROOT>"
+```
+
+### 2. Judge the spec (`spec-judge`)
+The judge reads `schemas/spec_rubric.json`, scores each criterion with a **verbatim quote** from the spec,
+writes `specs/application_eval_scorecard.json` (ARCHITECTURE §4.4) and `.md`
+(`resources/scorecard_template.md`), then runs:
+```bash
+python3 <PLUGIN>/skills/02-spec-architect-and-judge/scripts/validate_spec_scorecard.py --project-root "<PROJECT_ROOT>"
+```
+The validator checks completeness, `awarded ≤ maxPoints`, sums, `specSha256` freshness, that each evidence
+string is a substring of the spec, and `verdict == (total ≥ 90 ∧ no blocking criterion at 0)`.
+
+### 3. Loop (Gate 2)
+`FAIL` → judge returns numbered gaps → author fixes the spec → lint → judge re-scores (new hash) → validate.
+Gate 2 is never pre-approved; autonomous mode just loops without asking.
+
+### 4. Hand over
+On `PASS`, immediately start `03-story-and-sprint-planner` so the user reviews spec + stories + sprint plan together.
+
+## Do not
+- Let the author score or the judge edit the spec.
+- Paste the UX guardrails or zero-leak rule text into the spec; cite them and record only overrides.
+- Add jurisdiction-specific accessibility/regulatory standards the user did not name.

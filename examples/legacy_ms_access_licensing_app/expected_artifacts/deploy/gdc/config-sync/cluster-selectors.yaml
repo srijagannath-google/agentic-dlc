@@ -1,0 +1,39 @@
+apiVersion: configmanagement.gke.io/v1
+kind: ClusterSelector
+metadata:
+  name: selector-on-prem-gdc
+spec:
+  selector:
+    matchLabels:
+      gdc.cloud.google.com/provider: on-prem-gdc
+      gdc.cloud.google.com/wave: "wave-1-onprem"
+---
+apiVersion: configmanagement.gke.io/v1
+kind: ClusterSelector
+metadata:
+  name: selector-gcp
+spec:
+  selector:
+    matchLabels:
+      gdc.cloud.google.com/provider: gcp
+      gdc.cloud.google.com/wave: "wave-2-gcp"
+---
+apiVersion: configmanagement.gke.io/v1
+kind: ClusterSelector
+metadata:
+  name: selector-aws
+spec:
+  selector:
+    matchLabels:
+      gdc.cloud.google.com/provider: aws
+      gdc.cloud.google.com/wave: "wave-3-multicloud"
+---
+apiVersion: configmanagement.gke.io/v1
+kind: ClusterSelector
+metadata:
+  name: selector-azure
+spec:
+  selector:
+    matchLabels:
+      gdc.cloud.google.com/provider: azure
+      gdc.cloud.google.com/wave: "wave-3-multicloud"

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/eval_results.schema.json",
+  "title": "test/eval_results.json (Stage 6 — written by 07/scripts/run_closed_loop_eval.py)",
+  "type": "object",
+  "required": ["schemaVersion", "evaluatedAtUtc", "iteration", "runtime", "results", "summary", "leakage", "interactivity", "a11y"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "evaluatedAtUtc": { "type": "string" },
+    "iteration": { "type": "integer", "minimum": 1 },
+    "runtime": {
+      "type": "object",
+      "required": ["browser", "backendStarted"],
+      "properties": {
+        "browser": { "type": "string", "enum": ["chrome-headless", "playwright", "none"] },
+        "backendStarted": { "type": "boolean" },
+        "uiEntry": { "type": "string" },
+        "baseUrl": { "type": "string" }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "runtime"],
+        "properties": {
+          "id": { "type": "string" },
+          "category": { "type": "string" },
+          "status": { "type": "string", "enum": ["PASS", "FAIL", "NOT_RUN", "ERROR"] },
+          "runtime": { "type": "string", "enum": ["browser", "http", "static"] },
+          "optional": { "type": "boolean" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "failedStep": { "type": ["integer", "null"], "minimum": 0 },
+          "message": { "type": "string" },
+          "actual": { "type": ["string", "null"] },
+          "screenshot": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "path"],
+        "properties": {
+          "label": { "type": "string" },
+          "path": { "type": "string" },
+          "kind": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "pass", "fail", "notRun", "error", "score", "verdict"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "notRun": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "verdict": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "leakage": {
+      "type": "object",
+      "required": ["tokensScanned", "hits"],
+      "properties": {
+        "tokensScanned": { "type": "integer", "minimum": 0 },
+        "hits": { "type": "array", "items": { "type": "object", "required": ["token", "context"], "properties": { "token": { "type": "string" }, "context": { "type": "string" }, "view": { "type": "string" }, "role": { "type": "string" }, "severity": { "type": "string", "enum": ["fail", "warn"] } } } }
+      }
+    },
+    "interactivity": {
+      "type": "object",
+      "required": ["controls", "unwired"],
+      "properties": {
+        "controls": { "type": "integer", "minimum": 0 },
+        "unwired": { "type": "array", "items": { "type": "object", "required": ["selector", "reason"], "properties": { "selector": { "type": "string" }, "reason": { "type": "string" } } } }
+      }
+    },
+    "a11y": {
+      "type": "object",
+      "required": ["findings"],
+      "properties": {
+        "findings": { "type": "array", "items": { "type": "object", "required": ["rule", "message"], "properties": { "rule": { "type": "string" }, "selector": { "type": "string" }, "message": { "type": "string" }, "severity": { "type": "string", "enum": ["fail", "warn"] } } } }
+      }
+    },
+    "guardrailReviewStatus": { "type": "string", "enum": ["NOT_REQUIRED", "FLAGGED_REQUIRES_HUMAN_APPROVAL", "APPROVED_BY_USER"] }
+  }
+}

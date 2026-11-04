@@ -1,0 +1,861 @@
+openapi: 3.1.0
+info:
+  title: Business Licensing & Renewal Portal API
+  version: 1.0.0
+  description: Contract-first API. Transition endpoints validate (fromState, trigger, role) against the spec §3.3 state table.
+servers:
+  - url: http://127.0.0.1:8767
+security:
+  - roleHeader: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness and database connectivity
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/applications:
+    get:
+      operationId: listApplications
+      summary: Review queue (Licensing Staff, filter by status) or the caller's own applications (Commercial Buyer, by ids)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/StatusCode"
+        - name: ids
+          in: query
+          description: Comma-separated application ids (Commercial Buyer session list)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Application summaries (ViewModels)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createApplication
+      summary: Start a DRAFT application (Commercial Buyer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationCreate"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    get:
+      operationId: getApplication
+      summary: Application detail with roster, documents, fee reports and history
+      responses:
+        "200":
+          description: Application ViewModel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateDraftApplication
+      summary: Update bond and purchase fields while DRAFT (Commercial Buyer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BondUpdate"
+      responses:
+        "200":
+          description: Updated draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/submit:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: submitApplication
+      summary: Trigger Submit (DRAFT -> SUBMITTED, Commercial Buyer)
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/issue:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: issueLicense
+      summary: Trigger Issue (SUBMITTED -> ISSUED, Licensing Staff)
+      responses:
+        "200":
+          description: Licence issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/reject:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: rejectApplication
+      summary: Trigger Reject (SUBMITTED -> REJECTED, Licensing Staff) with a reason
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Decision"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/agents:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: addAgent
+      summary: Add a field agent (BR-02, BR-06, BR-07)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentInput"
+      responses:
+        "201":
+          description: Agent assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRoster"
+        "200":
+          description: Agent already on this roster (re-used)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRoster"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/agents/{agentId}:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      operationId: removeAgent
+      summary: Remove a non-owner agent (BR-05)
+      responses:
+        "200":
+          description: Agent removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentRoster"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/documents:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: addDocument
+      summary: Attach supporting-document metadata (content goes to the vault)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Document attached
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/applications/{applicationId}/fee-reports:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: addFeeReport
+      summary: Record a quarterly volume-fee report on an ISSUED licence (BR-03)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeeReportInput"
+      responses:
+        "201":
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeeReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/applications/{applicationId}/prints:
+    parameters:
+      - $ref: "#/components/parameters/applicationId"
+    post:
+      operationId: recordPrint
+      summary: Print the certificate or the agent cards of an ISSUED licence (Licensing Staff)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrintInput"
+      responses:
+        "200":
+          description: Print recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/buyers:
+    get:
+      operationId: searchBuyers
+      summary: Buyer registry search by name, city or e-mail (Licensing Staff)
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Buyer ViewModels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Buyer"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/buyers/duplicate-check:
+    get:
+      operationId: checkBuyerDuplicate
+      summary: Possible-duplicate notice for a legal name + date of birth (BR-07)
+      parameters:
+        - name: legalName
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateOfBirth
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Duplicate verdict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateCheck"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/buyers/{buyerId}/suspension:
+    parameters:
+      - name: buyerId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: setBuyerSuspension
+      summary: Suspend or reinstate a buyer (Licensing Staff, audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuspensionInput"
+      responses:
+        "200":
+          description: Updated buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/agents:
+    get:
+      operationId: searchAgents
+      summary: Agent registry search by name or date of birth (Licensing Staff)
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent ViewModels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/agents/{agentId}/suspension:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: setAgentSuspension
+      summary: Suspend or reinstate an agent (Licensing Staff, audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuspensionInput"
+      responses:
+        "200":
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/calculations/bond:
+    post:
+      operationId: calculateRequiredBond
+      summary: BR-01 required surety bond for a prior-year purchase total
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BondCalculationInput"
+      responses:
+        "200":
+          description: Calculation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BondCalculation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/calculations/volume-fee:
+    post:
+      operationId: calculateHarvestFee
+      summary: BR-03 volume fee for a quarterly purchase total
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeeCalculationInput"
+      responses:
+        "200":
+          description: Calculation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeCalculation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+components:
+  securitySchemes:
+    roleHeader:
+      type: apiKey
+      in: header
+      name: X-Role
+      description: Verified actor role header propagated by the Identity-Aware Proxy / OIDC gateway (Commercial Buyer | Licensing Staff).
+  parameters:
+    applicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: integer
+  responses:
+    BadRequest:
+      description: Validation failed — message states what failed and the fix
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Role may not perform this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Record not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Transition not allowed from the current status, or a business rule blocks the change
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    StatusCode:
+      type: string
+      enum: [DRAFT, SUBMITTED, ISSUED, REJECTED]
+    Trigger:
+      type: string
+      enum: [SUBMIT, ISSUE, REJECT]
+    Role:
+      type: string
+      enum: ["Commercial Buyer", "Licensing Staff"]
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: User-readable; shown verbatim by the UI
+        code:
+          type: string
+          description: Machine code (never rendered)
+          x-internal: true
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+        database:
+          type: string
+        version:
+          type: string
+    Status:
+      type: object
+      properties:
+        code:
+          $ref: "#/components/schemas/StatusCode"
+        label:
+          type: string
+          description: Visible label from spec §3.3
+    ApplicationSummary:
+      type: object
+      properties:
+        applicationId:
+          type: integer
+        applicationNumber:
+          type: string
+        licenseYear:
+          type: integer
+        buyerName:
+          type: string
+        status:
+          $ref: "#/components/schemas/Status"
+        licenseNumber:
+          type: [string, "null"]
+        bondCheck:
+          type: string
+          description: "Sufficient" or the shortfall sentence
+        submittedAt:
+          type: [string, "null"]
+    Application:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationSummary"
+        - type: object
+          properties:
+            buyer:
+              $ref: "#/components/schemas/Buyer"
+            priorYearPurchases:
+              type: number
+            requiredBondAmount:
+              type: number
+            bondAmount:
+              type: number
+            bondShortfall:
+              type: number
+            bondSuretyName:
+              type: string
+            bondNumber:
+              type: string
+            bondExpiry:
+              type: [string, "null"]
+            decisionReason:
+              type: [string, "null"]
+            decidedAt:
+              type: [string, "null"]
+            allowedTriggers:
+              type: array
+              description: Triggers allowed for (status, caller role) — derived from the state table
+              items:
+                $ref: "#/components/schemas/Trigger"
+            agents:
+              $ref: "#/components/schemas/AgentRoster"
+            documents:
+              type: array
+              items:
+                $ref: "#/components/schemas/Document"
+            feeReports:
+              type: array
+              items:
+                $ref: "#/components/schemas/FeeReport"
+            history:
+              type: array
+              items:
+                $ref: "#/components/schemas/HistoryEvent"
+    ApplicationCreate:
+      type: object
+      required: [legalName, entityType, taxIdKind, taxId, dateOfBirth, licenseYear]
+      properties:
+        legalName:
+          type: string
+          maxLength: 200
+        businessName:
+          type: string
+          maxLength: 200
+        entityType:
+          type: string
+          enum: [INDIVIDUAL, LLC, CORPORATION, PARTNERSHIP, OTHER]
+        taxIdKind:
+          type: string
+          enum: [SSN, FEIN]
+        taxId:
+          type: string
+          description: Raw identifier, hashed on receipt; never stored or echoed
+          x-internal: true
+        dateOfBirth:
+          type: string
+          format: date
+        email:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        stateCode:
+          type: string
+        licenseYear:
+          type: integer
+        priorYearPurchases:
+          type: number
+        bondAmount:
+          type: number
+        bondSuretyName:
+          type: string
+        bondNumber:
+          type: string
+        bondExpiry:
+          type: string
+    BondUpdate:
+      type: object
+      properties:
+        priorYearPurchases:
+          type: number
+        bondAmount:
+          type: number
+        bondSuretyName:
+          type: string
+        bondNumber:
+          type: string
+        bondExpiry:
+          type: string
+    Decision:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 500
+    Buyer:
+      type: object
+      properties:
+        buyerId:
+          type: integer
+        legalName:
+          type: string
+        businessName:
+          type: [string, "null"]
+        entityType:
+          type: string
+        maskedTaxId:
+          type: string
+          description: "***-**-1234 or **-***4567"
+        taxIdHash:
+          type: string
+          x-internal: true
+        dateOfBirth:
+          type: [string, "null"]
+        email:
+          type: [string, "null"]
+        phone:
+          type: [string, "null"]
+        city:
+          type: [string, "null"]
+        stateCode:
+          type: [string, "null"]
+        suspended:
+          type: boolean
+        suspensionLabel:
+          type: string
+          description: "Active" | "Suspended"
+        underInvestigation:
+          type: boolean
+        applicationCount:
+          type: integer
+    Agent:
+      type: object
+      properties:
+        agentId:
+          type: integer
+        fullName:
+          type: string
+        dateOfBirth:
+          type: string
+        suspended:
+          type: boolean
+        suspensionLabel:
+          type: string
+        currentLicenseNumber:
+          type: [string, "null"]
+        assignmentCount:
+          type: integer
+    RosterEntry:
+      type: object
+      properties:
+        agentId:
+          type: integer
+        fullName:
+          type: string
+        relationshipLabel:
+          type: string
+          description: "Owner" | "Agent"
+        isOwner:
+          type: boolean
+        cardPrinted:
+          type: boolean
+        cardPrintedLabel:
+          type: string
+    AgentRoster:
+      type: object
+      properties:
+        notice:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/RosterEntry"
+    AgentInput:
+      type: object
+      required: [firstName, lastName, dateOfBirth]
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        dateOfBirth:
+          type: string
+          format: date
+    Document:
+      type: object
+      properties:
+        documentId:
+          type: integer
+        fileName:
+          type: string
+        typeLabel:
+          type: string
+        sizeLabel:
+          type: string
+        uploadedAt:
+          type: string
+    DocumentInput:
+      type: object
+      required: [fileName, contentType, sizeBytes]
+      properties:
+        fileName:
+          type: string
+          maxLength: 200
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+    FeeReport:
+      type: object
+      properties:
+        reportId:
+          type: integer
+        quarter:
+          type: string
+        purchaseTotal:
+          type: number
+        feeDue:
+          type: number
+        summary:
+          type: string
+    FeeReportInput:
+      type: object
+      required: [quarter, purchaseTotal]
+      properties:
+        quarter:
+          type: string
+        purchaseTotal:
+          type: number
+    PrintInput:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [certificate, agent-cards]
+    SuspensionInput:
+      type: object
+      required: [suspended]
+      properties:
+        suspended:
+          type: boolean
+        reason:
+          type: string
+    DuplicateCheck:
+      type: object
+      properties:
+        possibleDuplicate:
+          type: boolean
+        notice:
+          type: string
+    HistoryEvent:
+      type: object
+      properties:
+        actionLabel:
+          type: string
+        actorRole:
+          type: string
+        fromStatusLabel:
+          type: [string, "null"]
+        toStatusLabel:
+          type: [string, "null"]
+        reason:
+          type: [string, "null"]
+        occurredAt:
+          type: string
+    BondCalculationInput:
+      type: object
+      required: [priorYearPurchases]
+      properties:
+        priorYearPurchases:
+          type: number
+        bondAmount:
+          type: number
+    BondCalculation:
+      type: object
+      properties:
+        requiredBondAmount:
+          type: number
+        shortfall:
+          type: number
+        message:
+          type: string
+    FeeCalculationInput:
+      type: object
+      required: [purchaseTotal]
+      properties:
+        purchaseTotal:
+          type: number
+    FeeCalculation:
+      type: object
+      properties:
+        feeDue:
+          type: number

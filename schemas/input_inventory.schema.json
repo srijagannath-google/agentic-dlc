@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/input_inventory.schema.json",
+  "title": "specs/input_inventory.json (Stage 1 — written by 01/scripts/scan_input_sources.py)",
+  "type": "object",
+  "required": [
+    "schemaVersion", "scannedAtUtc", "projectRoot", "domainSlug", "inputScenario", "scenarioEvidence",
+    "scenarioConfidence", "includeModernizationEnhancementsInSpec", "hasPoliciesOrStatutes",
+    "hasUserProvidedDesignReferences", "userProvidedDesignReferences", "inputFingerprintSha256", "files"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "scannedAtUtc": { "type": "string" },
+    "projectRoot": { "type": "string" },
+    "domainSlug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "domainSlugSource": { "type": "string", "enum": ["flag", "primary-document-h1", "project-directory-name", "source-repository"] },
+    "sourceRepository": {
+      "type": ["object", "null"],
+      "description": "Optional provenance metadata when Stage 1 ingests inputs from an Azure DevOps (ADO) or Git repository.",
+      "properties": {
+        "provider": { "type": "string", "enum": ["ado", "git", "local"] },
+        "repositoryUrl": { "type": "string" },
+        "repositoryName": { "type": "string" },
+        "branch": { "type": ["string", "null"] },
+        "commitSha": { "type": ["string", "null"] },
+        "localCheckoutPath": { "type": "string" }
+      }
+    },
+    "inputScenario": { "type": "string", "enum": ["SCENARIO_LEGACY_APP", "SCENARIO_REQUIREMENTS_DOC"] },
+    "scenarioEvidence": {
+      "type": "object",
+      "required": ["legacyArtifactCount", "requirementsDocCount", "decisionRule"],
+      "properties": {
+        "legacyArtifactCount": { "type": "integer", "minimum": 0 },
+        "requirementsDocCount": { "type": "integer", "minimum": 0 },
+        "legacyWeight": { "type": "integer", "minimum": 0 },
+        "requirementsWeight": { "type": "integer", "minimum": 0 },
+        "decisionRule": { "type": "string" }
+      }
+    },
+    "scenarioConfidence": { "type": "string", "enum": ["HIGH", "LOW"] },
+    "includeModernizationEnhancementsInSpec": { "type": "boolean" },
+    "hasPoliciesOrStatutes": { "type": "boolean" },
+    "hasUserProvidedDesignReferences": { "type": "boolean" },
+    "userProvidedDesignReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relativePath", "designType"],
+        "properties": {
+          "relativePath": { "type": "string" },
+          "designType": { "type": "string", "enum": ["figma", "stitch", "sample_ui", "style_guide", "tokens"] }
+        }
+      }
+    },
+    "legacyObjectNames": {
+      "type": "array",
+      "description": "Table/element/form/report object names found inside legacy artefacts (feeds forbiddenUiTokens.legacyIdentifiers).",
+      "items": { "type": "string" }
+    },
+    "inputFingerprintSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relativePath", "name", "extension", "sizeBytes", "sha256", "category"],
+        "properties": {
+          "relativePath": { "type": "string" },
+          "name": { "type": "string" },
+          "extension": { "type": "string" },
+          "sizeBytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "category": {
+            "type": "string",
+            "enum": [
+              "legacy_schema", "legacy_query", "legacy_form", "legacy_report", "legacy_source",
+              "requirements_doc", "policy", "design_reference", "shared_service", "other"
+            ]
+          },
+          "scenarioWeight": { "type": "integer", "minimum": 0 },
+          "categoryReason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

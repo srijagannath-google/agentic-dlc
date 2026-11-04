@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "4.0",
+  "specSha256": "fc116d310304999067cdf88b108b2b355ea96c08d86b665aa9903047aca378f1",
+  "inputScenario": "SCENARIO_LEGACY_APP",
+  "reqIds": [
+    "REQ-FUNC-01",
+    "REQ-FUNC-02",
+    "REQ-FUNC-03",
+    "REQ-FUNC-04",
+    "REQ-FUNC-05",
+    "REQ-FUNC-06",
+    "REQ-FUNC-07",
+    "REQ-FUNC-08",
+    "REQ-FUNC-09",
+    "REQ-FUNC-10",
+    "REQ-FUNC-11",
+    "REQ-FUNC-12",
+    "REQ-FUNC-13",
+    "REQ-ENH-01",
+    "REQ-ENH-02",
+    "REQ-ENH-03",
+    "REQ-ENH-04",
+    "REQ-ENH-05",
+    "REQ-SEC-01",
+    "REQ-SEC-02",
+    "REQ-SEC-03",
+    "REQ-SEC-04",
+    "REQ-SEC-05",
+    "REQ-SEC-06",
+    "REQ-A11Y-01",
+    "REQ-A11Y-02",
+    "REQ-A11Y-03",
+    "REQ-A11Y-04",
+    "REQ-A11Y-05",
+    "REQ-A11Y-06",
+    "REQ-UX-01",
+    "REQ-UX-02",
+    "REQ-UX-03",
+    "REQ-UX-04",
+    "REQ-ARCH-05",
+    "REQ-UX-05",
+    "REQ-ARCH-01",
+    "REQ-ARCH-02",
+    "REQ-ARCH-03",
+    "REQ-ARCH-04",
+    "REQ-ARCH-06",
+    "REQ-ARCH-07"
+  ],
+  "brIds": [
+    "BR-01",
+    "BR-02",
+    "BR-03",
+    "BR-04",
+    "BR-05",
+    "BR-06",
+    "BR-07",
+    "BR-08"
+  ],
+  "states": [
+    "DRAFT",
+    "SUBMITTED",
+    "ISSUED",
+    "REJECTED"
+  ],
+  "initialStates": [
+    "DRAFT"
+  ],
+  "terminalStates": [
+    "ISSUED",
+    "REJECTED"
+  ],
+  "triggers": [
+    "Submit",
+    "Issue",
+    "Reject"
+  ],
+  "transitions": [
+    {
+      "from": "DRAFT",
+      "to": "SUBMITTED",
+      "trigger": "Submit",
+      "roles": [
+        "Commercial Buyer"
+      ],
+      "guard": "required fields present; bond amount ≥ required bond (BR-01); every agent satisfies exclusivity (BR-02); no other non-rejected application for the same buyer and licence year (BR-04); evidence: discovery §3 row 1"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "ISSUED",
+      "trigger": "Issue",
+      "roles": [
+        "Licensing Staff"
+      ],
+      "guard": "buyer not suspended; bond amount ≥ required bond (BR-01); every active agent satisfies exclusivity (BR-02) and is not suspended (BR-06); evidence: discovery §3 row 2"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "REJECTED",
+      "trigger": "Reject",
+      "roles": [
+        "Licensing Staff"
+      ],
+      "guard": "decision reason of at least 10 characters recorded; evidence: discovery §3 row 3 and ASSUMPTION-01"
+    }
+  ],
+  "roles": [
+    {
+      "role": "Commercial Buyer",
+      "kind": "external",
+      "views": "New application (4 steps), My applications (status timeline, documents, fee reports), Fee calculator",
+      "transitions": "Submit"
+    },
+    {
+      "role": "Licensing Staff",
+      "kind": "internal",
+      "views": "Review queue, Application review (decision, roster, documents, history, printing), Buyers registry, Agents registry",
+      "transitions": "Issue, Reject"
+    }
+  ],
+  "views": [
+    {
+      "viewId": "new-application",
+      "tabLabel": "New application",
+      "uiPattern": "Multi-Step Wizard",
+      "boundRoles": [
+        "Commercial Buyer"
+      ],
+      "primaryCta": "Submit application (Submit)",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "my-applications",
+      "tabLabel": "My applications",
+      "uiPattern": "Status & Lookup Console",
+      "boundRoles": [
+        "Commercial Buyer"
+      ],
+      "primaryCta": "Open application",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "fee-calculator",
+      "tabLabel": "Fee calculator",
+      "uiPattern": "Live Rule Calculator",
+      "boundRoles": [
+        "Commercial Buyer"
+      ],
+      "primaryCta": "Calculate fee",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "review-queue",
+      "tabLabel": "Review queue",
+      "uiPattern": "Triage Queue Table",
+      "boundRoles": [
+        "Licensing Staff"
+      ],
+      "primaryCta": "Issue licence (Issue)",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "buyers",
+      "tabLabel": "Buyers",
+      "uiPattern": "Searchable Registry",
+      "boundRoles": [
+        "Licensing Staff"
+      ],
+      "primaryCta": "Search buyers",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "agents",
+      "tabLabel": "Agents",
+      "uiPattern": "Searchable Registry",
+      "boundRoles": [
+        "Licensing Staff"
+      ],
+      "primaryCta": "Search agents",
+      "tabSelector": "",
+      "panelSelector": ""
+    }
+  ],
+  "usesEnumCodes": true
+}

@@ -1,0 +1,715 @@
+VERSION 1.0 CLASS
+BEGIN
+  MultiUse = -1  'True
+END
+Attribute VB_Name = "Form_frmBusinessLicenseApplication"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+    
+Option Compare Database
+Option Explicit
+
+
+'------------------------------------------------
+'
+'   Form_Current
+'
+'------------------------------------------------
+Private Sub Form_Current()
+    If UnderInvest = "Yes" Then
+        UnderInvest.ForeColor = 255
+    Else
+        UnderInvest.ForeColor = 0
+    End If
+    If IsNull(Me.MI) Then
+        Me.LicenseeName.ControlSource = "LicenseeName2"
+    Else
+        Me.LicenseeName.ControlSource = "LicenseeName"
+    End If
+    If IsNull(Me.City) Then
+        Me.CityStateZip.ControlSource = "City"
+    Else
+        Me.CityStateZip.ControlSource = "CityStateZip"
+    End If
+    
+End Sub
+
+'------------------------------------------------
+'
+'   Form_Open
+'
+'------------------------------------------------
+Private Sub Form_Open(Cancel As Integer)
+    SuspensionFlag = "No"
+  
+    Dim CalYr, AppID, LicID As String
+
+    NewBank = False
+    If EditLicense = False Then
+        CalYr = Forms!frmBusinessLicenseApplicantSelection!CalYr
+        AppID = Forms!frmBusinessLicenseApplicantSelection!ApplicantList
+        LicID = "TB" & CalYr & AppID
+        Me.Combo136.Visible = False
+        Me.Box138.Visible = False
+        Me.Combo189.Visible = False
+        Me.NavigationButtons = False
+        Me.AllowAdditions = True
+        
+    Else
+        
+        Me.Combo136.Visible = True
+        Me.Box138.Visible = True
+        Me.Combo189.Visible = True
+        Me.Combo136.SetFocus
+        Me.NavigationButtons = True
+        Me.AllowAdditions = False
+        
+    End If
+    
+    If NewLicense Then
+       
+        DoCmd.GoToRecord , , acNewRec
+        Me!ApplicantID = AppID
+        Me!LicenseID = LicID
+     
+        
+            'Check agent table to see if applicant exists as current agent, if not, assign as agent to own license.
+            Dim db As Database
+            Dim rsAgentTbl As Recordset
+            Dim AppLName
+            Dim AppDOB As Date
+            Dim strAppLName
+            Dim strAppDOB
+            Dim ApplCurLicense
+            Dim AgentIDCode
+            
+            AppDOB = Me.DOB
+            AppLName = Me.LName
+            strAppLName = "[LName] = " & Chr$(34) & AppLName & Chr$(34)
+            strAppDOB = "[DOB] = " & "#" & AppDOB & "#"
+            Set db = CurrentDb()
+            Set rsAgentTbl = db.OpenRecordset("tblAgentInfo", dbOpenDynaset)
+           
+            Do While rsAgentTbl.NoMatch = False
+                'rsAgentTbl.MoveFirst
+                rsAgentTbl.FindNext strAppLName & "And" & strAppDOB
+                If rsAgentTbl.NoMatch = True Then
+                    GoTo AddingAgent
+                    Exit Sub
+                End If
+                AgentIDCode = rsAgentTbl!AgentID
+                Select Case MsgBox("Agent #" & AgentIDCode & " has identical last name and date of birth information, is this applicant the same person? (If unsure, click cancel to close this form.)", vbYesNoCancel, "Agent Duplication Check")
+                    Case vbNo
+                        'loop to next match
+                    Case vbCancel
+                        DoCmd.RunCommand acCmdUndo
+                        Cancel = True
+                        DoCmd.Close acForm, "frmBusinessLicenseApplication", acSavePrompt
+                        Exit Sub
+                    Case vbYes
+                       
+                                                        
+                            Dim rsBridge As Recordset
+                            Dim SearchAgentString As String
+                            'Dim LicenseYear As String
+                            Dim strYearSearch As String
+                            Dim CurrentYear As String
+                            
+                            CurrentYear = Left(Me.LicenseID, 4)
+                            SearchAgentString = "[AgentID] = " & Chr$(34) & AgentIDCode & Chr$(34)
+                            strYearSearch = "Left([LicenseID], 4) = " & Chr$(34) & CurrentYear & Chr$(34)
+                            
+                            'LicenseYear = Mid$(Me.LicenseID, 3, 2)
+                         
+                            Set rsBridge = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+                        
+                            rsBridge.FindFirst strYearSearch & "And" & SearchAgentString
+                            If rsBridge.NoMatch = False Then
+                                MsgBox "This applicant is currently assigned as an agent to Commercial Buyers License #" & rsBridge![LicenseID] & ".  License will not be created until applicant agent status is removed.", , "Agent Alert"
+              
+                                DoCmd.RunCommand acCmdUndo
+                                DoCmd.Close
+                                Exit Sub
+                            Else
+                                'Assign applicant as agent to current license
+                                
+                                'Add record to current bridge table
+                                Set rsBridge = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+                                rsBridge.AddNew
+                                rsBridge![LicenseID] = Me.LicenseID
+                                rsBridge![DateAssigned] = Date
+                                rsBridge![AgentID] = AgentIDCode
+                                rsBridge.Update
+                                rsBridge.Close
+                                
+                                'Add license assignment to Agent record
+                                rsAgentTbl.Edit
+                                rsAgentTbl![CurrentLicense] = Me.LicenseID
+                                rsAgentTbl![Relationship] = "Owner"
+                                rsAgentTbl![CardPrinted] = False
+                                rsAgentTbl.Update
+                                rsAgentTbl.Close
+                                    
+                                'Add to Agent History table
+                                Dim rsHistory As Recordset
+                                Set rsHistory = db.OpenRecordset("tblLicenseAgentAssignmentHistory", dbOpenDynaset)
+                                rsHistory.AddNew
+                                rsHistory![LicenseID] = Me.LicenseID
+                                rsHistory![ActionDate] = Date
+                                rsHistory![AgentID] = AgentIDCode
+                                rsHistory![Action] = "Added"
+                                rsHistory.Update
+                                rsHistory.Close
+                        
+                                   
+                            End If
+                            Exit Sub 'dont loop again
+                        
+                End Select
+            Loop
+AddingAgent:    AddAgent
+       
+                MsgBox "Applicant has been added to Agent Information Table and assigned as an agent to this license.", , "New Applicant Assignment"
+            
+     
+        
+    End If 'not new license
+End Sub
+
+'------------------------------------------------
+'
+'   Add Agent
+'
+'------------------------------------------------
+Private Sub AddAgent()
+        Dim NewAgentID
+        Dim db As Database
+        Dim rsAgentTbl As Recordset
+        Set db = CurrentDb()
+        Set rsAgentTbl = db.OpenRecordset("tblAgentInfo", dbOpenDynaset)
+        
+        rsAgentTbl.AddNew
+        If IsNull(DMax("AgentID", "tblAgentInfo")) Then
+            rsAgentTbl![AgentID] = "00001"
+        Else
+            rsAgentTbl![AgentID] = (DMax("AgentID", "tblAgentInfo") + 1)
+        End If
+        rsAgentTbl![AgentID] = Format(rsAgentTbl![AgentID], "00000")
+        NewAgentID = rsAgentTbl![AgentID]
+        rsAgentTbl![CurrentLicense] = Me.LicenseID
+        rsAgentTbl![LName] = Me.LName
+        rsAgentTbl![FName] = Me.FName
+        rsAgentTbl![MiddleInitial] = Me.MI
+        rsAgentTbl![Address1] = Me.Address1
+        rsAgentTbl![Address2] = Me.Address2
+        rsAgentTbl![City] = Me.City
+        rsAgentTbl![State] = Me.State
+        rsAgentTbl![Zip] = Me.Zip
+        rsAgentTbl![DOB] = Me.DOB
+        rsAgentTbl![Phone] = Me.Phone
+        rsAgentTbl![SSN] = Me.SSN
+        rsAgentTbl![Relationship] = "Owner"
+        rsAgentTbl![Suspended] = "No"
+        rsAgentTbl.Update
+        
+        rsAgentTbl.FindFirst "[AgentID] = " & Chr$(34) & NewAgentID & Chr$(34)
+        
+        'Add to Bridge Table
+        Dim rsBridgeTbl As Recordset
+        Set rsBridgeTbl = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+        rsBridgeTbl.AddNew
+        rsBridgeTbl![LicenseID] = Me.LicenseID
+        rsBridgeTbl![DateAssigned] = Date
+        rsBridgeTbl![AgentID] = rsAgentTbl![AgentID]
+        rsBridgeTbl.Update
+        
+        'Add to Agent History table
+        Dim rsHistory As Recordset
+        Set rsHistory = db.OpenRecordset("tblLicenseAgentAssignmentHistory", dbOpenDynaset)
+        rsHistory.AddNew
+        rsHistory![LicenseID] = Me.LicenseID
+        rsHistory![ActionDate] = Date
+        rsHistory![AgentID] = rsAgentTbl![AgentID]
+        rsHistory![Action] = "Added"
+        rsHistory.Update
+       
+        'Close recordsets
+        rsAgentTbl.Close
+        rsBridgeTbl.Close
+        rsHistory.Close
+End Sub
+'------------------------------------------------
+'
+'   Form_Activate
+'
+'------------------------------------------------
+Private Sub Form_Activate()
+    
+    Me.AgentList.RowSourceType = "Table/Query"
+    Me.AgentList.RowSource = "SELECT [tblAgentInfo].[AgentID], [tblAgentInfo].[LName], [tblAgentInfo].[MiddleInitial], [tblAgentInfo].[FName], [tblAgentInfo].[DOB], [tblAgentInfo].[Suspended] FROM tblAgentInfo ORDER BY [tblAgentInfo].[LName]"
+    Me.AgentList.Requery
+
+    If Me!ApplicantType <> "other" Then
+        Me!TypeOther.Enabled = False
+    Else
+        Me!TypeOther.Enabled = True
+    End If
+   
+    DoCmd.Maximize
+End Sub
+
+'------------------------------------------------
+'
+'   ApplicantType_AfterUpdate
+'
+'   Enable Other specification field if needed.
+'------------------------------------------------
+Private Sub ApplicantType_AfterUpdate()
+    If Me!ApplicantType <> "Other" Then
+        Me!TypeOther.Enabled = False
+    Else
+        Me!TypeOther.Enabled = True
+    End If
+End Sub
+
+'------------------------------------------------
+'
+'   Form_Close
+'
+'------------------------------------------------
+Private Sub Form_Close()
+    EditLicense = False
+End Sub
+
+
+'------------------------------------------------
+'
+'   cmdSearch_Click
+'
+'------------------------------------------------
+Private Sub cmdSearch_Click()
+      If IsNull(Me.SearchName) Or Me.SearchName = "" Then
+        If IsNull(Me.SearchDate) Or Me.SearchDate = "" Then 'Neither filled in
+        MsgBox "You must enter a Name or Birthdate to search."
+        Me.SearchName.SetFocus
+        Exit Sub
+        Else 'Date filled in only
+            Me.AgentList.RowSourceType = "Table/Query"
+            Me.AgentList.RowSource = "SELECT [tblAgentInfo].[AgentID], [tblAgentInfo].[LName], [tblAgentInfo].[MiddleInitial], [tblAgentInfo].[FName], [tblAgentInfo].[DOB], [tblAgentInfo].[Suspended] FROM tblAgentInfo WHERE (((tblAgentInfo.DOB) =[SearchDate]))ORDER BY [tblAgentInfo].[LName]"
+            DoCmd.Requery "AgentList"
+            Exit Sub
+        End If
+    Else
+        If IsNull(Me.SearchDate) Or Me.SearchDate = "" Then 'Name filled in only
+            Me.AgentList.RowSourceType = "Table/Query"
+            Me.AgentList.RowSource = "SELECT [tblAgentInfo].[AgentID], [tblAgentInfo].[LName], [tblAgentInfo].[MiddleInitial], [tblAgentInfo].[FName], [tblAgentInfo].[DOB], [tblAgentInfo].[Suspended] FROM tblAgentInfo WHERE((([tblAgentInfo].[LName])Like '*'&[SearchName]&'*'))ORDER BY [tblAgentInfo].[LName]"
+            DoCmd.Requery "AgentList"
+            Exit Sub
+        End If
+    End If
+    'Both are filled in
+    Me.AgentList.RowSourceType = "Table/Query"
+    Me.AgentList.RowSource = "SELECT [tblAgentInfo].[AgentID], [tblAgentInfo].[LName], [tblAgentInfo].[MiddleInitial], [tblAgentInfo].[FName], [tblAgentInfo].[DOB], [tblAgentInfo].[Suspended] FROM tblAgentInfo WHERE (((tblAgentInfo.DOB) =[SearchDate]))and ((([tblAgentInfo].[LName])=[SearchName]))ORDER BY [tblAgentInfo].[LName]"
+    DoCmd.Requery "AgentList"
+End Sub
+
+'------------------------------------------------
+'
+'   cmdReset_Click
+'
+'------------------------------------------------
+Private Sub cmdReset_Click()
+    Me.AgentList.RowSourceType = "Table/Query"
+    Me.AgentList.RowSource = "SELECT [tblAgentInfo].[AgentID], [tblAgentInfo].[LName], [tblAgentInfo].[MiddleInitial], [tblAgentInfo].[FName], [tblAgentInfo].[DOB], [tblAgentInfo].[Suspended] FROM tblAgentInfo ORDER BY [tblAgentInfo].[LName]"
+    DoCmd.Requery "AgentList"
+End Sub
+
+'------------------------------------------------
+'
+'   cmdAddAgent_Click
+'
+'------------------------------------------------
+Private Sub cmdAddAgent_Click()
+On Error GoTo Err_cmdAddAgent_Click
+    NewAgent = True
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "frmAgentInfo"
+    DoCmd.OpenForm stDocName, , , stLinkCriteria
+
+Exit_cmdAddAgent_Click:
+    Exit Sub
+
+Err_cmdAddAgent_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdAddAgent_Click
+End Sub
+
+'------------------------------------------------
+'
+'   cmdAgentInfoForm_Click
+'
+'------------------------------------------------
+Private Sub cmdAgentInfoForm_Click()
+On Error GoTo Err_cmdAgentInfoForm_Click
+    If IsNull(Me.AgentList) Then
+        MsgBox "You must choose an Agent to view."
+        Exit Sub
+    End If
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+    NewAgent = False
+    stDocName = "frmAgentInfo"
+    stLinkCriteria = "[AgentID]=" & "'" & Me![AgentList] & "'"
+    DoCmd.OpenForm stDocName, , , stLinkCriteria
+
+Exit_cmdAgentInfoForm_Click:
+    Exit Sub
+
+Err_cmdAgentInfoForm_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdAgentInfoForm_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdRemoveAgent_Click()
+'
+'------------------------------------------------
+Private Sub cmdRemoveAgent_Click()
+On Error GoTo Err_cmdRemoveAgent_Click
+
+Dim SubLastName
+Dim SubFirstName
+Dim SubDOB
+Dim SubLicense
+Dim strNameSearch As String
+Dim strDateSearch As String
+Dim strLicenseSearch As String
+Dim strAgentIDSearch As String
+SubLicense = Me.LicenseID
+Dim ListID
+
+DoCmd.SetWarnings False
+
+SubLastName = Me.tblAgents_subform![LName]
+SubFirstName = Me.tblAgents_subform![FName]
+SubDOB = Me.tblAgents_subform![DOB]
+ListID = Me.tblAgents_subform![AgentID]
+
+strNameSearch = "[AgentLName] = " & Chr$(34) & SubLastName & Chr$(34)
+strDateSearch = "[AgentDOB] = " & "#" & SubDOB & "#"
+strLicenseSearch = "[LicenseID] = " & Chr$(34) & SubLicense & Chr$(34)
+strAgentIDSearch = "[AgentID] = " & Chr$(34) & ListID & Chr$(34)
+
+Dim db As Database
+Dim rs As Recordset
+Dim rsAgentTbl As Recordset
+
+Set db = CurrentDb()
+Set rsAgentTbl = db.OpenRecordset("tblAgentInfo", dbOpenDynaset)
+
+rsAgentTbl.FindFirst strAgentIDSearch
+If rsAgentTbl![Relationship] = "Owner" Then
+    MsgBox "This Agent is marked as 'Owner' of this license and cannot be removed.", , "Relationship Alert"
+Else
+    Set rs = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+    rs.FindFirst strLicenseSearch & "And" & strAgentIDSearch
+   
+    If MsgBox("Would you like to remove " & SubFirstName & " " & SubLastName & " from license #" & Me.LicenseID & "?", vbYesNo, "Remove Agent") = vbYes Then
+       Dim rsHistory As Recordset
+        Set rsHistory = db.OpenRecordset("tblLicenseAgentAssignmentHistory", dbOpenDynaset, dbSeeChanges)
+        rsHistory.AddNew
+        rsHistory![LicenseID] = rs![LicenseID]
+        rsHistory![ActionDate] = Date
+        rsHistory![AgentID] = rs![AgentID]
+        rsHistory![Action] = "Removed"
+        rsHistory.Update
+        rsHistory.Close
+            
+        rs.Delete 'Deletes Agent from Bridge table
+        Me.tblAgents_subform.Requery
+        rs.Close
+        Me.txtAgentID = ListID
+        DoCmd.OpenQuery "qryClearAgentCurrentLicense"
+     
+    Else
+        Exit Sub
+    End If
+End If
+Exit_cmdRemoveAgent_Click:
+    Exit Sub
+
+Err_cmdRemoveAgent_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdRemoveAgent_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   Combo136_AfterUpdate
+'
+'   License number search combo box that is only
+'   visible on the edit screen.
+'
+'------------------------------------------------
+Private Sub Combo136_AfterUpdate()
+    ' Find the record that matches the control.
+    Dim rs As Object
+
+    Set rs = Me.Recordset.Clone
+    rs.FindFirst "[LicenseID] = '" & Me![Combo136] & "'"
+    Me.Bookmark = rs.Bookmark
+End Sub
+
+'------------------------------------------------
+'
+'   cmdPreviewReport  LICENSE CERTIFICATE
+'
+'------------------------------------------------
+Private Sub cmdPreviewReport_Click()
+On Error GoTo Err_cmdPreviewReport_Click
+    DoCmd.DoMenuItem acFormBar, acRecordsMenu, acSaveRecord, , acMenuVer70
+
+    
+    DoCmd.OpenReport "rptNewLicenseLetterSingle", acViewPreview
+    'PRINT LABEL FROM NEW PRINTER
+    DoCmd.OpenReport "rptLicenseCertificateLabel", acViewPreview
+
+Exit_cmdPreviewReport_Click:
+    Exit Sub
+
+Err_cmdPreviewReport_Click:
+    'MsgBox Err.Description
+    Resume Exit_cmdPreviewReport_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdEditApplicant
+'
+'------------------------------------------------
+Private Sub cmdEditApplicant_Click()
+On Error GoTo Err_cmdEditApplicant_Click
+    
+    EditApplicant = True
+
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "frmApplicantInfo"
+    
+    stLinkCriteria = "[ApplicantID]=" & "'" & Me![ApplicantID] & "'"
+    DoCmd.OpenForm stDocName, , , stLinkCriteria
+
+Exit_cmdEditApplicant_Click:
+    Exit Sub
+
+Err_cmdEditApplicant_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdEditApplicant_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdClose_Click
+'
+'------------------------------------------------
+Private Sub cmdClose_Click()
+    NewApplicant = False
+    EditApplicant = False
+    NewLicense = False
+    EditApplicant = False
+    NewAgent = False
+    DoCmd.Close
+End Sub
+
+'------------------------------------------------
+'
+'   cmdDeleteAgent_Click
+'
+'------------------------------------------------
+Private Sub cmdDeleteAgent_Click()
+On Error GoTo Err_cmdDeleteAgent_Click
+    If IsNull(Me.AgentList) Then
+        MsgBox "You must select an Agent to continue."
+        Exit Sub
+    Else
+        Dim db As Database
+        Dim rsLicenseBridge As Recordset
+        Dim rsLicenseBridgeHistory As Recordset
+        Dim rsAgentTable As Recordset
+        Set db = CurrentDb
+        Set rsLicenseBridge = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+        rsLicenseBridge.FindFirst "[AgentID] = " & Chr$(34) & Me.AgentList & Chr$(34)
+        If rsLicenseBridge.NoMatch Then
+            rsLicenseBridge.Close
+            Set rsLicenseBridgeHistory = db.OpenRecordset("tblLicenseAgentAssignmentHistory", dbSeeChanges)
+            rsLicenseBridgeHistory.FindFirst "[AgentID] = " & Chr$(34) & Me.AgentList & Chr$(34)
+            If rsLicenseBridgeHistory.NoMatch Then
+                rsLicenseBridgeHistory.Close
+                'delete record
+                If MsgBox("Are you sure you wish to delete Agent #" & Me.AgentList & "?", vbYesNo) = vbYes Then
+                    Set rsAgentTable = db.OpenRecordset("tblAgentInfo", dbOpenDynaset)
+                    rsAgentTable.FindFirst "[AgentID] = " & Chr$(34) & Me.AgentList & Chr$(34)
+                    rsAgentTable.Delete
+                    rsAgentTable.Close
+                    MsgBox "Agent #" & Me.AgentList & " has been successfully deleted."
+                Else
+                    Exit Sub
+                End If
+            Else
+                MsgBox "Agent has License assignment history and cannot be deleted.  An Agent may only be deleted if he/she has never been assigned to a License."
+            End If
+        Else
+            MsgBox "Agent is currently assigned to a License and cannot be deleted.  An Agent may only be deleted if he/she has never been assigned to a License."
+            rsLicenseBridge.Close
+        End If
+    End If
+Exit_cmdDeleteAgent_Click:
+    Exit Sub
+
+Err_cmdDeleteAgent_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdDeleteAgent_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdAssignAgent_Click
+'
+'------------------------------------------------
+Private Sub cmdAssignAgent_Click()
+On Error GoTo Err_cmdAssignAgent_Click
+    Dim db As Database
+    Set db = CurrentDb()
+    Dim rsAgentTbl As Recordset
+    Set rsAgentTbl = db.OpenRecordset("tblAgentInfo", dbOpenDynaset)
+    
+    If IsNull(Me.AgentList) Then
+        MsgBox "You must select an Agent to continue."
+        Exit Sub
+    Else
+        
+        Dim ListID
+        Dim AgentListLName
+        Dim AgentListFName
+        Dim AgentListDOB As Date
+        Dim LicenseNumber
+        LicenseNumber = Me.LicenseID
+        ListID = Me.AgentList
+        rsAgentTbl.FindFirst "[AgentID] = " & Chr$(34) & ListID & Chr$(34)
+        AgentListLName = rsAgentTbl![LName]
+        AgentListFName = rsAgentTbl![FName]
+        AgentListDOB = rsAgentTbl![DOB]
+        If rsAgentTbl!Suspended = "Yes" Then
+            MsgBox "This agent is currently suspended and cannot be assigned to a License.", , "Agent Suspension Alert"
+            Exit Sub
+        End If
+        If rsAgentTbl!Relationship = "Owner" Then
+            MsgBox "This agent is currently listed as an 'Owner' and cannot be assigned to another license."
+            Exit Sub
+        End If
+    
+        Dim CurrentYear
+        CurrentYear = "TB" & Right(Left([LicenseID], 4), 2)
+               
+        Dim strYearSearch As String
+        Dim strAgentIDSearch As String
+        Dim rs As Recordset
+            
+        strAgentIDSearch = "[AgentID] = " & Chr$(34) & ListID & Chr$(34)
+        strYearSearch = "Left([LicenseID], 4) = " & Chr$(34) & CurrentYear & Chr$(34)
+        
+        Set rs = db.OpenRecordset("tblLicenseAgentBridge", dbOpenDynaset, dbSeeChanges)
+        rs.FindFirst strYearSearch & "And" & strAgentIDSearch
+        
+        If rs.NoMatch Then
+            Dim response
+            response = MsgBox("No license assignment found for 20" & Right(Left([LicenseID], 4), 2) & ".  " & AgentListFName & " " & AgentListLName & " will be assigned to license #" & LicenseNumber & ".", vbOKCancel, "Agent Assignment")
+            If response = vbOK Then
+                rs.AddNew
+                rs![LicenseID] = Me.LicenseID
+                rs![AgentID] = ListID
+                rs![DateAssigned] = Date
+                rs.Update
+                Me.tblAgents_subform.Requery
+                
+                'Add license assignment to Agent record
+                
+                rsAgentTbl.FindFirst "[AgentID] = " & Chr$(34) & ListID & Chr$(34)
+                rsAgentTbl.Edit
+                rsAgentTbl![CurrentLicense] = Me.LicenseID
+                rsAgentTbl![CardPrinted] = False
+                rsAgentTbl.Update
+                rsAgentTbl.Close
+                
+                'Add to Agent History table
+                Dim rsHistory As Recordset
+                Set rsHistory = db.OpenRecordset("tblLicenseAgentAssignmentHistory", dbOpenDynaset, dbSeeChanges)
+                rsHistory.AddNew
+                rsHistory![LicenseID] = Me.LicenseID
+                rsHistory![ActionDate] = Date
+                rsHistory![AgentID] = ListID
+                rsHistory![Action] = "Added"
+                rsHistory.Update
+                rsHistory.Close
+
+               
+            Else
+                Exit Sub
+            End If
+        Else
+            MsgBox AgentListFName & " " & AgentListLName & " has been assigned to License #" & rs![LicenseID] & ".  Please remove agent from this license before re-assignment.", , "Agent Reassignment"
+            
+        End If
+    End If
+Exit_cmdAssignAgent_Click:
+    Exit Sub
+
+Err_cmdAssignAgent_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdAssignAgent_Click
+End Sub
+
+
+'------------------------------------------------
+'
+'   Combo189_AfterUpdate
+'   Last name search combo box
+'
+'------------------------------------------------
+Private Sub Combo189_AfterUpdate()
+    ' Find the record that matches the control.
+    Dim rs As Object
+
+    Set rs = Me.Recordset.Clone
+    rs.FindFirst "[LName] = '" & Me![Combo189] & "'"
+    Me.Bookmark = rs.Bookmark
+End Sub
+
+
+
+Private Sub cmdAgentCardsSingle_Click()
+On Error GoTo Err_cmdAgentCardsSingle_Click
+
+    Dim stDocName As String
+
+    stDocName = "rptBusinessLicenseAgentCardLabelsSingle"
+    DoCmd.OpenReport stDocName, acViewPreview
+Exit_cmdAgentCardsSingle_Click:
+    Exit Sub
+
+Err_cmdAgentCardsSingle_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdAgentCardsSingle_Click
+    
+End Sub

@@ -1,0 +1,12 @@
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: leave-request-portal-fleet-rootsync
+  namespace: config-management-system
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://git.gdc.local/platform/leave-request-portal-fleet-config.git
+    branch: main
+    dir: deploy/gdc
+    auth: none

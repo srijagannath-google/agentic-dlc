@@ -1,0 +1,247 @@
+Issue Type,Summary,Description,Status,Priority,Story Points,Acceptance Criteria Count,Sprint,Capability Group,Requirement Refs,Business Rule Refs,Legacy Artifacts Replaced,Design Contracts (API/DB),Target Source Files,Linked Test Cases,Linked Defects,Labels,Project Key
+Story,[US-FUNC-01] Create and edit a Draft leave request,"As an Employee, I want to create a leave or exception request and edit it while it is a Draft, so that I can prepare an accurate request before submitting it.
+
+Acceptance Criteria (6):
+- [POSITIVE] GIVEN I am signed in as Employee on My requests WHEN I choose New request, enter type Vacation, start 2031-04-14, end 2031-04-15, 8 hours and save the draft THEN the request detail shows status ""Draft"" and the hours I entered
+- [NEGATIVE] GIVEN I am editing a Draft WHEN I enter a reason of 501 characters and save THEN saving is refused with ""Reason must be 500 characters or fewer; remove 1 characters."" and the status stays ""Draft""
+- [NEGATIVE] GIVEN I am editing a Draft WHEN I enter an end date earlier than the start date and save THEN saving is refused with ""End date must be on or after the start date.""
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN I am on My requests WHEN I activate New request, then Save draft, then change the hours to 12 and save again THEN the form opens on New request, the detail appears after the first save and shows 12 h after the second save
+- [EDGE / BOUNDARY] GIVEN I am editing a Draft WHEN I enter a reason of exactly 500 characters and save THEN the draft is saved with status ""Draft"" and no reason-length message is shown
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am signed in as Manager WHEN the Manager view renders THEN no New request control is present and no request form is shown
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-01 — Employee Leave Self-Service & Balance Calculation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-01 | Rules: BR-06 | Workflow Transitions: [*]->DRAFT
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, request-hours, reason, validation-summary, request-form, view-title
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-01 [Positive: PASS], TC-NEG-01 [Negative: PASS], TC-NEG-02 [Negative: PASS], TC-UI-INTERACT-02 [Interact: PASS], TC-EDGE-01 [Edge: PASS], TC-STATE-01 [State: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,5.0,6,Sprint 1,GRP-01,REQ-FUNC-01,BR-06,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-01:PASS, TC-NEG-01:PASS, TC-NEG-02:PASS, TC-UI-INTERACT-02:PASS, TC-EDGE-01:PASS, TC-STATE-01:PASS",,Functional GRP-01 Sprint_1,
+Story,[US-FUNC-02] Live balance and rule indicators while typing,"As an Employee, I want to see my available balance, the post-request balance, the certification need and the earliest allowed start date update as I type, so that I fix problems before submitting.
+
+Acceptance Criteria (6):
+- [POSITIVE] GIVEN I am Sam Chen (available balance 40 h) and the request form is open WHEN I type 8 hours without submitting THEN the available balance reads ""40 h"" and the post-request balance reads ""32 h"" immediately
+- [EDGE / BOUNDARY] GIVEN the form is open for Sam Chen (40 h available) WHEN I type exactly 40 hours THEN the post-request balance reads ""0 h"" and no balance warning is shown
+- [EDGE / BOUNDARY] GIVEN the form is open for Sam Chen (40 h available) WHEN I type 40.5 hours THEN an inline message says the requested hours exceed the available balance by 0.5 h, before any submit
+- [EDGE / BOUNDARY] GIVEN the form is open for Sam Chen (40 h available) WHEN I type 39.5 hours THEN the post-request balance reads ""0.5 h""
+- [POSITIVE] GIVEN the form is open WHEN I set type Vacation with 41 hours, then 40 hours, then type Exception with 8 hours THEN the certification indicator reads ""HR certification required"" for 41 h, ""Manager approval is final"" for 40 h, and ""HR certification required"" for Exception
+- [POSITIVE] GIVEN the form is open and today is 2031-03-02 WHEN I choose type Vacation, then type Exception THEN the lead-time hint reads ""Earliest start date: 2031-03-05"" for Vacation and ""No lead time required for Exception"" for Exception
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-01 — Employee Leave Self-Service & Balance Calculation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-02, REQ-UX-06 | Rules: BR-01, BR-02, BR-03 | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, available-balance, hours, post-request-balance, balance-warning, leave-type, certification-indicator, lead-time-hint
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-02 [Positive: PASS], TC-EDGE-02 [Edge: PASS], TC-EDGE-03 [Edge: PASS], TC-EDGE-04 [Edge: PASS], TC-POS-03 [Positive: PASS], TC-POS-04 [Positive: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,5.0,6,Sprint 1,GRP-01,"REQ-FUNC-02, REQ-UX-06","BR-01, BR-02, BR-03",,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-02:PASS, TC-EDGE-02:PASS, TC-EDGE-03:PASS, TC-EDGE-04:PASS, TC-POS-03:PASS, TC-POS-04:PASS",,Functional GRP-01 Sprint_1,
+Story,"[US-FUNC-03] Submit a request with balance, lead-time and overlap validation","As an Employee, I want to submit my Draft and be told exactly what to fix when a rule blocks it, so that my request reaches my manager without back-and-forth.
+
+Acceptance Criteria (8):
+- [POSITIVE] GIVEN I have a valid Draft (Vacation, 2031-04-21 to 2031-04-22, 8 h) WHEN I submit it THEN the status reads ""Submitted"" and the next approver reads ""Manager""
+- [NEGATIVE] GIVEN I am Sam Chen with 40 h available and a Draft of 48 h WHEN I submit it THEN submission is blocked with ""Requested hours exceed your available balance by 8 h. Reduce the request to at most 40 h."" and the status stays ""Draft""
+- [NEGATIVE] GIVEN today is 2031-03-02 and my Draft is Vacation starting 2031-03-04 WHEN I submit it THEN submission is blocked with a message containing ""at least 3 calendar days before the start date"" and ""2031-03-05"", and the status stays ""Draft""
+- [NEGATIVE] GIVEN my request LR-1001 already covers 2031-06-09 to 2031-06-13 WHEN I submit a Draft for 2031-06-12 to 2031-06-16 THEN submission is blocked with a message containing ""overlap your existing request LR-1001"" and the status stays ""Draft""
+- [EDGE / BOUNDARY] GIVEN today is 2031-03-02 WHEN I submit a Vacation Draft starting exactly 2031-03-05 (3 calendar days ahead) THEN the request is accepted and reads ""Submitted""
+- [EDGE / BOUNDARY] GIVEN today is 2031-03-02 WHEN I submit an Exception Draft starting 2031-03-04 (2 days ahead) THEN the request is accepted and reads ""Submitted"" because Exceptions are exempt from the lead time
+- [POSITIVE] GIVEN a submit was blocked by the balance rule WHEN I inspect the form THEN the validation summary has role alert, the hours field is marked aria-invalid=""true"" and is described by the message
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN my request has just been submitted WHEN I look at the available actions THEN no Submit control is shown for a Submitted request and the status remains ""Submitted""
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-01 — Employee Leave Self-Service & Balance Calculation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-03, REQ-A11Y-06 | Rules: BR-01, BR-03, BR-04 | Workflow Transitions: DRAFT->SUBMITTED
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, request-next-approver, validation-summary, skip-link, balance-panel
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-05 [Positive: PASS], TC-NEG-03 [Negative: PASS], TC-NEG-04 [Negative: PASS], TC-NEG-05 [Negative: PASS], TC-EDGE-05 [Edge: PASS], TC-EDGE-06 [Edge: PASS], TC-POS-06 [Positive: PASS], TC-STATE-02 [State: PASS], TC-POS-23 [Positive: PASS], TC-POS-24 [Positive: PASS], TC-POS-25 [Positive: PASS], TC-POS-26 [Positive: PASS], TC-UI-INTERACT-07 [Interact: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,8.0,8,Sprint 1,GRP-01,"REQ-FUNC-03, REQ-A11Y-06","BR-01, BR-03, BR-04",,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-05:PASS, TC-NEG-03:PASS, TC-NEG-04:PASS, TC-NEG-05:PASS, TC-EDGE-05:PASS, TC-EDGE-06:PASS, TC-POS-06:PASS, TC-STATE-02:PASS, TC-POS-23:PASS, TC-POS-24:PASS, TC-POS-25:PASS, TC-POS-26:PASS, TC-UI-INTERACT-07:PASS",,Functional GRP-01 Sprint_1,
+Story,[US-FUNC-04] Withdraw a request before it is approved,"As an Employee, I want to withdraw my own request while it is still Draft, Submitted or Manager approved, so that I can cancel plans without involving HR.
+
+Acceptance Criteria (6):
+- [POSITIVE] GIVEN I have a Draft WHEN I withdraw it THEN the status reads ""Withdrawn""
+- [POSITIVE] GIVEN I have a Submitted request WHEN I withdraw it THEN the status reads ""Withdrawn"" and the next approver reads ""—""
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN my request LR-1002 is Approved (awaiting payroll) WHEN I open it THEN no Withdraw control is present and the status stays ""Approved""
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN my request LR-1001 is Posted to payroll WHEN I open it THEN no Withdraw control is present and the status stays ""Posted to payroll""
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am the Manager viewing an employee's Submitted request WHEN the detail renders THEN no Withdraw control is present
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN I have just withdrawn a request WHEN I look at the detail THEN no Submit or Withdraw control remains and the status region announces ""Withdrawn""
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-01 — Employee Leave Self-Service & Balance Calculation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-04 | Rules: BR-05 | Workflow Transitions: DRAFT->WITHDRAWN, SUBMITTED->WITHDRAWN, MANAGER_APPROVED->WITHDRAWN
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, withdraw-btn, submit-btn, request-next-approver, open-LR-1002, open-LR-1001
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-07 [Positive: PASS], TC-POS-08 [Positive: PASS], TC-STATE-03 [State: PASS], TC-STATE-04 [State: PASS], TC-STATE-05 [State: PASS], TC-UI-INTERACT-03 [Interact: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,6,Sprint 1,GRP-01,REQ-FUNC-04,BR-05,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-07:PASS, TC-POS-08:PASS, TC-STATE-03:PASS, TC-STATE-04:PASS, TC-STATE-05:PASS, TC-UI-INTERACT-03:PASS",,Functional GRP-01 Sprint_1,
+Story,[US-FUNC-05] Request history with readable statuses and next approver,"As an Employee, I want a history of my requests with plain-language statuses, the next approver and any return comment, so that I always know where a request stands.
+
+Acceptance Criteria (5):
+- [POSITIVE] GIVEN I am Alex Rivera WHEN I open My requests THEN the history lists LR-1001 as ""Posted to payroll"", LR-1002 as ""Approved"" with next approver ""Payroll"" and LR-1006 as ""Submitted"" with next approver ""Manager""
+- [POSITIVE] GIVEN my manager returned my request with the comment ""Please shorten to two days"" WHEN I open My requests THEN the request reads ""Draft"" and the return comment ""Please shorten to two days"" is shown
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am Alex Rivera WHEN I open My requests THEN requests of other employees (such as LR-1003) are not listed
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN I am on My requests WHEN I open LR-1001 from the history THEN the detail shows LR-1001 with status ""Posted to payroll""
+- [EDGE / BOUNDARY] GIVEN I browse My requests, the detail and the form WHEN I read every visible text THEN no raw status code such as MANAGER_APPROVED or POSTED appears anywhere; only labels are shown
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-01 — Employee Leave Self-Service & Balance Calculation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-05 | Rules: n/a | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: history-row-LR-1001, history-row-LR-1002, history-row-LR-1006, new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, return-comment-input
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-09 [Positive: PASS], TC-POS-10 [Positive: PASS], TC-STATE-06 [State: PASS], TC-UI-INTERACT-04 [Interact: PASS], TC-EDGE-07 [Edge: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,5,Sprint 2,GRP-01,REQ-FUNC-05,,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-09:PASS, TC-POS-10:PASS, TC-STATE-06:PASS, TC-UI-INTERACT-04:PASS, TC-EDGE-07:PASS",,Functional GRP-01 Sprint_2,
+Story,[US-FUNC-06] Manager queue with approve and return,"As a Manager, I want a queue of Submitted requests from my direct reports with Approve and Return actions, so that I can decide quickly and route large requests to HR.
+
+Acceptance Criteria (8):
+- [POSITIVE] GIVEN LR-1006 (8 h Vacation from my direct report Alex Rivera) is Submitted WHEN I open it from the Manager queue and approve it THEN manager approval is final: the history shows ""Submitted → Approved"" and, after the automatic payroll posting, the status reads ""Posted to payroll""
+- [POSITIVE] GIVEN my direct report submitted a 48 h Vacation request WHEN I approve it THEN the status reads ""Manager approved"" and the next approver reads ""HR Certifier""
+- [NEGATIVE] GIVEN a Submitted request from my direct report is open WHEN I choose Return without a comment THEN the return is refused with ""A comment is required to return a request. Tell the employee what to change."" and the status stays ""Submitted""
+- [POSITIVE] GIVEN a Submitted request from my direct report is open WHEN I return it with the comment ""Please shorten to two days"" THEN the status reads ""Draft"" and the return comment is shown
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am the Employee viewing my own Submitted request WHEN the detail renders THEN no Approve and no Return control is present
+- [NEGATIVE] GIVEN LR-1003 was submitted by Jordan Blake, who reports to another manager WHEN I open the Manager queue THEN LR-1003 is not listed
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN an employee's request is still a Draft WHEN I view it as Manager THEN no Approve control is present and the status stays ""Draft""
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN LR-1006 is listed in my queue WHEN I open it and approve it THEN the detail loads LR-1006 and the queue no longer lists LR-1006
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-02 — Manager & HR Certification Adjudication
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-06 | Rules: BR-02, BR-07 | Workflow Transitions: SUBMITTED->MANAGER_APPROVED, SUBMITTED->APPROVED, SUBMITTED->DRAFT
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, approve-btn, audit-log, request-next-approver, withdraw-btn
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-11 [Positive: PASS], TC-POS-12 [Positive: PASS], TC-NEG-06 [Negative: PASS], TC-POS-13 [Positive: PASS], TC-STATE-07 [State: PASS], TC-NEG-07 [Negative: PASS], TC-STATE-08 [State: PASS], TC-UI-INTERACT-05 [Interact: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,8.0,8,Sprint 2,GRP-02,REQ-FUNC-06,"BR-02, BR-07",,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-11:PASS, TC-POS-12:PASS, TC-NEG-06:PASS, TC-POS-13:PASS, TC-STATE-07:PASS, TC-NEG-07:PASS, TC-STATE-08:PASS, TC-UI-INTERACT-05:PASS",,Functional GRP-02 Sprint_2,
+Story,[US-FUNC-07] HR certification queue with certify and return,"As an HR Certifier, I want a queue of Manager-approved requests that need certification (more than 40 h or Exception), so that second-level approval happens in one place.
+
+Acceptance Criteria (6):
+- [POSITIVE] GIVEN LR-1004 (Exception, Manager approved) exists WHEN I open the Certification queue THEN LR-1004 is listed
+- [POSITIVE] GIVEN a 48 h request was approved by the manager WHEN I certify it THEN the history shows ""Manager approved → Approved"" and the status reads ""Posted to payroll"" after the automatic payroll posting
+- [NEGATIVE] GIVEN a Manager-approved request is open WHEN I choose Return without a comment THEN the return is refused with ""A comment is required to return a request"" and the status stays ""Manager approved""
+- [POSITIVE] GIVEN a Manager-approved request is open WHEN I return it with the comment ""Attach the exception form"" THEN the status reads ""Draft"" and the comment ""Attach the exception form"" is shown
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am the Manager viewing a Manager-approved request WHEN the detail renders THEN no Certify control is present
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN a request is only Submitted (not yet manager approved) WHEN I view it as HR Certifier THEN no Certify control is present and the status stays ""Submitted""
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-03 — Payroll Posting Integration & Audit Compliance
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-07 | Rules: BR-02, BR-07 | Workflow Transitions: MANAGER_APPROVED->APPROVED, MANAGER_APPROVED->DRAFT
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: view-title, queue-row-LR-1004, new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, approve-btn, certify-btn
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-14 [Positive: PASS], TC-POS-15 [Positive: PASS], TC-NEG-08 [Negative: PASS], TC-POS-16 [Positive: PASS], TC-STATE-09 [State: PASS], TC-STATE-10 [State: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,5.0,6,Sprint 2,GRP-03,REQ-FUNC-07,"BR-02, BR-07",,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-14:PASS, TC-POS-15:PASS, TC-NEG-08:PASS, TC-POS-16:PASS, TC-STATE-09:PASS, TC-STATE-10:PASS",,Functional GRP-03 Sprint_2,
+Story,[US-FUNC-08] Post approved requests to payroll and record the outcome,"As the Payroll Integration, I want every Approved request posted to the payroll REST endpoint with the result recorded, so that HR never re-keys outcomes.
+
+Acceptance Criteria (4):
+- [POSITIVE] GIVEN a request has just been approved WHEN I open it in the Payroll postings view THEN the posting outcome reads ""Accepted by payroll"" with a payroll reference and the status reads ""Posted to payroll""
+- [NEGATIVE] GIVEN payroll rejected the posting of LR-1002 WHEN I open the Payroll postings view THEN an alert ""Payroll posting failed"" is listed for LR-1002 and its status stays ""Approved""
+- [NEGATIVE — ROLE VISIBILITY] GIVEN I am signed in as Employee WHEN My requests renders THEN no payroll posting log is shown
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN LR-1001 was posted successfully WHEN I open LR-1001 from the posting log THEN the detail shows status ""Posted to payroll"" and the posting outcome ""Accepted by payroll""
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-03 — Payroll Posting Integration & Audit Compliance
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-08, REQ-ARCH-07 | Rules: n/a | Workflow Transitions: APPROVED->POSTED
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, approve-btn, posting-outcome, posting-row-LR-1002, open-LR-1002
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-17 [Positive: PASS], TC-NEG-09 [Negative: PASS], TC-STATE-11 [State: PASS], TC-UI-INTERACT-06 [Interact: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,5.0,4,Sprint 2,GRP-03,"REQ-FUNC-08, REQ-ARCH-07",,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-17:PASS, TC-NEG-09:PASS, TC-STATE-11:PASS, TC-UI-INTERACT-06:PASS",,Functional GRP-03 Sprint_2,
+Story,[US-FUNC-09] Immutable audit trail of every state change,"As a Manager or HR Certifier, I want every state change recorded with actor, time, previous and new state, so that lost approvals can be traced.
+
+Acceptance Criteria (4):
+- [POSITIVE] GIVEN Alex Rivera submitted a request WHEN I open it as Manager THEN the audit log lists ""Draft → Submitted"" by Alex Rivera with a timestamp
+- [POSITIVE] GIVEN I approved an 8 h request WHEN I read the audit log THEN it lists ""Submitted → Approved"" by Morgan Lee and ""Approved → Posted to payroll"" by Payroll Integration
+- [NEGATIVE] GIVEN LR-1001 is Posted to payroll WHEN the HR Certifier tries to certify it through the API THEN the attempt is refused and the audit log records a denied attempt for LR-1001
+- [EDGE / BOUNDARY] GIVEN an audit record exists WHEN a client tries to update or delete it through the API THEN the API answers 405 and the record is unchanged
+
+End-to-End Traceability Matrix:
+- Capability Group: GRP-02 — Manager & HR Certification Adjudication
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-09, REQ-SEC-05 | Rules: n/a | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: POST /api/requests/LR-1001/certify, GET /api/requests/LR-1001/audit, PUT /api/requests/LR-1001/audit, DELETE /api/requests/LR-1001/audit | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, audit-log, withdraw-btn, approve-btn
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-18 [Positive: PASS], TC-POS-19 [Positive: PASS], TC-NEG-10 [Negative: PASS], TC-EDGE-08 [Edge: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,4,Sprint 2,GRP-02,"REQ-FUNC-09, REQ-SEC-05",,,"POST /api/requests/LR-1001/certify, GET /api/requests/LR-1001/audit, PUT /api/requests/LR-1001/audit, DELETE /api/requests/LR-1001/audit, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-18:PASS, TC-POS-19:PASS, TC-NEG-10:PASS, TC-EDGE-08:PASS",,Functional GRP-02 Sprint_2,
+Story,[US-TECH-01] Server-side workflow and role guards,"As the system, I want every transition validated against the frozen state table and RBAC matrix in the backend, so that the UI is never the only guard.
+
+Acceptance Criteria (5):
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN LR-1001 is Posted to payroll WHEN the Employee calls the submit operation THEN the API answers 409 with a message containing ""not available for a request that is Posted to payroll"" and the status is unchanged
+- [NEGATIVE — ROLE VISIBILITY] GIVEN LR-1006 is Submitted WHEN the Employee calls the approve operation THEN the API answers 403 with ""Only the employee's manager can approve or return this request.""
+- [NEGATIVE] GIVEN LR-1003 belongs to an employee who does not report to Morgan Lee WHEN Morgan Lee calls the approve operation THEN the API answers 403 and LR-1003 stays Submitted
+- [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN LR-1002 is Approved WHEN the Employee calls the withdraw operation THEN the API answers 409 and the status stays Approved
+- [POSITIVE] GIVEN I am the Employee with a Draft open WHEN I look at the available actions THEN exactly the Submit and Withdraw controls are present; Approve, Return and Certify are absent
+
+End-to-End Traceability Matrix:
+- Capability Group: SHARED — Shared Security, Accessibility & Architecture Foundation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-FUNC-10, REQ-SEC-02, REQ-UX-04, REQ-UX-05 | Rules: BR-05 | Workflow Transitions: DRAFT->SUBMITTED, SUBMITTED->MANAGER_APPROVED, SUBMITTED->APPROVED, SUBMITTED->DRAFT, MANAGER_APPROVED->APPROVED, MANAGER_APPROVED->DRAFT, APPROVED->POSTED, DRAFT->WITHDRAWN, SUBMITTED->WITHDRAWN, MANAGER_APPROVED->WITHDRAWN
+- Architecture & Design Contracts: APIs: POST /api/requests/LR-1001/submit, GET /api/requests/LR-1001, POST /api/requests/LR-1006/approve, POST /api/requests/LR-1003/approve, GET /api/requests/LR-1003, POST /api/requests/LR-1002/withdraw, GET /api/requests/LR-1002 | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, leave-type, start-date, end-date, hours, save-draft-btn, request-status, submit-btn, withdraw-btn, approve-btn, return-btn, certify-btn
+- Shift-Left Test Cases & Stage 6 Status: TC-STATE-12 [State: PASS], TC-STATE-13 [State: PASS], TC-NEG-11 [Negative: PASS], TC-STATE-14 [State: PASS], TC-POS-20 [Positive: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,Highest,5.0,5,Sprint 1,SHARED,"REQ-FUNC-10, REQ-SEC-02, REQ-UX-04, REQ-UX-05",BR-05,,"POST /api/requests/LR-1001/submit, GET /api/requests/LR-1001, POST /api/requests/LR-1006/approve, POST /api/requests/LR-1003/approve, GET /api/requests/LR-1003, POST /api/requests/LR-1002/withdraw, GET /api/requests/LR-1002, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-STATE-12:PASS, TC-STATE-13:PASS, TC-NEG-11:PASS, TC-STATE-14:PASS, TC-POS-20:PASS",,Technical SHARED Sprint_1,
+Story,"[US-TECH-02] Identity adapter, PII masking and input hardening","As the platform, I want identity resolved through one adapter, PII masked at the presentation boundary and every payload validated server-side, so that security requirements hold in the pretotype and in production.
+
+Acceptance Criteria (5):
+- [POSITIVE] GIVEN I am the Manager viewing LR-1006 WHEN I read the employee details THEN the employee identifier is masked as ""EMP-•••42"" and the full identifier is nowhere on the page
+- [NEGATIVE] GIVEN a client sends no identity WHEN it calls the balance operation THEN the API answers 401 with a readable message
+- [NEGATIVE] GIVEN the Employee creates a request WHEN the hours field contains ""abc"" THEN the API answers 400 with ""Enter the requested hours (more than 0).""
+- [POSITIVE] GIVEN the Manager reads LR-1006 through the API WHEN the response arrives THEN it carries the masked employee reference and no national identifier field
+- [EDGE / BOUNDARY] GIVEN the Employee creates a request through the API WHEN the reason has 500 characters, then 501 characters THEN 500 is accepted (201) and 501 is refused (400) with the 500-character message
+
+End-to-End Traceability Matrix:
+- Capability Group: SHARED — Shared Security, Accessibility & Architecture Foundation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-SEC-01, REQ-SEC-03, REQ-SEC-04, REQ-SEC-06, REQ-ARCH-08 | Rules: BR-06 | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /api/balance, POST /api/requests, GET /api/requests/LR-1006 | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: open-LR-1006, request-employee
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-21 [Positive: PASS], TC-NEG-12 [Negative: PASS], TC-NEG-13 [Negative: PASS], TC-POS-22 [Positive: PASS], TC-EDGE-09 [Edge: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,5.0,5,Sprint 1,SHARED,"REQ-SEC-01, REQ-SEC-03, REQ-SEC-04, REQ-SEC-06, REQ-ARCH-08",BR-06,,"GET /api/balance, POST /api/requests, GET /api/requests/LR-1006, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-21:PASS, TC-NEG-12:PASS, TC-NEG-13:PASS, TC-POS-22:PASS, TC-EDGE-09:PASS",,Technical SHARED Sprint_1,
+Story,[US-TECH-03] Accessibility baseline (WCAG 2.1 AA),"As a keyboard or screen-reader user, I want labelled controls, live regions, visible focus and a skip link, so that I can complete every journey.
+
+Acceptance Criteria (5):
+- [POSITIVE] GIVEN the portal loads WHEN I inspect the first focusable element THEN it is a ""Skip to main content"" link pointing at the main landmark
+- [POSITIVE] GIVEN the request form is open WHEN I inspect the balance panel THEN it is an aria-live=""polite"" region
+- [POSITIVE] GIVEN a submit was blocked WHEN I inspect the page THEN the validation summary has role=""alert"" and the hours field has aria-invalid=""true""
+- [POSITIVE] GIVEN I submit a valid request WHEN the status changes THEN the role=""status"" region announces ""Request submitted""
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN focus is on New request WHEN I press Enter THEN the request form opens, proving keyboard operability of the control
+
+End-to-End Traceability Matrix:
+- Capability Group: SHARED — Shared Security, Accessibility & Architecture Foundation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-A11Y-01, REQ-A11Y-02, REQ-A11Y-03, REQ-A11Y-04, REQ-A11Y-05, REQ-A11Y-06 | Rules: n/a | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: skip-link, new-request-btn, balance-panel, leave-type, start-date, end-date, hours, save-draft-btn, submit-btn, validation-summary, request-status, status-region
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-23 [Positive: PASS], TC-POS-24 [Positive: PASS], TC-POS-25 [Positive: PASS], TC-POS-26 [Positive: PASS], TC-UI-INTERACT-07 [Interact: PASS], TC-POS-05 [Positive: PASS], TC-NEG-03 [Negative: PASS], TC-NEG-04 [Negative: PASS], TC-NEG-05 [Negative: PASS], TC-EDGE-05 [Edge: PASS], TC-EDGE-06 [Edge: PASS], TC-POS-06 [Positive: PASS], TC-STATE-02 [State: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,5,Sprint 1,SHARED,"REQ-A11Y-01, REQ-A11Y-02, REQ-A11Y-03, REQ-A11Y-04, REQ-A11Y-05, REQ-A11Y-06",,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-23:PASS, TC-POS-24:PASS, TC-POS-25:PASS, TC-POS-26:PASS, TC-UI-INTERACT-07:PASS, TC-POS-05:PASS, TC-NEG-03:PASS, TC-NEG-04:PASS, TC-NEG-05:PASS, TC-EDGE-05:PASS, TC-EDGE-06:PASS, TC-POS-06:PASS, TC-STATE-02:PASS",,Technical SHARED Sprint_1,
+Story,[US-TECH-04] UX guardrails and zero internal-data leakage,"As a product owner, I want the ten UX guardrails applied and no internal codes or identifiers in visible text, so that the portal is simple and safe for all roles.
+
+Acceptance Criteria (5):
+- [POSITIVE] GIVEN the request form is open WHEN I count high-emphasis buttons THEN exactly one primary button is visible
+- [POSITIVE] GIVEN the request form is open WHEN I count fields outside progressive disclosure THEN exactly 4 visible fields (type, start, end, hours) are shown; the reason sits inside a details element
+- [POSITIVE] GIVEN the portal loads WHEN I inspect the body element THEN data-design-references equals ""default-ux-guardrails""
+- [NEGATIVE] GIVEN I visit the Employee, Manager, HR Certifier and Payroll Integration views WHEN I read all visible text THEN no raw code (DRAFT, SUBMITTED, MANAGER_APPROVED, APPROVED, POSTED, WITHDRAWN) and no API path is visible
+- [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN I am on the portal WHEN I switch the role to Manager, then HR Certifier, then Payroll Integration THEN the view heading changes to ""Manager queue"", ""Certification queue"" and ""Payroll postings"" respectively
+
+End-to-End Traceability Matrix:
+- Capability Group: SHARED — Shared Security, Accessibility & Architecture Foundation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-UX-01, REQ-UX-02, REQ-UX-03, REQ-UX-07, REQ-ARCH-05, REQ-ARCH-06 | Rules: n/a | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference} | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: new-request-btn, visible-field, request-form, open-LR-1002, view-title, tab-my-requests, panel-my-requests, panel-policy-guide, tab-policy-guide, leave-type, start-date, end-date
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-27 [Positive: PASS], TC-POS-28 [Positive: PASS], TC-POS-29 [Positive: PASS], TC-NEG-14 [Negative: PASS], TC-UI-INTERACT-08 [Interact: PASS], TC-UI-INTERACT-TAB-01 [Interact: NOT_RUN], TC-UI-INTERACT-TAB-02 [Interact: NOT_RUN], TC-POS-JOURNEY-01 [Positive: NOT_RUN]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,5,Sprint 2,SHARED,"REQ-UX-01, REQ-UX-02, REQ-UX-03, REQ-UX-07, REQ-ARCH-05, REQ-ARCH-06",,,"GET /health, GET /api/me, GET /api/balance, GET /api/requests, POST /api/requests, GET /api/requests/{reference}, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-27:PASS, TC-POS-28:PASS, TC-POS-29:PASS, TC-NEG-14:PASS, TC-UI-INTERACT-08:PASS, TC-UI-INTERACT-TAB-01:NOT_RUN, TC-UI-INTERACT-TAB-02:NOT_RUN, TC-POS-JOURNEY-01:NOT_RUN",,Technical SHARED Sprint_2,
+Story,[US-TECH-05] Runnable zero-dependency stack and API contract,"As an engineer, I want the application to start with one command, answer a healthcheck and honour the OpenAPI error contract, so that Stage 6 can verify it end to end.
+
+Acceptance Criteria (5):
+- [POSITIVE] GIVEN the server was started with the start command WHEN I call the healthcheck THEN it answers 200 with status ""ok"" and database ""ready""
+- [POSITIVE] GIVEN the server is running WHEN I request the root URL THEN it serves the single-page UI as HTML
+- [POSITIVE] GIVEN LR-1001 exists WHEN the Manager reads it through the API THEN the response carries statusLabel ""Posted to payroll""
+- [NEGATIVE] GIVEN no request LR-9999 exists WHEN the Manager reads it through the API THEN the API answers 404 with a readable message
+- [POSITIVE] GIVEN LR-1001 is Posted to payroll WHEN the Employee calls submit on it THEN the error body carries both a code and a user-readable message
+
+End-to-End Traceability Matrix:
+- Capability Group: SHARED — Shared Security, Accessibility & Architecture Foundation
+- Legacy / Input Source Artifacts: Greenfield / BRD specification
+- Requirements & Business Rules: REQ-ARCH-01, REQ-ARCH-02, REQ-ARCH-03, REQ-ARCH-04, REQ-ARCH-09 | Rules: n/a | Workflow Transitions: n/a
+- Architecture & Design Contracts: APIs: GET /health, GET /, GET /api/requests/LR-1001, GET /api/requests/LR-9999, POST /api/requests/LR-1001/submit | DB Tables: employee, leave_balance, leave_type, leave_request, review_comment, request_state_change, payroll_posting
+- Implemented Target Source Code: src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css | UI data-testid Hooks: n/a
+- Shift-Left Test Cases & Stage 6 Status: TC-POS-30 [Positive: PASS], TC-POS-31 [Positive: PASS], TC-POS-32 [Positive: PASS], TC-NEG-15 [Negative: PASS], TC-POS-33 [Positive: PASS]
+- Linked Stage 6 Defects (Bugs): None (0 defects)",Done,High,3.0,5,Sprint 1,SHARED,"REQ-ARCH-01, REQ-ARCH-02, REQ-ARCH-03, REQ-ARCH-04, REQ-ARCH-09",,,"GET /health, GET /, GET /api/requests/LR-1001, GET /api/requests/LR-9999, POST /api/requests/LR-1001/submit, table:employee, table:leave_balance, table:leave_type, table:leave_request, table:review_comment, table:request_state_change, table:payroll_posting","src/backend/repositories.py, src/backend/server.py, src/backend/test_rules.py, src/backend/viewmodel.py, src/backend/workflow.py, src/contracts/openapi.yaml, src/db/schema.sql, src/ui/app.js, src/ui/index.html, src/ui/styles.css","TC-POS-30:PASS, TC-POS-31:PASS, TC-POS-32:PASS, TC-NEG-15:PASS, TC-POS-33:PASS",,Technical SHARED Sprint_1,

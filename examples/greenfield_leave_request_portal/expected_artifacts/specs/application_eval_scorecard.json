@@ -1,0 +1,236 @@
+{
+  "schemaVersion": "4.0",
+  "rubricVersion": "4.0",
+  "specSha256": "da46761b820842390b60641fc8661b470f0a683d283e5328b79be11ddb66e648",
+  "inputScenario": "SCENARIO_REQUIREMENTS_DOC",
+  "judgedAtUtc": "2026-10-29T23:40:15Z",
+  "judgeModel": "spec-judge (LLM)",
+  "criteria": [
+    {
+      "id": "P1-C1",
+      "pillar": 1,
+      "maxPoints": 6,
+      "awarded": 6,
+      "evidence": "Capability coverage is complete: all 11 capabilities CAP-01\u2026CAP-11 of the discovery inventory map to at least one requirement below \u2026 REQ-FUNC-06 | The Manager queue lists only `SUBMITTED` requests whose requester reports directly to the signed-in Manager",
+      "gap": ""
+    },
+    {
+      "id": "P1-C2",
+      "pillar": 1,
+      "maxPoints": 6,
+      "awarded": 6,
+      "evidence": "| SUBMITTED | MANAGER_APPROVED | Manager Approve | Manager | requester is a direct report; BR-02 applies \u2014 requested hours > 40 or type Exception (BRD \u00a74 steps 3\u20134) | \u2026 Terminal states: `POSTED`, `WITHDRAWN` (ASSUMPTION-03). Initial state: `DRAFT`.",
+      "gap": ""
+    },
+    {
+      "id": "P1-C3",
+      "pillar": 1,
+      "maxPoints": 5,
+      "awarded": 5,
+      "evidence": "| BR-03 | `start_date \u2212 submit_date \u2265 3` calendar days unless `leave_type = Exception`; `earliest_date = submit_date + 3 days` | start date, submit date (today, UTC), leave type | BRD \u00a73 BR-03; HR policy \u00a74.2 |",
+      "gap": ""
+    },
+    {
+      "id": "P1-C4",
+      "pillar": 1,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "**Input Scenario:** `SCENARIO_REQUIREMENTS_DOC` \u2026 scope is strictly the input document (BRD v1.0, FR-01\u2026FR-08, NFR-01\u2026NFR-05, BR-01\u2026BR-05); nothing unsolicited is added and no modernization enhancements exist for this scenario.",
+      "gap": ""
+    },
+    {
+      "id": "P1-C5",
+      "pillar": 1,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "`ASSUMPTION-04` \u2014 Withdrawal is possible from `DRAFT`, `SUBMITTED` and `MANAGER_APPROVED` only; an `APPROVED` request can no longer be withdrawn even if payroll posting has not yet succeeded.",
+      "gap": ""
+    },
+    {
+      "id": "P2-C1",
+      "pillar": 2,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "REQ-SEC-01 | Authentication: every role signs in through the organisation's OIDC provider (authorization-code flow); the role is taken from the token's group claims (`employees`, `managers`, `hr-certifiers`); sessions expire after 8 hours of inactivity and an expired session redirects to sign-in with the draft preserved locally. No anonymous access exists.",
+      "gap": ""
+    },
+    {
+      "id": "P2-C2",
+      "pillar": 2,
+      "maxPoints": 5,
+      "awarded": 5,
+      "evidence": "| Manager Approve (`SUBMITTED \u2192 MANAGER_APPROVED / APPROVED`) | \u2717 | \u2713 (direct reports) | \u2717 | \u2717 | \u2026 a denied attempt returns 403 (role) or 409 (state) with a user-readable message, changes nothing and is audited (REQ-FUNC-10). External-role views never render internal controls.",
+      "gap": ""
+    },
+    {
+      "id": "P2-C3",
+      "pillar": 2,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "| Employee identifier (format `EMP-\\d{5}`) | Personal identifier | Last two digits only: `EMP-\u2022\u2022\u202242`; full value never rendered | Encrypted at rest; audit on access | Life of the employment record + 7 years (audit) |",
+      "gap": ""
+    },
+    {
+      "id": "P2-C4",
+      "pillar": 2,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-SEC-04 | Encryption: TLS 1.2+ for all transport including the call to payroll; the database file and backups are encrypted at rest with keys owned by the platform team's key-management service; secrets (payroll credentials, OIDC client secret) are injected from the environment and never stored in source.",
+      "gap": ""
+    },
+    {
+      "id": "P2-C5",
+      "pillar": 2,
+      "maxPoints": 4,
+      "awarded": 3,
+      "evidence": "REQ-SEC-05 | Audit trail: every state transition, denied attempt and payroll posting writes an append-only record `{request, actor, role, previous state, new state, timestamp UTC, reason/comment}`; records cannot be updated or deleted through any API and are retained for 7 years; only internal roles can read them.",
+      "gap": "Read access to PII (e.g. a manager opening a request's reason text) is not listed as an audited event in \u00a72.3; only transitions, denied attempts and payroll postings are. Add a 'PII access' event row or state explicitly why display-name/reason reads are not audited."
+    },
+    {
+      "id": "P3-C1",
+      "pillar": 3,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-A11Y-01 | Text contrast \u2265 4.5:1 and large text / UI component contrast \u2265 3:1 using the three semantic status tokens; every status and validation severity is conveyed by text (label or icon with text), never by colour alone.",
+      "gap": ""
+    },
+    {
+      "id": "P3-C2",
+      "pillar": 3,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "REQ-A11Y-02 | Full keyboard operability: every control is reachable with Tab in a logical order and operable with Enter/Space; no keyboard trap; a \"Skip to main content\" link is the first focusable element",
+      "gap": ""
+    },
+    {
+      "id": "P3-C3",
+      "pillar": 3,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-A11Y-03 | Focus management: a visible focus indicator (\u2265 3:1 outline) on every control; after Submit, focus moves to the validation summary (on failure) or to the status heading (on success); after a view/role change focus moves to the view's `h2`.",
+      "gap": ""
+    },
+    {
+      "id": "P3-C4",
+      "pillar": 3,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "REQ-A11Y-04 | Programmatic labels and roles: every `input`/`select`/`textarea` has a visible `<label for>`; icon-only buttons carry `aria-label`; landmarks `header`, `nav`, `main` exist; exactly one `h1`, with `h2` per view; data tables use `<th scope>`.",
+      "gap": ""
+    },
+    {
+      "id": "P3-C5",
+      "pillar": 3,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-A11Y-05 | Live regions: the live balance uses `aria-live=\"polite\"`; validation summaries use `role=\"alert\"`; status changes announce through a `role=\"status\"` region.",
+      "gap": ""
+    },
+    {
+      "id": "P3-C6",
+      "pillar": 3,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-A11Y-06 | Error identification: each validation message names the field, describes the problem in plain language and states the fix (\u00a71.3); the field gets `aria-invalid=\"true\"` and `aria-describedby` pointing at the message; a summary is shown above the form.",
+      "gap": ""
+    },
+    {
+      "id": "P4-C1",
+      "pillar": 4,
+      "maxPoints": 4,
+      "awarded": 4,
+      "evidence": "**Employee (external):** 1. Open the portal \u2192 \"My requests\" view with balance summary. 2. Choose \"New request\", fill type, dates, hours, reason; live balance updates (REQ-FUNC-02); save \u2192 `DRAFT`.",
+      "gap": ""
+    },
+    {
+      "id": "P4-C2",
+      "pillar": 4,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-UX-01 | The ten UX guardrails of `_shared/ux_guardrails.md` are adopted as defaults with no overrides (\u00a74.1)",
+      "gap": ""
+    },
+    {
+      "id": "P4-C3",
+      "pillar": 4,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-UX-02 | Design reference: `resources/design_references/` is empty, so the default clean Material-Design-3-style theme (system font stack, 8 px spacing grid, tonal surfaces) is applied",
+      "gap": ""
+    },
+    {
+      "id": "P4-C4",
+      "pillar": 4,
+      "maxPoints": 5,
+      "awarded": 5,
+      "evidence": "| MANAGER_APPROVED | Manager approved | HR Certifier | \u2026 REQ-UX-03 | Zero internal-data leakage per `_shared/zero_leak.md`: visible text never contains database table/column identifiers, raw `UPPER_SNAKE_CASE` state/trigger/error codes, internal keys or UUIDs, API paths, SQL, or engineering notes",
+      "gap": ""
+    },
+    {
+      "id": "P5-C1",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-ARCH-01 | Target stack alignment: frontend `static-html` (one page `src/ui/index.html` + `app.js` + `styles.css`, no framework), backend `python-stdlib-http` (Python 3 standard library `http.server`, no third-party packages) serving the UI, `/api/*`, `/health` and the local payroll stub on port 8766, database `sqlite`",
+      "gap": ""
+    },
+    {
+      "id": "P5-C2",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-ARCH-03 | Normalised 3NF schema in business `snake_case` (`employee`, `leave_balance`, `leave_type`, `leave_request`, `review_comment`, `request_state_change`, `payroll_posting`) with primary keys, foreign keys, a `status` column constrained to the \u00a73.3 state codes, no derived columns",
+      "gap": ""
+    },
+    {
+      "id": "P5-C3",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-ARCH-04 | Contract-first API: `design/solution_design.md` contains an OpenAPI 3.1 document with one operation per \u00a73.3 trigger \u2026 a common error schema `{code, message}` whose `message` is user-readable; transition endpoints validate `(fromState, trigger, role)`.",
+      "gap": ""
+    },
+    {
+      "id": "P5-C4",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-ARCH-05 | ViewModel / DTO boundary: API responses consumed by the UI are display models \u2014 codes mapped to labels, employee identifier masked, national identifier and internal keys excluded; templates never bind to raw persistence rows.",
+      "gap": ""
+    },
+    {
+      "id": "P5-C5",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "REQ-ARCH-06 | Testability contract: every interactive control, status display and queue row carries a stable kebab-case `data-testid` declared first in `test/test_cases.json` (contract-first), named by entity/role/transition",
+      "gap": ""
+    },
+    {
+      "id": "P5-C6",
+      "pillar": 5,
+      "maxPoints": 3,
+      "awarded": 3,
+      "evidence": "See `specs/traceability_matrix.md` \u2014 every `REQ-*` above maps to capability \u2192 source paragraph \u2192 business rules \u2192 planned story \u2192 test category.",
+      "gap": ""
+    },
+    {
+      "id": "P5-C7",
+      "pillar": 5,
+      "maxPoints": 2,
+      "awarded": 2,
+      "evidence": "N/A \u2014 not applicable to SCENARIO_REQUIREMENTS_DOC",
+      "gap": "not applicable: greenfield requirements document, no legacy estate"
+    }
+  ],
+  "pillarTotals": {
+    "1": 25,
+    "2": 19,
+    "3": 20,
+    "4": 15,
+    "5": 20
+  },
+  "totalScore": 99,
+  "verdict": "PASS",
+  "blockingGaps": []
+}

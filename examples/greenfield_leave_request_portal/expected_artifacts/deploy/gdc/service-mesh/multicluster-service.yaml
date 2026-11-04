@@ -1,0 +1,21 @@
+apiVersion: networking.gke.io/v1
+kind: MultiClusterService
+metadata:
+  name: leave-request-portal-global-mcs
+  namespace: leave-request-portal
+spec:
+  template:
+    spec:
+      selector:
+        app: leave-request-portal-backend
+      ports:
+        - name: http
+          protocol: TCP
+          port: 8766
+          targetPort: 8766
+---
+apiVersion: net.gke.io/v1
+kind: ServiceExport
+metadata:
+  name: leave-request-portal-backend
+  namespace: leave-request-portal

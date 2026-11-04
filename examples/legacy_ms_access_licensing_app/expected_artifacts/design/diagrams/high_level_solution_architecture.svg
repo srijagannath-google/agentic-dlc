@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 860" width="1440" height="860" font-family="'Google Sans', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+<defs>
+  <marker id="hlArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M 1 1.5 L 8.5 5 L 1 8.5 Z" fill="#1F5A88"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="1440" height="860" fill="#FFFFFF"/>
+<text x="58" y="64" font-size="31" font-weight="700" fill="#202124">Business Licensing &amp; Renewal Portal — Future State High-Level Architecture</text>
+<circle cx="537.5" cy="103" r="14.5" fill="#6BAED6"/>
+<path d="M 513.5 145 C 513.5 124, 561.5 124, 561.5 145 Z" fill="#6BAED6"/>
+<text x="537.5" y="164" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3C4043">Business Applicants</text>
+<text x="537.5" y="179" text-anchor="middle" font-size="10.8" font-weight="400" fill="#5F6368">Apply, Amend &amp; Renew</text>
+<circle cx="712.5" cy="103" r="14.5" fill="#6BAED6"/>
+<path d="M 688.5 145 C 688.5 124, 736.5 124, 736.5 145 Z" fill="#6BAED6"/>
+<text x="712.5" y="164" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3C4043">Compliance Reviewers</text>
+<text x="712.5" y="179" text-anchor="middle" font-size="10.8" font-weight="400" fill="#5F6368">Application Triage</text>
+<circle cx="887.5" cy="103" r="14.5" fill="#6BAED6"/>
+<path d="M 863.5 145 C 863.5 124, 911.5 124, 911.5 145 Z" fill="#6BAED6"/>
+<text x="887.5" y="164" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3C4043">Licensing Supervisors</text>
+<text x="887.5" y="179" text-anchor="middle" font-size="10.8" font-weight="400" fill="#5F6368">Issuance &amp; Enforcement</text>
+<circle cx="1062.5" cy="103" r="14.5" fill="#6BAED6"/>
+<path d="M 1038.5 145 C 1038.5 124, 1086.5 124, 1086.5 145 Z" fill="#6BAED6"/>
+<text x="1062.5" y="164" text-anchor="middle" font-size="12.5" font-weight="600" fill="#3C4043">Regulatory Analysts</text>
+<text x="1062.5" y="179" text-anchor="middle" font-size="10.8" font-weight="400" fill="#5F6368">Revenue &amp; Risk Insights</text>
+<text x="108" y="242" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">Engagement</text>
+<text x="108" y="262" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">Layer</text>
+<text x="108" y="280" text-anchor="middle" font-size="11.2" font-weight="500" fill="#5F6368">(System of Engagement)</text>
+<rect x="280.0" y="198.0" width="1020.0" height="104.0" rx="18" fill="#FFFFFF" stroke="#1F5A88" stroke-width="2.0"/>
+<rect x="302.0" y="216.0" width="182.4" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="303.0" y="217.0" width="180.4" height="5.0" rx="2.5" fill="#1A73E8"/>
+<text x="393.2" y="245.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Applicant Self-Service</text>
+<text x="393.2" y="262.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Application &amp; Fee Portal</text>
+<rect x="500.4" y="216.0" width="182.4" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="501.4" y="217.0" width="180.4" height="5.0" rx="2.5" fill="#1A73E8"/>
+<text x="591.6" y="245.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Reviewer Triage Console</text>
+<text x="591.6" y="262.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Compliance &amp; Bond Queue</text>
+<rect x="698.8" y="216.0" width="182.4" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="699.8" y="217.0" width="180.4" height="5.0" rx="2.5" fill="#1A73E8"/>
+<text x="790.0" y="245.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Supervisor Console</text>
+<text x="790.0" y="262.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Issuance &amp; Certificate</text>
+<rect x="897.2" y="216.0" width="182.4" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="898.2" y="217.0" width="180.4" height="5.0" rx="2.5" fill="#1A73E8"/>
+<text x="988.4" y="245.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Licensing AI Copilot</text>
+<text x="988.4" y="262.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Statute &amp; Filing Assistant</text>
+<rect x="1095.6" y="216.0" width="182.4" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1096.6" y="217.0" width="180.4" height="5.0" rx="2.5" fill="#1A73E8"/>
+<text x="1186.8" y="245.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Public License Lookup</text>
+<text x="1186.8" y="262.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Active Certificate Registry</text>
+<line x1="790" y1="342" x2="790" y2="306" stroke="#1F5A88" stroke-width="2.4" marker-end="url(#hlArrow)"/>
+<text x="108" y="488" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">System of</text>
+<text x="108" y="508" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">Intelligence &amp; AI</text>
+<text x="108" y="527" text-anchor="middle" font-size="11.2" font-weight="500" fill="#0077B5">(Agentic &amp; Domain Core)</text>
+<rect x="216.0" y="342.0" width="1164.0" height="338.0" rx="34" fill="#FFFFFF" stroke="#19A5E6" stroke-width="4.0"/>
+<rect x="264.0" y="372.0" width="808.0" height="58.0" rx="4.0" fill="#F0F7FF" stroke="#1F5A88" stroke-width="1.8"/>
+<text x="668.0" y="396.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#0D3B66">AI &amp; Agentic Orchestration Layer</text>
+<text x="668.0" y="413.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#3C4043">Licensing Statute RAG Copilot · Bond Document Verifier Agent · Risk Triage · Guardrails</text>
+<rect x="264.0" y="452.0" width="191.5" height="66.0" rx="4.0" fill="#FFFFFF" stroke="#2C5E8A" stroke-width="1.6"/>
+<text x="359.8" y="480.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Unified Business Profile</text>
+<text x="359.8" y="497.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">360° Entity &amp; Agent View</text>
+<rect x="469.5" y="452.0" width="191.5" height="66.0" rx="4.0" fill="#FFFFFF" stroke="#2C5E8A" stroke-width="1.6"/>
+<text x="565.2" y="480.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Revenue &amp; Risk Insights</text>
+<text x="565.2" y="497.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Renewal &amp; Bond Analytics</text>
+<rect x="675.0" y="452.0" width="191.5" height="66.0" rx="4.0" fill="#FFFFFF" stroke="#2C5E8A" stroke-width="1.6"/>
+<text x="770.8" y="480.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Licensing &amp; Fee Engine</text>
+<text x="770.8" y="497.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Tiered Fees &amp; Bond Math</text>
+<rect x="880.5" y="452.0" width="191.5" height="66.0" rx="4.0" fill="#FFFFFF" stroke="#2C5E8A" stroke-width="1.6"/>
+<text x="976.2" y="474.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#202124">Cross-Agency</text>
+<text x="976.2" y="487.0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#202124">Collaboration</text>
+<text x="976.2" y="501.5" text-anchor="middle" font-size="10.2" font-weight="500" fill="#5F6368">Reviewer &amp; Supervisor Sync</text>
+<rect x="264.0" y="540.0" width="808.0" height="56.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<text x="668.0" y="563.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Data Ingestion, Harmonization &amp; Event Transformation Layer</text>
+<text x="668.0" y="580.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Legacy MS Access Migration · Surety Bond Validation · Quarterly Fee Normalization</text>
+<rect x="1096.0" y="372.0" width="248.0" height="50.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1097.0" y="373.0" width="246.0" height="5.0" rx="2.5" fill="#00A1E0"/>
+<text x="1220.0" y="392.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Built-in Data &amp; AI Security</text>
+<text x="1220.0" y="409.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Tax ID Masking &amp; RBAC</text>
+<rect x="1096.0" y="432.5" width="248.0" height="50.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1097.0" y="433.5" width="246.0" height="5.0" rx="2.5" fill="#00A1E0"/>
+<text x="1220.0" y="452.5" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Unified Data Governance</text>
+<text x="1220.0" y="469.5" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Statutory Lineage &amp; Audit</text>
+<rect x="1096.0" y="493.0" width="248.0" height="50.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1097.0" y="494.0" width="246.0" height="5.0" rx="2.5" fill="#00A1E0"/>
+<text x="1220.0" y="513.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Payment &amp; Registry API</text>
+<text x="1220.0" y="530.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">OpenAPI &amp; Treasury Bus</text>
+<rect x="1096.0" y="553.5" width="248.0" height="50.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1097.0" y="554.5" width="246.0" height="5.0" rx="2.5" fill="#00A1E0"/>
+<text x="1220.0" y="573.5" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Anomaly &amp; Fraud Guard</text>
+<text x="1220.0" y="590.5" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Duplicate &amp; Suspension Shield</text>
+<circle cx="364.4" cy="642.0" r="13" fill="#E1F5FE" stroke="#00A1E0" stroke-width="2"/>
+<path d="M 357.4 642.0 L 371.4 642.0 M 364.4 635.0 L 364.4 649.0 M 359.4 637.0 L 369.4 647.0 M 359.4 647.0 L 369.4 637.0" stroke="#00A1E0" stroke-width="1.8"/>
+<text x="386.4" y="648.0" font-size="16.5" font-weight="700" fill="#4A4A4A">Unified Licensing Intelligence, Agentic AI &amp; Regulatory Data Platform</text>
+<line x1="790" y1="718" x2="790" y2="682" stroke="#1F5A88" stroke-width="2.4" marker-end="url(#hlArrow)"/>
+<text x="108" y="758" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">Transactional</text>
+<text x="108" y="778" text-anchor="middle" font-size="15.5" font-weight="700" fill="#4A4A4A">Systems</text>
+<text x="108" y="796" text-anchor="middle" font-size="11.2" font-weight="500" fill="#5F6368">(Systems of Record)</text>
+<rect x="216.0" y="718.0" width="1164.0" height="104.0" rx="18" fill="#FFFFFF" stroke="#1F5A88" stroke-width="2.0"/>
+<rect x="238.0" y="736.0" width="212.8" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="239.0" y="737.0" width="210.8" height="5.0" rx="2.5" fill="#34A853"/>
+<text x="344.4" y="765.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Licensing Relational DB</text>
+<text x="344.4" y="782.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">3NF Entities &amp; Licenses</text>
+<rect x="464.8" y="736.0" width="212.8" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="465.8" y="737.0" width="210.8" height="5.0" rx="2.5" fill="#34A853"/>
+<text x="571.2" y="765.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Enterprise Identity</text>
+<text x="571.2" y="782.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">OIDC / SAML 2.0 SSO</text>
+<rect x="691.6" y="736.0" width="212.8" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="692.6" y="737.0" width="210.8" height="5.0" rx="2.5" fill="#34A853"/>
+<text x="798.0" y="765.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Treasury Payment Gateway</text>
+<text x="798.0" y="782.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Fee &amp; Penalty Settlement</text>
+<rect x="918.4" y="736.0" width="212.8" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="919.4" y="737.0" width="210.8" height="5.0" rx="2.5" fill="#34A853"/>
+<text x="1024.8" y="765.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Certificate &amp; Doc Store</text>
+<text x="1024.8" y="782.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Encrypted Bonds &amp; Certs</text>
+<rect x="1145.2" y="736.0" width="212.8" height="68.0" rx="4.0" fill="#F8FAFC" stroke="#2C5E8A" stroke-width="1.6"/>
+<rect x="1146.2" y="737.0" width="210.8" height="5.0" rx="2.5" fill="#34A853"/>
+<text x="1251.6" y="765.0" text-anchor="middle" font-size="12.2" font-weight="700" fill="#202124">Immutable Audit Ledger</text>
+<text x="1251.6" y="782.0" text-anchor="middle" font-size="10.6" font-weight="500" fill="#5F6368">Tamper-Evident History</text>
+</svg>

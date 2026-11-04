@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/defects.schema.json",
+  "title": "backlog/defects.json (Stage 6 — automated defect tracking & self-healing audit trail)",
+  "type": "object",
+  "required": ["schemaVersion", "defects"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "updatedAtUtc": { "type": "string" },
+    "totalDefects": { "type": "integer", "minimum": 0 },
+    "openDefects": { "type": "integer", "minimum": 0 },
+    "resolvedDefects": { "type": "integer", "minimum": 0 },
+    "defects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/defect" }
+    }
+  },
+  "$defs": {
+    "failingTest": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "failedStep": { "type": ["integer", "null"] },
+        "expected": { "type": "string" },
+        "actual": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["FAIL", "ERROR", "PASS", "NOT_RUN"] }
+      }
+    },
+    "remediationComment": {
+      "type": "object",
+      "required": ["iteration", "createdAtUtc", "stepsTaken", "verificationResult"],
+      "properties": {
+        "iteration": { "type": "integer", "minimum": 1 },
+        "createdAtUtc": { "type": "string" },
+        "author": { "type": "string" },
+        "summary": { "type": "string" },
+        "stepsTaken": { "type": "array", "items": { "type": "string" } },
+        "filesModified": { "type": "array", "items": { "type": "string" } },
+        "diffSummary": { "type": "string" },
+        "verificationResult": { "type": "string" },
+        "jiraCommentId": { "type": ["string", "null"] },
+        "adoCommentSynced": { "type": "boolean" }
+      }
+    },
+    "defect": {
+      "type": "object",
+      "required": ["id", "issueType", "title", "storyRef", "status", "whatWasTheBug", "failingTestCases", "traceability", "remediationComments"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^BUG-[0-9]{2,}$" },
+        "issueType": { "type": "string", "const": "Bug" },
+        "title": { "type": "string", "minLength": 1 },
+        "storyRef": { "type": "string" },
+        "capabilityGroup": { "type": "string" },
+        "sprint": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Highest", "High", "Medium", "Low"] },
+        "status": { "type": "string", "enum": ["To Do", "In Progress", "Done"] },
+        "detectedInIteration": { "type": "integer", "minimum": 1 },
+        "resolvedInIteration": { "type": ["integer", "null"] },
+        "whatWasTheBug": { "type": "string", "minLength": 1 },
+        "rootCause": { "type": "string" },
+        "failingTestCases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/failingTest" }
+        },
+        "traceability": {
+          "type": "object",
+          "properties": {
+            "storyRef": { "type": "string" },
+            "requirementRefs": { "type": "array", "items": { "type": "string" } },
+            "businessRuleRefs": { "type": "array", "items": { "type": "string" } },
+            "legacySourceArtifacts": { "type": "array", "items": { "type": "string" } },
+            "apiContracts": { "type": "array", "items": { "type": "string" } },
+            "databaseTables": { "type": "array", "items": { "type": "string" } },
+            "targetSourceFiles": { "type": "array", "items": { "type": "string" } },
+            "testCaseIds": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "remediationComments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/remediationComment" }
+        },
+        "jiraKey": { "type": ["string", "null"] },
+        "adoWorkItemId": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

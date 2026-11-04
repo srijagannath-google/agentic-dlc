@@ -1,0 +1,22 @@
+{
+  "version": "3.0.0",
+  "architectureMandate": "100% Clean Cloud-Native Target Architecture (Zero Legacy Bridges or Adapters)",
+  "services": [
+    {
+      "id": "shared-auth-oidc",
+      "name": "Enterprise OIDC Identity & RBAC Guard"
+    },
+    {
+      "id": "shared-doc-vault",
+      "name": "Cloud Storage Surety & Compliance Document Vault"
+    },
+    {
+      "id": "shared-kms-crypto",
+      "name": "Cloud KMS Field-Level PII Encryption"
+    },
+    {
+      "id": "shared-audit-log",
+      "name": "Immutable Regulatory Audit Trail Service"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11.9-slim-bookworm AS runtime
+LABEL org.opencontainers.image.title="business-licensing-portal-ui" \
+      io.agentic.dlc.abstraction-plane="gdc-fleet" \
+      io.agentic.dlc.spec-sha256="23ea0f354ea86c56efa08c5ef308e4bee0ef246369e4893977356c76bf0a4813" \
+      io.agentic.dlc.capability-groups="GRP-01,GRP-02,GRP-03"
+RUN groupadd -g 65532 nonroot && useradd -u 65532 -g 65532 -s /sbin/nologin -M nonroot
+WORKDIR /app
+COPY --chown=65532:65532 src/ui /app/src/ui
+EXPOSE 8767
+USER 65532:65532
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8767/').read()"]
+CMD ["python3", "-m", "http.server", "8767", "--directory", "/app/src/ui"]

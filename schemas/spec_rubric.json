@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/spec_rubric.json",
+  "title": "100-point 5-Pillar Specification Rubric (scored by the LLM spec-judge; validated by 02/scripts/validate_spec_scorecard.py)",
+  "rubricVersion": "4.0",
+  "passingScore": 90,
+  "maxScore": 100,
+  "scoringRules": [
+    "Score every criterion 0..maxPoints. Any criterion awarded > 0 MUST quote verbatim evidence from specs/application_spec.md (the validator checks the quote is present, whitespace-normalised, case-insensitive). Separate several quotes with ' … '.",
+    "Criteria with 'appliesTo' not containing the project's inputScenario are not applicable: award maxPoints and set evidence to 'N/A — not applicable to <scenario>'.",
+    "A criterion marked blocking:true that scores 0 forces verdict FAIL regardless of the total.",
+    "Verdict is PASS iff totalScore >= 90 and no blocking criterion scored 0. Self-heal the spec (not the scorecard) until PASS."
+  ],
+  "pillars": [
+    { "pillar": 1, "title": "Functionality & Business Rules", "maxPoints": 25 },
+    { "pillar": 2, "title": "Security, RBAC, PII Protection & Compliance", "maxPoints": 20 },
+    { "pillar": 3, "title": "Accessibility (WCAG 2.1 AA)", "maxPoints": 20 },
+    { "pillar": 4, "title": "User Experience & Zero Internal Data Leakage", "maxPoints": 15 },
+    { "pillar": 5, "title": "Clean Target Architecture & Engineering Guidelines", "maxPoints": 20 }
+  ],
+  "criteria": [
+    {
+      "id": "P1-C1", "pillar": 1, "title": "Complete REQ-FUNC coverage of every discovered capability", "maxPoints": 6, "blocking": true,
+      "whatGoodLooksLike": "Every capability listed in specs/discovery_architecture_and_inventory.md §Capability Inventory maps to at least one REQ-FUNC-NN with a testable statement (actor, action, observable outcome). No capability is silently dropped or merged without a note.",
+      "evidenceHint": "Quote one REQ-FUNC line and the sentence/table that states capability coverage is complete (e.g. a coverage row or count)."
+    },
+    {
+      "id": "P1-C2", "pillar": 1, "title": "Lifecycle state machine: diagram + transition table complete and evidenced", "maxPoints": 6, "blocking": true,
+      "whatGoodLooksLike": "§3.3 has exactly one stateDiagram-v2 and a '| From | To | Trigger | Actor Role | Guard |' table that mirrors it; every transition names at least one actor role; terminal states are explicit; each state/transition cites its source evidence (legacy object or requirements paragraph) or an ASSUMPTION-NN.",
+      "evidenceHint": "Quote one full transition-table row and one evidence/assumption reference."
+    },
+    {
+      "id": "P1-C3", "pillar": 1, "title": "Business rules & formulas with inputs and sources", "maxPoints": 5, "blocking": true,
+      "whatGoodLooksLike": "§3.4 lists every calculation, threshold, validation and derived value as BR-NN with an explicit formula (operators, units, rounding), the input fields it depends on, and the source document/clause. Each BR is referenced by at least one REQ.",
+      "evidenceHint": "Quote one BR table row containing a formula, its inputs and its source."
+    },
+    {
+      "id": "P1-C4", "pillar": 1, "title": "Scenario rule honoured (REQ-ENH present iff legacy; zero scope creep for requirements docs)", "maxPoints": 4, "blocking": true,
+      "whatGoodLooksLike": "SCENARIO_LEGACY_APP: a '### 1.4 Modernization Enhancements' section with REQ-ENH-NN items each tied to a concrete legacy pain point. SCENARIO_REQUIREMENTS_DOC: no REQ-ENH section and every REQ traces to a requirement in the input document; nothing unsolicited is added.",
+      "evidenceHint": "Quote the header line stating the Input Scenario and either one REQ-ENH item (legacy) or the statement that scope is strictly the input document (requirements doc)."
+    },
+    {
+      "id": "P1-C5", "pillar": 1, "title": "Open questions and assumptions recorded explicitly", "maxPoints": 4, "blocking": false,
+      "whatGoodLooksLike": "Every workflow/rule ambiguity not resolved by inputs or the user at Gate 1 is listed as ASSUMPTION-NN with the chosen (most restrictive) reading and its impact, so it is visible and testable.",
+      "evidenceHint": "Quote one ASSUMPTION-NN line or the explicit statement that no assumptions were needed and why."
+    },
+
+    {
+      "id": "P2-C1", "pillar": 2, "title": "Authentication model defined", "maxPoints": 4, "blocking": false,
+      "whatGoodLooksLike": "States how each role authenticates (e.g. SSO/OIDC for internal roles, account or verified-link for external roles), session lifetime, and what happens on expiry. Public/anonymous access, if any, is explicitly scoped.",
+      "evidenceHint": "Quote the REQ-SEC item describing authentication per role."
+    },
+    {
+      "id": "P2-C2", "pillar": 2, "title": "RBAC matrix per role × transition / view", "maxPoints": 5, "blocking": true,
+      "whatGoodLooksLike": "A table that, for every role in §3.5 and every trigger in §3.3, says allowed or denied; denied attempts return a user-readable message and are audited; external roles never see internal controls.",
+      "evidenceHint": "Quote one RBAC matrix row and the deny-behaviour sentence."
+    },
+    {
+      "id": "P2-C3", "pillar": 2, "title": "PII inventory and masking rules", "maxPoints": 4, "blocking": true,
+      "whatGoodLooksLike": "Lists each sensitive field (personal/tax/financial identifiers, contact data), its classification, where it may be displayed, the masking pattern at the presentation boundary, and retention.",
+      "evidenceHint": "Quote one PII inventory row including its masking pattern."
+    },
+    {
+      "id": "P2-C4", "pillar": 2, "title": "Encryption in transit and at rest", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "TLS for all transport; at-rest encryption for the datastore and uploaded documents; key management ownership named; secrets never in source.",
+      "evidenceHint": "Quote the REQ-SEC item on encryption / key management."
+    },
+    {
+      "id": "P2-C5", "pillar": 2, "title": "Immutable audit trail of workflow actions", "maxPoints": 4, "blocking": false,
+      "whatGoodLooksLike": "Every state transition, role change and PII access writes an append-only audit record (who, what, when, from→to, reason); records are queryable by authorised internal roles only.",
+      "evidenceHint": "Quote the REQ-SEC audit item listing the captured fields."
+    },
+
+    {
+      "id": "P3-C1", "pillar": 3, "title": "Colour contrast and non-colour status cues", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Text contrast ≥ 4.5:1 (3:1 for large text/UI components); every status/severity is conveyed by text or icon, never colour alone.",
+      "evidenceHint": "Quote the REQ-A11Y item stating the contrast ratio and non-colour rule."
+    },
+    {
+      "id": "P3-C2", "pillar": 3, "title": "Full keyboard operability", "maxPoints": 4, "blocking": true,
+      "whatGoodLooksLike": "All interactive controls reachable and operable with keyboard in a logical order; no keyboard traps; custom widgets specify key handling; skip-to-content link.",
+      "evidenceHint": "Quote the REQ-A11Y keyboard item."
+    },
+    {
+      "id": "P3-C3", "pillar": 3, "title": "Focus management and visible focus", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Visible focus indicator on every control; dialogs trap and restore focus; focus moves to the first error or confirmation after submit; route/view changes announce and move focus to the new heading.",
+      "evidenceHint": "Quote the focus-management sentence(s)."
+    },
+    {
+      "id": "P3-C4", "pillar": 3, "title": "Programmatic labels, names and roles", "maxPoints": 4, "blocking": true,
+      "whatGoodLooksLike": "Every input has a visible label bound via for/id or aria-labelledby; icon-only buttons have accessible names; landmarks (header/nav/main) and heading hierarchy are defined; tables have headers.",
+      "evidenceHint": "Quote the REQ-A11Y labelling item."
+    },
+    {
+      "id": "P3-C5", "pillar": 3, "title": "Live regions for dynamic updates", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Status changes, live calculations and validation banners use aria-live/role=status or role=alert with polite vs assertive chosen deliberately.",
+      "evidenceHint": "Quote the live-region requirement."
+    },
+    {
+      "id": "P3-C6", "pillar": 3, "title": "Error identification, description and suggestion", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Validation errors identify the field, describe the problem in plain language and state the concrete fix; errors are linked to the field (aria-describedby / aria-invalid) and summarised at the top.",
+      "evidenceHint": "Quote the error-identification requirement."
+    },
+
+    {
+      "id": "P4-C1", "pillar": 4, "title": "End-to-end user journeys per role", "maxPoints": 4, "blocking": false,
+      "whatGoodLooksLike": "For each role in §3.5 a numbered journey from entry to the role's terminal outcome, naming the views used and the state transitions performed; step count derives from the spec, not from a template.",
+      "evidenceHint": "Quote the first step of one role's journey."
+    },
+    {
+      "id": "P4-C2", "pillar": 4, "title": "UX guardrails adopted or explicitly overridden", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "References _shared/ux_guardrails.md and lists any guardrail overridden by a design reference or Gate 1 instruction with the reason; no silent deviations.",
+      "evidenceHint": "Quote the guardrail-adoption/override statement."
+    },
+    {
+      "id": "P4-C3", "pillar": 4, "title": "View & Component Topology table (§4.2) and design reference alignment", "maxPoints": 3, "blocking": true,
+      "whatGoodLooksLike": "§4.2 contains a structured '| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |' table defining every top-level tab/view, its interactive pattern (Wizard / Queue / Console / Registry), bound role(s), and primary transition trigger, enforcing mutual tab exclusivity and default-persona landing reachability. If resources/design_references/ (or reference_ui_manifest.json) exists, names the design references applied and accounts for every reference tab/view; otherwise states the default design system explicitly.",
+      "evidenceHint": "Quote one row of the §4.2 View & Component Topology table and the design-reference alignment statement."
+    },
+    {
+      "id": "P4-C4", "pillar": 4, "title": "Zero internal-data-leakage mandate with label mapping", "maxPoints": 5, "blocking": true,
+      "whatGoodLooksLike": "References _shared/zero_leak.md, lists the token classes forbidden in visible text, and provides a human-label mapping for every state/trigger/error code in §3.3 (code → label) so the UI never renders raw codes, identifiers or engineering notes.",
+      "evidenceHint": "Quote one code→label mapping row and the leakage prohibition sentence."
+    },
+
+    {
+      "id": "P5-C1", "pillar": 5, "title": "Target stack alignment", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Architecture statements match specs/target_stack.json (frontend, backend, database kinds and run commands); no technology named that the stack does not include.",
+      "evidenceHint": "Quote the sentence naming the frontend/backend/database kinds."
+    },
+    {
+      "id": "P5-C2", "pillar": 5, "title": "Normalised 3NF domain schema", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "Entities in snake_case with primary keys, foreign keys and no repeating groups or derived columns; lookup/enum tables or constrained columns for status codes.",
+      "evidenceHint": "Quote the 3NF requirement or one entity definition."
+    },
+    {
+      "id": "P5-C3", "pillar": 5, "title": "OpenAPI 3.1 contract requirement", "maxPoints": 3, "blocking": true,
+      "whatGoodLooksLike": "Requires an OpenAPI 3.1 document in design/solution_design.md covering one operation per state transition plus read endpoints; 4xx responses carry user-readable messages; transition endpoints validate (fromState, trigger, role).",
+      "evidenceHint": "Quote the REQ-ARCH item on the API contract."
+    },
+    {
+      "id": "P5-C4", "pillar": 5, "title": "ViewModel / DTO presentation boundary", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "A layer that converts persistence/API models into display models: codes → labels, PII masked, internal ids excluded; templates never bind to raw entities.",
+      "evidenceHint": "Quote the ViewModel/DTO requirement."
+    },
+    {
+      "id": "P5-C5", "pillar": 5, "title": "Testability contract (stable data-testid hooks)", "maxPoints": 3, "blocking": false,
+      "whatGoodLooksLike": "States that every interactive control and status display carries a stable data-testid declared by test/test_cases.json first (contract-first) and that ids are kebab-case and role/transition-named.",
+      "evidenceHint": "Quote the testability requirement."
+    },
+    {
+      "id": "P5-C6", "pillar": 5, "title": "Traceability matrix completeness", "maxPoints": 3, "blocking": true,
+      "whatGoodLooksLike": "specs/traceability_matrix.md maps every REQ id to its source (capability/requirement paragraph/legacy artefact), business rules and planned stories/tests; the spec references it.",
+      "evidenceHint": "Quote the spec sentence referencing the traceability matrix."
+    },
+    {
+      "id": "P5-C7", "pillar": 5, "title": "No legacy carry-over (names, bridges, adapters)", "maxPoints": 2, "blocking": false,
+      "appliesTo": ["SCENARIO_LEGACY_APP"],
+      "whatGoodLooksLike": "Explicitly forbids legacy table/form/report identifiers in target code and UI, dual-run bridges and compatibility adapters; migration is a one-time ETL described in design/data_migration_and_cutover.md.",
+      "evidenceHint": "Quote the clean-migration prohibition sentence."
+    }
+  ]
+}

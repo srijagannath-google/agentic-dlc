@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#F8F9FA"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="#DADCE0" stroke-width="2"/>
+  <!-- Top App Bar (Google Blue) -->
+  <rect x="8" y="8" width="48" height="10" rx="3" fill="#1A73E8"/>
+  <circle cx="13" cy="13" r="2" fill="#FFFFFF"/>
+  <rect x="18" y="11.5" width="16" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.9"/>
+  <!-- Left Navigation Rail (Google Green) -->
+  <rect x="8" y="22" width="12" height="34" rx="3" fill="#E6F4EA" stroke="#1E8E3E" stroke-width="1.5"/>
+  <rect x="11" y="26" width="6" height="2" rx="1" fill="#1E8E3E"/>
+  <rect x="11" y="31" width="6" height="2" rx="1" fill="#1E8E3E"/>
+  <rect x="11" y="36" width="6" height="2" rx="1" fill="#1E8E3E"/>
+  <!-- Main Stage KPI Strip (Google Amber) -->
+  <rect x="24" y="22" width="32" height="11" rx="3" fill="#FEF7E0" stroke="#F9AB00" stroke-width="1.5"/>
+  <rect x="28" y="26" width="8" height="3" rx="1.5" fill="#B06000"/>
+  <rect x="40" y="26" width="12" height="3" rx="1.5" fill="#F9AB00"/>
+  <!-- Primary Workspace & Inspector Split (Google Blue + Red Accent) -->
+  <rect x="24" y="37" width="19" height="19" rx="3" fill="#FFFFFF" stroke="#1A73E8" stroke-width="1.5"/>
+  <rect x="27" y="41" width="13" height="2" rx="1" fill="#1A73E8"/>
+  <rect x="27" y="46" width="10" height="2" rx="1" fill="#5F6368"/>
+  <rect x="27" y="51" width="13" height="2" rx="1" fill="#DADCE0"/>
+  <rect x="46" y="37" width="10" height="19" rx="3" fill="#FCE8E6" stroke="#D93025" stroke-width="1.5"/>
+  <circle cx="51" cy="43" r="2.5" fill="#D93025"/>
+  <rect x="48.5" y="49" width="5" height="2" rx="1" fill="#D93025"/>
+</svg>

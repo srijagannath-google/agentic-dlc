@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "4.0",
+  "frontend": {
+    "kind": "static-html",
+    "notes": "Single-page UI: src/ui/index.html + app.js + styles.css; no framework, no build step."
+  },
+  "backend": {
+    "kind": "python-stdlib-http",
+    "notes": "Python 3 standard library only (http.server + sqlite3). Serves the UI, /api/*, /health and a local stub of the external payroll REST interface on one port (8766)."
+  },
+  "database": {
+    "kind": "sqlite",
+    "notes": "Schema created from src/db/schema.sql on start; demo data seeded for the three human roles."
+  },
+  "almPlatform": "none",
+  "accessibilityStandard": ["WCAG 2.1 AA"],
+  "regulations": [],
+  "capabilityGroupingDimension": "functional",
+  "capabilityGroups": [
+    {"id": "GRP-01", "name": "Employee Leave Self-Service & Balance Calculation", "dimension": "functional", "isSharedFoundation": true, "dependsOnGroups": [], "capabilities": ["CAP-01", "CAP-02", "CAP-03", "CAP-04", "CAP-05"]},
+    {"id": "GRP-02", "name": "Manager & HR Certification Adjudication", "dimension": "business-unit", "isSharedFoundation": false, "dependsOnGroups": ["GRP-01"], "capabilities": ["CAP-06", "CAP-07"]},
+    {"id": "GRP-03", "name": "Payroll Posting Integration & Audit Compliance", "dimension": "functional", "isSharedFoundation": false, "dependsOnGroups": ["GRP-01"], "capabilities": ["CAP-08", "CAP-09", "CAP-10", "CAP-11"]}
+  ],
+  "selectedCapabilityGroups": ["ALL"],
+  "commands": {
+    "start": "python3 src/backend/server.py",
+    "healthcheck": "http://127.0.0.1:8766/health",
+    "uiEntry": "http://127.0.0.1:8766/",
+    "test": "python3 -m unittest discover -s src/backend -p 'test_*.py'"
+  },
+  "deployment": {
+    "abstractionPlane": "gdc-fleet",
+    "connectivityMode": "gdc-connected",
+    "targetEnvironments": ["on-prem-gdc", "gcp", "aws", "azure"],
+    "databasePortability": "alloydb-omni",
+    "gitopsEngine": "config-sync",
+    "serviceMesh": "cloud-service-mesh",
+    "policyEngine": "policy-controller",
+    "observabilityBackend": "otel-cloud-monitoring"
+  },
+  "decidedBy": "autonomous-default"
+}

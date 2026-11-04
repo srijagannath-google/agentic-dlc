@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/target_stack.schema.json",
+  "title": "specs/target_stack.json (Gate 1 — written by the LLM from user answers; defaults allowed in autonomous mode)",
+  "type": "object",
+  "required": ["schemaVersion", "frontend", "backend", "database", "almPlatform", "accessibilityStandard", "regulations", "commands"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "frontend": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["tbd", "static-html", "react", "angular", "vue", "nextjs", "other"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["tbd", "python-stdlib-http", "python-fastapi", "python-flask", "node-express", "java-spring-boot", "go", "dotnet", "other", "none"]
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["tbd", "sqlite", "postgres", "alloydb-omni", "mysql", "sqlserver", "other", "none"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "almPlatform": { "type": "string", "enum": ["jira", "ado", "none"] },
+    "accessibilityStandard": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "regulations": { "type": "array", "items": { "type": "string" } },
+    "capabilityGroupingDimension": {
+      "type": "string",
+      "enum": ["functional", "business-unit"],
+      "description": "Whether discovered capabilities are grouped by Business Functionality ('functional') or by the Business Unit / Department supported ('business-unit')."
+    },
+    "capabilityGroups": {
+      "type": "array",
+      "description": "Discovered Business Capability Groups (GRP-01..N) from Stage 1 §6.1.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^(GRP-[0-9]{2,}|GRP-SHARED|SHARED)$" },
+          "name": { "type": "string", "minLength": 1 },
+          "dimension": { "type": "string", "enum": ["functional", "business-unit", "shared-foundation"] },
+          "agencyOrDepartment": { "type": "string" },
+          "isSharedFoundation": {
+            "type": "boolean",
+            "description": "True when this group contains shared foundation capabilities required as a prerequisite by other capability groups."
+          },
+          "dependsOnGroups": {
+            "type": "array",
+            "description": "Prerequisite Capability Group IDs (e.g. ['GRP-01']) that must be built before or alongside this group.",
+            "items": { "type": "string", "pattern": "^(GRP-[0-9]{2,}|GRP-SHARED|SHARED)$" }
+          },
+          "capabilities": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "selectedCapabilityGroups": {
+      "type": "array",
+      "description": "Human-selected Capability Group IDs to take forward for implementation (e.g. ['GRP-01'] or ['GRP-01', 'GRP-02']), or ['ALL'] when the user selects all groupings.",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^(ALL|\\*|GRP-[0-9]{2,})$" }
+    },
+    "sprintCapacityPoints": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 100,
+      "description": "Target story-point velocity capacity per sprint (default ~21 SP). Sprint count scales dynamically (Sprint 1..N) based on total story points and capability group dependencies; never hardcoded to 3 sprints."
+    },
+    "commands": {
+      "type": "object",
+      "properties": {
+        "install": { "type": "string" },
+        "build": { "type": "string" },
+        "start": { "type": "string", "description": "REQUIRED by Stage 4A when backend.kind is not 'none' or 'tbd'; must serve UI + API" },
+        "healthcheck": { "type": "string", "description": "REQUIRED when start is set" },
+        "uiEntry": { "type": "string", "description": "Local file path or URL Stage 6 loads the UI from (REQUIRED by Stage 4A when frontend.kind != 'tbd')" },
+        "test": { "type": "string" }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "description": "Stage 7 & 8 GDC (Google Distributed Cloud / GKE Enterprise) multi-cloud and on-premises deployment & observability configuration.",
+      "properties": {
+        "abstractionPlane": {
+          "type": "string",
+          "enum": ["gdc-fleet"],
+          "default": "gdc-fleet"
+        },
+        "connectivityMode": {
+          "type": "string",
+          "enum": ["gdc-connected", "gdc-air-gapped"],
+          "default": "gdc-connected"
+        },
+        "targetEnvironments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["on-prem-gdc", "gcp", "aws", "azure"]
+          },
+          "default": ["on-prem-gdc", "gcp", "aws", "azure"]
+        },
+        "databasePortability": {
+          "type": "string",
+          "enum": ["alloydb-omni", "cloudnative-pg", "sqlite-pvc"],
+          "default": "alloydb-omni"
+        },
+        "gitopsEngine": {
+          "type": "string",
+          "enum": ["config-sync"],
+          "default": "config-sync"
+        },
+        "serviceMesh": {
+          "type": "string",
+          "enum": ["cloud-service-mesh"],
+          "default": "cloud-service-mesh"
+        },
+        "policyEngine": {
+          "type": "string",
+          "enum": ["policy-controller"],
+          "default": "policy-controller"
+        },
+        "observabilityBackend": {
+          "type": "string",
+          "enum": ["gdc-cloud-ops-and-prometheus", "otel-cloud-monitoring", "local-prometheus-grafana"],
+          "default": "gdc-cloud-ops-and-prometheus"
+        }
+      }
+    },
+    "decidedBy": { "type": "string", "enum": ["user", "pending-stage-4a", "autonomous-default"] }
+  }
+}

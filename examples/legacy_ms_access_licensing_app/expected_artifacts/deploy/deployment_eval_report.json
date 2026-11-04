@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "4.0",
+  "evaluatedAtUtc": "1970-01-01T00:00:00Z",
+  "abstractionPlane": "gdc-fleet",
+  "connectivityMode": "gdc-connected",
+  "executionMode": "local-runtime-verified",
+  "targetEnvironments": [
+    "on-prem-gdc",
+    "gcp",
+    "aws",
+    "azure"
+  ],
+  "rolloutWaves": [
+    {
+      "wave": 1,
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Buyer Self-Service Intake & Surety Bond Portal",
+      "dependsOnGroups": [],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    },
+    {
+      "wave": 2,
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "dependsOnGroups": [
+        "GRP-01"
+      ],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    },
+    {
+      "wave": 3,
+      "capabilityGroup": "GRP-03",
+      "capabilityGroupName": "Quarterly Volume Fee Reporting & Compliance",
+      "dependsOnGroups": [
+        "GRP-01",
+        "GRP-02"
+      ],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    }
+  ],
+  "containerImages": [
+    {
+      "component": "backend",
+      "dockerfile": "deploy/containers/Dockerfile.backend",
+      "nonRootUser": "65532:65532",
+      "sha256Digest": "97a83ce07d429a360f3f62d0d0efc0a3cb7f0721ecae74f0cf3d266ee323bf71",
+      "status": "PASS"
+    },
+    {
+      "component": "ui",
+      "dockerfile": "deploy/containers/Dockerfile.ui",
+      "nonRootUser": "65532:65532",
+      "sha256Digest": "964b87b38f4106da5c123fb55faafa8caa79a63955b5b71c5399dd4bc53fab5f",
+      "status": "PASS"
+    }
+  ],
+  "kustomizeOverlays": [
+    {
+      "environment": "on-prem-gdc",
+      "overlayPath": "deploy/gdc/overlays/on-prem-gdc/kustomization.yaml",
+      "clusterSelector": "selector-on-prem-gdc",
+      "status": "PASS"
+    },
+    {
+      "environment": "gcp",
+      "overlayPath": "deploy/gdc/overlays/gcp/kustomization.yaml",
+      "clusterSelector": "selector-gcp",
+      "status": "PASS"
+    },
+    {
+      "environment": "aws",
+      "overlayPath": "deploy/gdc/overlays/aws/kustomization.yaml",
+      "clusterSelector": "selector-aws",
+      "status": "PASS"
+    },
+    {
+      "environment": "azure",
+      "overlayPath": "deploy/gdc/overlays/azure/kustomization.yaml",
+      "clusterSelector": "selector-azure",
+      "status": "PASS"
+    }
+  ],
+  "policyController": {
+    "constraintsFile": "deploy/gdc/policy-controller/constraints.yaml",
+    "constraintCount": 2,
+    "nonRootEnforced": true,
+    "readOnlyRootFsEnforced": true,
+    "status": "PASS"
+  },
+  "serviceMesh": {
+    "strictMtls": true,
+    "authorizationPolicies": 1,
+    "multiClusterService": true,
+    "status": "PASS"
+  },
+  "observability": {
+    "otelCollectorValid": true,
+    "sloCount": 1,
+    "alertCount": 2,
+    "fleetDashboardPanels": 5,
+    "status": "PASS"
+  },
+  "smokeProbes": [
+    {
+      "probe": "gdc-container-healthcheck",
+      "target": "http://127.0.0.1:8767/health",
+      "httpStatus": 200,
+      "status": "PASS"
+    }
+  ],
+  "summary": {
+    "totalChecks": 10,
+    "passedChecks": 10,
+    "failedChecks": 0,
+    "verdict": "PASS"
+  }
+}

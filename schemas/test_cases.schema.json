@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/test_cases.schema.json",
+  "title": "test/test_cases.json (Stage 4B — skeleton derived by 05/scripts/derive_test_cases.py, steps completed by the LLM, validated by 05/scripts/validate_test_cases.py, executed by 07/scripts/run_closed_loop_eval.py)",
+  "type": "object",
+  "required": ["schemaVersion", "derivedFrom", "forbiddenUiTokens", "testCases"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "derivedAtUtc": { "type": "string" },
+    "derivedFrom": {
+      "type": "object",
+      "required": ["userStoriesSha256", "specSha256"],
+      "properties": {
+        "userStoriesSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "specSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "contractsIndexSha256": { "type": ["string", "null"] },
+        "inputInventoryFingerprint": { "type": ["string", "null"] }
+      }
+    },
+    "forbiddenUiTokens": {
+      "type": "object",
+      "required": ["schemaIdentifiers", "enumCodes", "legacyIdentifiers"],
+      "properties": {
+        "schemaIdentifiers": { "type": "array", "items": { "type": "string" } },
+        "schemaIdentifiersIgnored": { "type": "array", "items": { "type": "string" }, "description": "Plain-English single-word column names excluded from scanning to avoid false positives on labels." },
+        "enumCodes": { "type": "array", "items": { "type": "string" } },
+        "enumCodesWarnOnly": { "type": "array", "items": { "type": "string" }, "description": "Short all-caps OpenAPI enum members that may also be legitimate words; reported as warnings only." },
+        "legacyIdentifiers": { "type": "array", "items": { "type": "string" } },
+        "piiPatterns": { "type": "array", "items": { "type": "string" }, "description": "Regexes for unmasked sensitive values (from spec Pillar 2 PII inventory)." },
+        "engineeringNotePatterns": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "retiredTestCases": {
+      "type": "array",
+      "description": "Test cases that existed in a previous derivation but are no longer derived (kept for audit; not executed).",
+      "items": { "type": "object", "required": ["id", "reason"], "properties": { "id": { "type": "string" }, "title": { "type": "string" }, "reason": { "type": "string" } } }
+    },
+    "testCases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/testCase" } }
+  },
+  "$defs": {
+    "testCase": {
+      "type": "object",
+      "required": ["id", "category", "title", "expected", "runtime", "steps", "needsSteps"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TC-(POS|POS-JOURNEY|NEG|EDGE|UI-LEAK|STATE|UI-INTERACT|UI-INTERACT-TAB|A11Y|API)-[0-9]{2,}$" },
+        "category": { "type": "string", "enum": ["Positive", "Negative", "Edge", "UiLeak", "State", "Interact", "A11y", "Api"] },
+        "storyRef": { "type": ["string", "null"] },
+        "acRef": { "type": ["string", "null"] },
+        "capabilityGroup": { "type": ["string", "null"] },
+        "deferredByGroupSelection": {
+          "type": "boolean",
+          "description": "True when the parent story belongs to an unselected Capability Group in Product Backlog (when selectedCapabilityGroups != ['ALL'])."
+        },
+        "requirementRefs": { "type": "array", "items": { "type": "string" } },
+        "title": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "enum": ["browser", "http", "static"] },
+        "role": { "type": ["string", "null"] },
+        "optional": { "type": "boolean", "description": "Optional tests never block the Stage 6 verdict (default false)." },
+        "needsSteps": { "type": "boolean", "description": "true while the LLM still has to author/complete steps; validate_test_cases.py fails on any true." },
+        "derivationKey": { "type": "string", "description": "Stable key used to preserve authored steps across re-derivation (e.g. 'ac:US-FUNC-01/AC-02', 'illegal:Draft/Approve', 'role:Applicant/Approve', 'api:GET /api/x')." },
+        "derivation": { "type": "object", "description": "Free-form provenance (state, trigger, role, method, path, tag)." },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "goto", "setRole", "fill", "select", "click", "expectText", "expectVisible", "expectHidden", "expectDisabled",
+            "expectEnabled", "expectCount", "expectNoVisibleTextMatching", "expectAllControlsWired", "expectA11yBaseline",
+            "httpRequest", "wait",
+            "check", "uncheck", "pressKey", "expectAttribute", "expectSourceContains", "expectSourceMatches"
+          ]
+        },
+        "target": { "type": "string", "description": "goto: 'ui' (target_stack.commands.uiEntry) or a URL/path" },
+        "selector": { "type": "string", "description": "CSS selector; prefer [data-testid=…]" },
+        "attribute": { "type": "string", "description": "Attribute name for expectAttribute (e.g. 'aria-selected', 'hidden')" },
+        "value": { "type": "string" },
+        "contains": { "type": "string" },
+        "equals": {},
+        "pattern": { "type": "string", "description": "regex (expectNoVisibleTextMatching)" },
+        "ms": { "type": "integer", "minimum": 0 },
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "path": { "type": "string" },
+        "json": {},
+        "headers": { "type": "object" },
+        "expectStatus": { "anyOf": [ { "type": "integer" }, { "type": "array", "items": { "type": "integer" }, "minItems": 1 } ] },
+        "expectJsonPath": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

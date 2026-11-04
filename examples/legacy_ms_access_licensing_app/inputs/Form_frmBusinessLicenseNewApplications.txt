@@ -1,0 +1,66 @@
+VERSION 1.0 CLASS
+BEGIN
+  MultiUse = -1  'True
+END
+Attribute VB_Name = "Form_frmBusinessLicenseNewApplications"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private Sub cmdClose_Click()
+    DoCmd.Close
+End Sub
+
+Private Sub cmdViewApplication_Click()
+     'check for selection from list of applicants
+    If Me!ApplicantList = " " Or IsNull(Me!ApplicantList) Then
+        MsgBox "Select an applicant in order to continue."
+        Me!ApplicantList.SetFocus
+        Exit Sub
+    End If
+    
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "frmBusinessLicenseNewApplicationDetail"
+    
+    stLinkCriteria = "[LicenseID]=" & "'" & Me![ApplicantList] & "'"
+    DoCmd.OpenForm stDocName, , , stLinkCriteria
+End Sub
+
+
+
+Private Sub Command163_Click()
+    If IsNull(Me!ApplicantList) Then
+        MsgBox "You must click on and highlight an application to delete."
+        Exit Sub
+    End If
+    
+    If MsgBox("Are you sure you would like to delete the highlighted License?", vbYesNo) = vbYes Then
+        Dim db As Database
+        Dim rsLicense As Recordset
+        Set db = CurrentDb()
+        Set rsLicense = db.OpenRecordset("tblLicense", dbOpenDynaset)
+        rsLicense.FindFirst "[LicenseID] = " & Chr$(34) & Me![ApplicantList] & Chr$(34)
+        rsLicense.Delete
+    End If
+    
+End Sub
+
+'------------------------------------------------
+'
+'   Form_Activate
+'
+'------------------------------------------------
+Private Sub Form_Activate()
+  
+    DoCmd.Maximize
+   
+End Sub
+
+
+
+

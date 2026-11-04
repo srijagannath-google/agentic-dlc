@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commercial Buyer Licensing</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>/* layout contract (UX guardrail 5): single column, main container between 720 px and 840 px */ main { max-width: 800px; margin: 0 auto; }</style>
+</head>
+<body data-design-references="ux-guardrails-default; shared_services/ui_style_guide_enterprise.md">
+  <a class="skip-link" href="#main" data-testid="skip-link">Skip to main content</a>
+  <header class="app-header">
+    <div class="app-header-inner">
+      <h1>Commercial Buyer Licensing</h1>
+      <div class="role-box">
+        <label for="role-switcher">Signed in as</label>
+        <select id="role-switcher" data-testid="role-switcher">
+          <option value="Commercial Buyer">Commercial Buyer</option>
+          <option value="Licensing Staff">Licensing Staff</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <!-- ============================ Commercial Buyer portal ============================ -->
+    <section class="view" data-view="buyer" data-testid="view-buyer">
+      <h2 class="view-title" tabindex="-1" data-testid="buyer-view-title">Buyer portal</h2>
+      <nav aria-label="Buyer tasks">
+        <div role="tablist" aria-label="Buyer tasks" class="tabs" data-testid="buyer-tabs">
+          <button type="button" role="tab" aria-selected="true" aria-controls="panel-new-application" id="tab-new-application" data-tab="new-application" data-testid="tab-new-application">New application</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-my-applications" id="tab-my-applications" data-tab="my-applications" data-testid="tab-my-applications">My applications</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-fee-calculator" id="tab-fee-calculator" data-tab="fee-calculator" data-testid="tab-fee-calculator">Fee calculator</button>
+        </div>
+      </nav>
+      <div class="banner" role="alert" id="buyer-banner" data-testid="banner" hidden></div>
+
+      <!-- New application -->
+      <div role="tabpanel" id="panel-new-application" aria-labelledby="tab-new-application" data-panel="new-application" data-testid="panel-new-application">
+        <div class="card current-app" data-testid="current-application-card" hidden>
+          <div><span class="caption">Application number</span><strong data-testid="application-number"></strong></div>
+          <div><span class="caption">Status</span><span class="status-badge" role="status" aria-live="polite" data-testid="application-status"></span></div>
+        </div>
+        <ol class="stepper" data-testid="stepper" aria-label="Application steps">
+          <li data-step-chip="1" class="active">1. Buyer details</li>
+          <li data-step-chip="2">2. Bond &amp; purchases</li>
+          <li data-step-chip="3">3. Field agents</li>
+          <li data-step-chip="4">4. Review &amp; submit</li>
+        </ol>
+
+        <form class="card" data-step="1" data-testid="step-1" novalidate>
+          <h3>Step 1 — Buyer details</h3>
+          <div class="field"><label for="buyer-legal-name">Legal name</label><input id="buyer-legal-name" data-testid="buyer-legal-name" autocomplete="organization" maxlength="200"></div>
+          <div class="field"><label for="buyer-entity-type">Entity type</label>
+            <select id="buyer-entity-type" data-testid="buyer-entity-type">
+              <option value="">Choose…</option>
+              <option value="INDIVIDUAL">Individual / sole proprietor</option>
+              <option value="LLC">Limited liability company</option>
+              <option value="CORPORATION">Corporation</option>
+              <option value="PARTNERSHIP">Partnership</option>
+              <option value="OTHER">Other</option>
+            </select></div>
+          <div class="field"><label for="buyer-tax-id-kind">Tax identifier kind</label>
+            <select id="buyer-tax-id-kind" data-testid="buyer-tax-id-kind">
+              <option value="SSN">Social-security number</option>
+              <option value="FEIN">Employer identification number</option>
+            </select></div>
+          <div class="field"><label for="buyer-tax-id">Tax identifier</label><input id="buyer-tax-id" data-testid="buyer-tax-id" inputmode="numeric" autocomplete="off" maxlength="11"><span class="hint" id="buyer-tax-id-hint">Only the last four digits are ever shown again.</span></div>
+          <div class="field"><label for="buyer-date-of-birth">Date of birth</label><input id="buyer-date-of-birth" data-testid="buyer-date-of-birth" type="date"></div>
+          <details data-testid="more-contact-details">
+            <summary>More contact details (optional)</summary>
+            <div class="field"><label for="buyer-business-name">Business name</label><input id="buyer-business-name" data-testid="buyer-business-name" maxlength="200"></div>
+            <div class="field"><label for="buyer-email">E-mail</label><input id="buyer-email" data-testid="buyer-email" type="email"></div>
+            <div class="field"><label for="buyer-phone">Phone</label><input id="buyer-phone" data-testid="buyer-phone" type="tel"></div>
+            <div class="field"><label for="buyer-city">City</label><input id="buyer-city" data-testid="buyer-city"></div>
+            <div class="field"><label for="buyer-state">State</label><input id="buyer-state" data-testid="buyer-state" maxlength="2" value="IL"></div>
+          </details>
+          <p class="notice" role="status" aria-live="polite" data-testid="duplicate-notice" hidden></p>
+          <div class="actions"><button type="submit" class="btn-primary" data-action="step1-continue" data-testid="step1-continue-btn">Continue</button></div>
+        </form>
+
+        <form class="card" data-step="2" data-testid="step-2" novalidate hidden>
+          <h3>Step 2 — Surety bond &amp; prior-year purchases</h3>
+          <div class="field"><label for="license-year">Licence year</label>
+            <select id="license-year" data-testid="license-year"><option value="2026" selected>2026</option><option value="2027">2027</option></select></div>
+          <div class="field"><label for="prior-year-purchases">Prior-year payments to commercial suppliers (dollars)</label><input id="prior-year-purchases" data-testid="prior-year-purchases" inputmode="decimal" placeholder="for example 25000.00"></div>
+          <p class="calc" role="status" aria-live="polite" data-testid="required-bond-region"><span>Required bond:</span> <strong data-testid="required-bond">$1,000.00</strong></p>
+          <div class="field"><label for="bond-amount">Surety bond amount (dollars)</label><input id="bond-amount" data-testid="bond-amount" inputmode="decimal"></div>
+          <p class="calc" role="status" aria-live="polite" data-testid="bond-check">Enter the bond amount to check it against the required bond.</p>
+          <div class="field"><label for="bond-surety-name">Surety company</label><input id="bond-surety-name" data-testid="bond-surety-name" maxlength="200"></div>
+          <div class="field"><label for="bond-number">Bond number</label><input id="bond-number" data-testid="bond-number" maxlength="100"></div>
+          <details><summary>Bond expiry (optional)</summary>
+            <div class="field"><label for="bond-expiry">Bond expiry date</label><input id="bond-expiry" data-testid="bond-expiry" type="date"></div>
+          </details>
+          <div class="actions">
+            <button type="button" class="btn-secondary" data-action="step-back" data-to="1" data-testid="step2-back-btn">Back</button>
+            <button type="submit" class="btn-primary" data-action="save-draft" data-testid="save-draft-btn">Save draft and continue</button>
+          </div>
+        </form>
+
+        <form class="card" data-step="3" data-testid="step-3" novalidate hidden>
+          <h3>Step 3 — Field agents</h3>
+          <p class="caption">You are listed as the owner agent automatically. Add the people who execute commercial purchases on your behalf.</p>
+          <ul class="roster" data-testid="agent-roster" aria-label="Agent roster"></ul>
+          <p class="notice" role="status" aria-live="polite" data-testid="agent-notice" hidden></p>
+          <fieldset class="inline-form">
+            <legend>Add an agent</legend>
+            <div class="field"><label for="agent-first-name">First name</label><input id="agent-first-name" data-testid="agent-first-name" maxlength="100"></div>
+            <div class="field"><label for="agent-last-name">Last name</label><input id="agent-last-name" data-testid="agent-last-name" maxlength="100"></div>
+            <div class="field"><label for="agent-date-of-birth">Date of birth</label><input id="agent-date-of-birth" data-testid="agent-date-of-birth" type="date"></div>
+            <button type="button" class="btn-secondary" data-action="add-agent" data-testid="add-agent-btn">Add agent</button>
+          </fieldset>
+          <div class="actions">
+            <button type="button" class="btn-secondary" data-action="step-back" data-to="2" data-testid="step3-back-btn">Back</button>
+            <button type="submit" class="btn-primary" data-action="step3-continue" data-testid="step3-continue-btn">Continue</button>
+          </div>
+        </form>
+
+        <form class="card" data-step="4" data-testid="step-4" novalidate hidden>
+          <h3>Step 4 — Review &amp; submit</h3>
+          <dl class="summary" data-testid="review-summary"></dl>
+          <div class="actions">
+            <button type="button" class="btn-secondary" data-action="step-back" data-to="3" data-testid="step4-back-btn">Back</button>
+            <button type="submit" class="btn-primary" data-action="submit-application" data-testid="submit-application-btn">Submit application</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- My applications -->
+      <div role="tabpanel" id="panel-my-applications" aria-labelledby="tab-my-applications" data-panel="my-applications" data-testid="panel-my-applications" hidden>
+        <form class="card" data-testid="lookup-form" novalidate>
+          <h3>Find an application</h3>
+          <div class="field"><label for="lookup-application-number">Application number</label><input id="lookup-application-number" data-testid="lookup-application-number" placeholder="for example APP-2026-000004"></div>
+          <div class="actions"><button type="submit" class="btn-secondary" data-action="lookup" data-testid="lookup-btn">Open application</button></div>
+        </form>
+        <section class="card" aria-labelledby="my-apps-heading">
+          <h3 id="my-apps-heading">Applications started on this device</h3>
+          <p class="empty" data-testid="my-applications-empty">You have not started an application on this device yet.</p>
+          <ul class="list" data-testid="my-applications-list"></ul>
+        </section>
+        <section class="card" data-testid="my-app-detail" aria-labelledby="my-app-heading" hidden>
+          <h3 id="my-app-heading" tabindex="-1">Application <span data-testid="my-app-number"></span></h3>
+          <p><span class="caption">Status</span> <span class="status-badge" role="status" aria-live="polite" data-testid="my-app-status"></span></p>
+          <p data-testid="my-app-license-row" hidden><span class="caption">Licence number</span> <strong data-testid="my-app-license-number"></strong></p>
+          <p data-testid="my-app-decision-row" hidden><span class="caption">Decision reason</span> <span data-testid="my-app-decision-reason"></span></p>
+          <dl class="summary" data-testid="my-app-summary"></dl>
+          <div class="actions" data-testid="my-app-actions"></div>
+          <h4>Timeline</h4>
+          <ol class="timeline" data-testid="status-timeline"></ol>
+          <h4>Documents</h4>
+          <p class="empty" data-testid="documents-empty">No documents attached yet.</p>
+          <ul class="list" data-testid="document-list"></ul>
+          <form class="inline-form" data-testid="document-form" novalidate hidden>
+            <fieldset><legend>Attach a document</legend>
+              <div class="field"><label for="document-name">File name</label><input id="document-name" data-testid="document-name" maxlength="200"></div>
+              <div class="field"><label for="document-type">Type</label>
+                <select id="document-type" data-testid="document-type"><option value="application/pdf">PDF</option><option value="image/jpeg">JPEG image</option><option value="image/png">PNG image</option></select></div>
+              <div class="field"><label for="document-size">Size (bytes)</label><input id="document-size" data-testid="document-size" inputmode="numeric"></div>
+              <button type="submit" class="btn-secondary" data-action="add-document" data-testid="add-document-btn">Add document</button>
+            </fieldset>
+          </form>
+          <h4>Quarterly volume-fee reports</h4>
+          <p class="empty" data-testid="fee-reports-empty">No quarterly reports recorded yet.</p>
+          <ul class="list" data-testid="fee-report-list"></ul>
+          <form class="inline-form" data-testid="fee-report-form" novalidate hidden>
+            <fieldset><legend>Record a quarterly report</legend>
+              <div class="field"><label for="fee-quarter">Quarter</label>
+                <select id="fee-quarter" data-testid="fee-quarter"><option>Q1 2026</option><option>Q2 2026</option><option>Q3 2026</option><option>Q4 2026</option></select></div>
+              <div class="field"><label for="fee-purchase-total">Total purchase price this quarter (dollars)</label><input id="fee-purchase-total" data-testid="fee-purchase-total" inputmode="decimal"></div>
+              <p class="calc" role="status" aria-live="polite"><span>Fee due (4 %):</span> <strong data-testid="fee-due">$0.00</strong></p>
+              <button type="submit" class="btn-primary" data-action="record-fee-report" data-testid="record-fee-report-btn">Record report</button>
+            </fieldset>
+          </form>
+        </section>
+      </div>
+
+      <!-- Fee calculator -->
+      <div role="tabpanel" id="panel-fee-calculator" aria-labelledby="tab-fee-calculator" data-panel="fee-calculator" data-testid="panel-fee-calculator" hidden>
+        <form class="card" novalidate>
+          <h3>Volume fee calculator</h3>
+          <p class="caption">The volume fee is 4 % of the purchase price of licensed commercial purchases, remitted every quarter.</p>
+          <div class="field"><label for="calc-purchase-total">Purchase price this quarter (dollars)</label><input id="calc-purchase-total" data-testid="calc-purchase-total" inputmode="decimal"></div>
+          <p class="calc" role="status" aria-live="polite"><span>Fee due:</span> <strong data-testid="calc-fee-due">$0.00</strong></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============================ Licensing Staff workspace ============================ -->
+    <section class="view" data-view="staff" data-testid="view-staff" hidden>
+      <h2 class="view-title" tabindex="-1" data-testid="staff-view-title">Licensing workspace</h2>
+      <nav aria-label="Staff tasks">
+        <div role="tablist" aria-label="Staff tasks" class="tabs" data-testid="staff-tabs">
+          <button type="button" role="tab" aria-selected="true" aria-controls="panel-review-queue" id="tab-review-queue" data-tab="review-queue" data-testid="tab-review-queue">Review queue</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-buyers" id="tab-buyers" data-tab="buyers" data-testid="tab-buyers">Buyers</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-agents" id="tab-agents" data-tab="agents" data-testid="tab-agents">Agents</button>
+        </div>
+      </nav>
+      <div class="banner" role="alert" id="staff-banner" data-testid="banner" hidden></div>
+
+      <div role="tabpanel" id="panel-review-queue" aria-labelledby="tab-review-queue" data-panel="review-queue" data-testid="panel-review-queue">
+        <section class="card" data-testid="queue-section">
+          <h3>Applications</h3>
+          <div class="field inline"><label for="queue-status-filter">Show</label>
+            <select id="queue-status-filter" data-testid="queue-status-filter">
+              <option value="SUBMITTED" selected>Submitted — awaiting review</option>
+              <option value="DRAFT">Draft — not yet submitted</option>
+              <option value="ISSUED">Licence issued</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="">All statuses</option>
+            </select></div>
+          <p class="empty" data-testid="queue-empty" hidden>No applications match this filter.</p>
+          <table class="queue" data-testid="queue-table">
+            <thead><tr><th scope="col">Application</th><th scope="col">Buyer</th><th scope="col">Year</th><th scope="col">Status</th><th scope="col">Bond check</th><th scope="col">Submitted</th><th scope="col"><span class="sr-only">Open</span></th></tr></thead>
+            <tbody data-testid="queue-body"></tbody>
+          </table>
+        </section>
+        <section class="card" data-testid="review-panel" aria-labelledby="review-heading" hidden>
+          <button type="button" class="btn-text" data-action="back-to-queue" data-testid="back-to-queue-btn">‹ Back to queue</button>
+          <h3 id="review-heading" tabindex="-1">Application <span data-testid="review-application-number"></span></h3>
+          <p><span class="caption">Status</span> <span class="status-badge" role="status" aria-live="polite" data-testid="review-status"></span></p>
+          <p data-testid="review-license-row" hidden><span class="caption">Licence number</span> <strong data-testid="review-license-number"></strong></p>
+          <p data-testid="review-decision-row" hidden><span class="caption">Decision reason</span> <span data-testid="review-decision-reason"></span></p>
+          <h4>Buyer</h4>
+          <dl class="summary">
+            <dt>Legal name</dt><dd data-testid="review-buyer-name"></dd>
+            <dt>Entity type</dt><dd data-testid="review-entity-type"></dd>
+            <dt>Tax identifier</dt><dd data-testid="review-tax-id"></dd>
+            <dt>Date of birth</dt><dd data-testid="review-date-of-birth"></dd>
+            <dt>Buyer standing</dt><dd data-testid="review-buyer-standing"></dd>
+          </dl>
+          <h4>Surety bond</h4>
+          <dl class="summary">
+            <dt>Prior-year purchases</dt><dd data-testid="review-prior-purchases"></dd>
+            <dt>Required bond</dt><dd data-testid="review-required-bond"></dd>
+            <dt>Bond amount</dt><dd data-testid="review-bond-amount"></dd>
+            <dt>Bond check</dt><dd data-testid="review-bond-check"></dd>
+            <dt>Surety company</dt><dd data-testid="review-surety"></dd>
+          </dl>
+          <h4>Field agents</h4>
+          <ul class="roster" data-testid="agent-roster" aria-label="Agent roster"></ul>
+          <p class="notice" role="status" aria-live="polite" data-testid="agent-notice" hidden></p>
+          <fieldset class="inline-form" data-testid="review-agent-form">
+            <legend>Add an agent</legend>
+            <div class="field"><label for="review-agent-first-name">First name</label><input id="review-agent-first-name" data-testid="agent-first-name" maxlength="100"></div>
+            <div class="field"><label for="review-agent-last-name">Last name</label><input id="review-agent-last-name" data-testid="agent-last-name" maxlength="100"></div>
+            <div class="field"><label for="review-agent-date-of-birth">Date of birth</label><input id="review-agent-date-of-birth" data-testid="agent-date-of-birth" type="date"></div>
+            <button type="button" class="btn-secondary" data-action="add-agent" data-testid="add-agent-btn">Add agent</button>
+          </fieldset>
+          <h4>Documents</h4>
+          <p class="empty" data-testid="documents-empty">No documents attached yet.</p>
+          <ul class="list" data-testid="document-list"></ul>
+          <h4>Quarterly volume-fee reports</h4>
+          <p class="empty" data-testid="fee-reports-empty">No quarterly reports recorded yet.</p>
+          <ul class="list" data-testid="fee-report-list"></ul>
+          <h4>Decision</h4>
+          <div data-testid="decision-section" hidden>
+            <div class="field"><label for="reject-reason">Reason (required to reject, at least 10 characters)</label><textarea id="reject-reason" data-testid="reject-reason" rows="2" maxlength="500"></textarea></div>
+            <div class="actions">
+              <button type="button" class="btn-primary" data-action="issue" data-testid="issue-licence-btn">Issue licence</button>
+              <button type="button" class="btn-secondary" data-action="reject" data-testid="reject-application-btn">Reject application</button>
+            </div>
+          </div>
+          <div class="actions" data-testid="print-section" hidden>
+            <button type="button" class="btn-secondary" data-action="print" data-kind="certificate" data-testid="print-certificate-btn">Print certificate</button>
+            <button type="button" class="btn-secondary" data-action="print" data-kind="agent-cards" data-testid="print-agent-cards-btn">Print agent cards</button>
+          </div>
+          <p class="empty" data-testid="no-decision-note" hidden>No decision is possible from this status.</p>
+          <h4>History</h4>
+          <ol class="timeline" data-testid="audit-history"></ol>
+        </section>
+      </div>
+
+      <div role="tabpanel" id="panel-buyers" aria-labelledby="tab-buyers" data-panel="buyers" data-testid="panel-buyers" hidden>
+        <form class="card" novalidate>
+          <h3>Buyer registry</h3>
+          <div class="field"><label for="buyer-search">Search by name, city or e-mail</label><input id="buyer-search" data-testid="buyer-search"></div>
+          <div class="actions"><button type="submit" class="btn-secondary" data-action="search-buyers" data-testid="buyer-search-btn">Search buyers</button></div>
+          <p class="empty" data-testid="buyer-results-empty" hidden>No buyers match that search.</p>
+          <ul class="list results" data-testid="buyer-results"></ul>
+        </form>
+      </div>
+
+      <div role="tabpanel" id="panel-agents" aria-labelledby="tab-agents" data-panel="agents" data-testid="panel-agents" hidden>
+        <form class="card" novalidate>
+          <h3>Agent registry</h3>
+          <div class="field"><label for="agent-search">Search by name or date of birth</label><input id="agent-search" data-testid="agent-search"></div>
+          <div class="actions"><button type="submit" class="btn-secondary" data-action="search-agents" data-testid="agent-search-btn">Search agents</button></div>
+          <p class="empty" data-testid="agent-results-empty" hidden>No agents match that search.</p>
+          <ul class="list results" data-testid="agent-results"></ul>
+        </form>
+      </div>
+    </section>
+  </main>
+  <footer class="app-footer"><p>Commercial Buyer Licensing &amp; Volume Fee Compliance · Release 1</p></footer>
+  <script src="app.js"></script>
+</body>
+</html>

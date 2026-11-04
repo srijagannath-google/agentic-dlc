@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "4.0",
+  "abstractionPlane": "gdc-fleet",
+  "targetEnvironments": [
+    "on-prem-gdc",
+    "gcp",
+    "aws",
+    "azure"
+  ],
+  "containers": [
+    {
+      "file": "deploy/containers/Dockerfile.backend",
+      "sha256": "075a2835fff53b3b617fc2e4fbff2cd16a17e34c18c79c27d648da955f0929c7",
+      "baseImages": [
+        "python:3.11.9-slim-bookworm",
+        "python:3.11.9-slim-bookworm"
+      ],
+      "unpinnedImages": [],
+      "user": "65532:65532",
+      "nonRoot": true,
+      "hasHealthcheck": true,
+      "hasTraceabilityLabels": true,
+      "component": "backend"
+    },
+    {
+      "file": "deploy/containers/Dockerfile.ui",
+      "sha256": "2696755001267aecaa8b208db2d2b3654d4b0e704849c2865921aa3e7351703b",
+      "baseImages": [
+        "python:3.11.9-slim-bookworm"
+      ],
+      "unpinnedImages": [],
+      "user": "65532:65532",
+      "nonRoot": true,
+      "hasHealthcheck": true,
+      "hasTraceabilityLabels": true,
+      "component": "ui"
+    }
+  ],
+  "kustomizeOverlays": [
+    {
+      "environment": "on-prem-gdc",
+      "overlayPath": "deploy/gdc/overlays/on-prem-gdc/kustomization.yaml",
+      "clusterSelector": "selector-on-prem-gdc",
+      "status": "PASS"
+    },
+    {
+      "environment": "gcp",
+      "overlayPath": "deploy/gdc/overlays/gcp/kustomization.yaml",
+      "clusterSelector": "selector-gcp",
+      "status": "PASS"
+    },
+    {
+      "environment": "aws",
+      "overlayPath": "deploy/gdc/overlays/aws/kustomization.yaml",
+      "clusterSelector": "selector-aws",
+      "status": "PASS"
+    },
+    {
+      "environment": "azure",
+      "overlayPath": "deploy/gdc/overlays/azure/kustomization.yaml",
+      "clusterSelector": "selector-azure",
+      "status": "PASS"
+    }
+  ],
+  "policyController": {
+    "constraintsFile": "deploy/gdc/policy-controller/constraints.yaml",
+    "constraintCount": 2,
+    "nonRootEnforced": true,
+    "readOnlyRootFsEnforced": true,
+    "status": "PASS"
+  },
+  "serviceMesh": {
+    "strictMtls": true,
+    "authorizationPolicies": 1,
+    "multiClusterService": true,
+    "status": "PASS"
+  },
+  "passed": true,
+  "failures": [],
+  "warnings": []
+}

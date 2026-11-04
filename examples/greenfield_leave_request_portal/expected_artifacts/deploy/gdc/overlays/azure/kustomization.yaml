@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+commonLabels:
+  gdc.cloud.google.com/provider: azure
+commonAnnotations:
+  configmanagement.gke.io/cluster-selector: selector-azure
+  gdc.cloud.google.com/storage-class: managed-csi
+  gdc.cloud.google.com/ingress-class: gdc-attached-aks-ilb
+  gdc.cloud.google.com/database-tier: alloydb-omni-azure

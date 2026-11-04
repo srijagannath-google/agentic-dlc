@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "4.0",
+  "architectureSha256": "13daff4c1c5cabd8c45221f994d0dfec6579b270855ecab61af70e09c8a6cdf2",
+  "designSha256": "2c4ef764f4fb6f169f9e54873aa8bfc5b9138755ea466de63858c7b6166ad38f",
+  "openapiVersion": "3.1.0",
+  "tables": [
+    {
+      "name": "employee",
+      "columns": [
+        "employee_ref",
+        "display_name",
+        "role_group",
+        "manager_ref"
+      ]
+    },
+    {
+      "name": "leave_balance",
+      "columns": [
+        "employee_ref",
+        "accrued_hours",
+        "taken_hours"
+      ]
+    },
+    {
+      "name": "leave_type",
+      "columns": [
+        "leave_type_code",
+        "label",
+        "requires_certification",
+        "exempt_from_lead_time"
+      ]
+    },
+    {
+      "name": "leave_request",
+      "columns": [
+        "request_ref",
+        "employee_ref",
+        "leave_type_code",
+        "start_date",
+        "end_date",
+        "requested_hours",
+        "reason",
+        "status",
+        "created_at",
+        "updated_at",
+        "submitted_at"
+      ]
+    },
+    {
+      "name": "review_comment",
+      "columns": [
+        "comment_id",
+        "request_ref",
+        "author_ref",
+        "author_role",
+        "comment_text",
+        "created_at"
+      ]
+    },
+    {
+      "name": "request_state_change",
+      "columns": [
+        "change_id",
+        "request_ref",
+        "actor_ref",
+        "actor_role",
+        "trigger_name",
+        "previous_status",
+        "new_status",
+        "outcome",
+        "detail",
+        "changed_at"
+      ]
+    },
+    {
+      "name": "payroll_posting",
+      "columns": [
+        "posting_id",
+        "request_ref",
+        "outcome",
+        "http_status",
+        "payroll_reference",
+        "attempted_at"
+      ]
+    }
+  ],
+  "paths": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "operationId": "healthcheck"
+    },
+    {
+      "method": "GET",
+      "path": "/api/me",
+      "operationId": "getCurrentActor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/balance",
+      "operationId": "getBalance"
+    },
+    {
+      "method": "GET",
+      "path": "/api/requests",
+      "operationId": "listMyRequests"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests",
+      "operationId": "createRequest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/requests/{reference}",
+      "operationId": "getRequest"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/requests/{reference}",
+      "operationId": "updateDraft"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests/{reference}/submit",
+      "operationId": "submitRequest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests/{reference}/withdraw",
+      "operationId": "withdrawRequest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests/{reference}/approve",
+      "operationId": "managerApproveRequest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests/{reference}/return",
+      "operationId": "returnRequest"
+    },
+    {
+      "method": "POST",
+      "path": "/api/requests/{reference}/certify",
+      "operationId": "certifyRequest"
+    },
+    {
+      "method": "GET",
+      "path": "/api/requests/{reference}/audit",
+      "operationId": "getRequestAudit"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queues/manager",
+      "operationId": "getManagerQueue"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queues/certification",
+      "operationId": "getCertificationQueue"
+    },
+    {
+      "method": "GET",
+      "path": "/api/payroll-postings",
+      "operationId": "getPayrollPostings"
+    },
+    {
+      "method": "POST",
+      "path": "/payroll/leave-postings",
+      "operationId": "payrollStubReceivePosting"
+    }
+  ],
+  "enums": [
+    "BALANCE_EXCEEDED",
+    "LEAD_TIME",
+    "OVERLAP",
+    "COMMENT_REQUIRED",
+    "STATE_NOT_ALLOWED",
+    "ROLE_NOT_ALLOWED",
+    "VALIDATION",
+    "NOT_FOUND",
+    "UNAUTHENTICATED",
+    "Employee",
+    "Manager",
+    "HR Certifier",
+    "Payroll Integration",
+    "Vacation",
+    "Sick",
+    "Exception",
+    "DRAFT",
+    "SUBMITTED",
+    "MANAGER_APPROVED",
+    "APPROVED",
+    "POSTED",
+    "WITHDRAWN",
+    "submit",
+    "withdraw",
+    "approve",
+    "return",
+    "certify",
+    "edit"
+  ],
+  "internalFields": [
+    "code",
+    "statusCode"
+  ],
+  "schemas": [
+    "Unauthenticated",
+    "Forbidden",
+    "NotFound",
+    "ValidationError",
+    "StateConflict",
+    "Error",
+    "Health",
+    "Actor",
+    "Balance",
+    "RequestInput",
+    "ReturnInput",
+    "RequestView",
+    "AuditEntry",
+    "PayrollPostingView",
+    "PayrollPostingRequest"
+  ],
+  "stateTriggers": [
+    "Create",
+    "Submit",
+    "Manager Approve",
+    "Return",
+    "Certify",
+    "Post",
+    "Withdraw"
+  ]
+}

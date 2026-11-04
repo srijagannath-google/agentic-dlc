@@ -1,0 +1,517 @@
+openapi: 3.1.0
+info:
+  title: Employee Leave & Exception Request Portal API
+  version: 1.0.0
+  description: Transition endpoints validate (fromState, trigger, role, ownership) against the spec §3.3 table and answer 409 (state) / 403 (role) with a user-readable message.
+servers:
+  - url: http://127.0.0.1:8766
+security:
+  - actorHeaders: []
+paths:
+  /health:
+    get:
+      operationId: healthcheck
+      security: []
+      responses:
+        "200":
+          description: Service and database readiness
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/me:
+    get:
+      operationId: getCurrentActor
+      responses:
+        "200":
+          description: The signed-in actor as a display model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Actor"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+  /api/balance:
+    get:
+      operationId: getBalance
+      description: BR-01 figures for the signed-in employee (available = accrued - taken - pending).
+      responses:
+        "200":
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Balance"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/requests:
+    get:
+      operationId: listMyRequests
+      description: History of the signed-in employee's own requests (FR-06).
+      responses:
+        "200":
+          description: Requests, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createRequest
+      description: Trigger Create ([*] -> DRAFT). Employee only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestInput"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/requests/{reference}:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    get:
+      operationId: getRequest
+      responses:
+        "200":
+          description: Request display model including the actions the current actor may take
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateDraft
+      description: Edit fields while DRAFT (ASSUMPTION-02). Employee owner only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestInput"
+      responses:
+        "200":
+          description: Draft updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/submit:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    post:
+      operationId: submitRequest
+      description: Trigger Submit (DRAFT -> SUBMITTED) after BR-01, BR-03, BR-04.
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/withdraw:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    post:
+      operationId: withdrawRequest
+      description: Trigger Withdraw (DRAFT | SUBMITTED | MANAGER_APPROVED -> WITHDRAWN), BR-05.
+      responses:
+        "200":
+          description: Withdrawn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/approve:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    post:
+      operationId: managerApproveRequest
+      description: Trigger Manager Approve (SUBMITTED -> MANAGER_APPROVED when BR-02 applies, else -> APPROVED, then system Post).
+      responses:
+        "200":
+          description: Approved (routing applied)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/return:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    post:
+      operationId: returnRequest
+      description: Trigger Return (SUBMITTED -> DRAFT by Manager, MANAGER_APPROVED -> DRAFT by HR Certifier); comment required (BR-07).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnInput"
+      responses:
+        "200":
+          description: Returned to Draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/certify:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    post:
+      operationId: certifyRequest
+      description: Trigger Certify (MANAGER_APPROVED -> APPROVED, then system Post).
+      responses:
+        "200":
+          description: Certified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/StateConflict"
+  /api/requests/{reference}/audit:
+    parameters:
+      - $ref: "#/components/parameters/reference"
+    get:
+      operationId: getRequestAudit
+      description: Append-only audit trail (FR-08). Internal roles see actors; the owning employee sees states only. No write methods exist (405).
+      responses:
+        "200":
+          description: Audit entries, oldest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEntry"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/queues/manager:
+    get:
+      operationId: getManagerQueue
+      description: SUBMITTED requests of the signed-in manager's direct reports (FR-04).
+      responses:
+        "200":
+          description: Queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/queues/certification:
+    get:
+      operationId: getCertificationQueue
+      description: MANAGER_APPROVED requests meeting BR-02 (FR-05).
+      responses:
+        "200":
+          description: Queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RequestView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/payroll-postings:
+    get:
+      operationId: getPayrollPostings
+      description: Every payroll posting attempt (trigger Post outcome) with alerts for failures. Payroll Integration role only.
+      responses:
+        "200":
+          description: Posting attempts, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayrollPostingView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /payroll/leave-postings:
+    post:
+      operationId: payrollStubReceivePosting
+      description: Local stand-in for the external payroll REST interface (BRD §8). Production points PAYROLL_BASE_URL at the real system. The stub answers 503 while PAYROLL_STUB_OUTAGE=1.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollPostingRequest"
+      responses:
+        "201":
+          description: Accepted by payroll
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payrollReference:
+                    type: string
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "503":
+          description: Payroll unavailable (simulated outage)
+components:
+  securitySchemes:
+    actorHeaders:
+      type: apiKey
+      in: header
+      name: X-Actor-Role
+      description: Verified identity header (with X-Actor-Ref) propagated by the OIDC / Identity-Aware Proxy gateway; handlers only see the Actor object.
+  parameters:
+    reference:
+      name: reference
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^LR-[0-9]{4,}$"
+  responses:
+    Unauthenticated:
+      description: No identity supplied
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Role or ownership does not allow the action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Unknown request reference
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: A business rule or field validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    StateConflict:
+      description: The trigger is not allowed from the request's current state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [BALANCE_EXCEEDED, LEAD_TIME, OVERLAP, COMMENT_REQUIRED, STATE_NOT_ALLOWED, ROLE_NOT_ALLOWED, VALIDATION, NOT_FOUND, UNAUTHENTICATED]
+          x-internal: true
+        message:
+          type: string
+          description: User-readable, names what failed and the fix (spec §1.3)
+        field:
+          type: string
+          description: Field name the UI should mark aria-invalid
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+        database:
+          type: string
+        today:
+          type: string
+    Actor:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [Employee, Manager, HR Certifier, Payroll Integration]
+        displayName:
+          type: string
+        maskedReference:
+          type: string
+          description: EMP-•••NN
+    Balance:
+      type: object
+      properties:
+        accruedHours:
+          type: number
+        takenHours:
+          type: number
+        pendingHours:
+          type: number
+        availableHours:
+          type: number
+        today:
+          type: string
+        leadTimeDays:
+          type: integer
+        certificationThresholdHours:
+          type: number
+    RequestInput:
+      type: object
+      required: [leaveType, startDate, endDate, hours]
+      properties:
+        leaveType:
+          type: string
+          enum: [Vacation, Sick, Exception]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        hours:
+          type: number
+        reason:
+          type: string
+          maxLength: 500
+    ReturnInput:
+      type: object
+      required: [comment]
+      properties:
+        comment:
+          type: string
+    RequestView:
+      type: object
+      description: Display model (ViewModel). Codes are mapped to labels; the raw status code is carried for client-side gating only and never rendered.
+      properties:
+        reference:
+          type: string
+        employee:
+          $ref: "#/components/schemas/Actor"
+        leaveType:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        hours:
+          type: number
+        reason:
+          type: string
+        statusCode:
+          type: string
+          enum: [DRAFT, SUBMITTED, MANAGER_APPROVED, APPROVED, POSTED, WITHDRAWN]
+          x-internal: true
+        statusLabel:
+          type: string
+        nextApprover:
+          type: string
+        requiresCertification:
+          type: boolean
+        certificationLabel:
+          type: string
+        returnComment:
+          type: string
+        returnedByRole:
+          type: string
+        allowedActions:
+          type: array
+          description: Action names the current actor may trigger now (derived from the §3.3 table)
+          items:
+            type: string
+            enum: [submit, withdraw, approve, return, certify, edit]
+        posting:
+          $ref: "#/components/schemas/PayrollPostingView"
+        updatedAt:
+          type: string
+    AuditEntry:
+      type: object
+      properties:
+        at:
+          type: string
+        actor:
+          type: string
+        role:
+          type: string
+        fromLabel:
+          type: string
+        toLabel:
+          type: string
+        outcome:
+          type: string
+        detail:
+          type: string
+    PayrollPostingView:
+      type: object
+      properties:
+        reference:
+          type: string
+        outcomeLabel:
+          type: string
+        payrollReference:
+          type: string
+        attemptedAt:
+          type: string
+        alert:
+          type: string
+        statusLabel:
+          type: string
+    PayrollPostingRequest:
+      type: object
+      required: [requestReference, employeeReference, leaveType, startDate, endDate, hours]
+      properties:
+        requestReference:
+          type: string
+        employeeReference:
+          type: string
+        leaveType:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        hours:
+          type: number

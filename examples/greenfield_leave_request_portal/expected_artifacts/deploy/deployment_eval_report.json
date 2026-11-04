@@ -1,0 +1,134 @@
+{
+  "schemaVersion": "4.0",
+  "evaluatedAtUtc": "2026-11-04T18:00:55Z",
+  "abstractionPlane": "gdc-fleet",
+  "connectivityMode": "gdc-connected",
+  "executionMode": "local-runtime-verified",
+  "targetEnvironments": [
+    "on-prem-gdc",
+    "gcp",
+    "aws",
+    "azure"
+  ],
+  "rolloutWaves": [
+    {
+      "wave": 1,
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "dependsOnGroups": [],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    },
+    {
+      "wave": 2,
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Manager & HR Certification Adjudication",
+      "dependsOnGroups": [
+        "GRP-01"
+      ],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    },
+    {
+      "wave": 2,
+      "capabilityGroup": "GRP-03",
+      "capabilityGroupName": "Payroll Posting Integration & Audit Compliance",
+      "dependsOnGroups": [
+        "GRP-01"
+      ],
+      "targetEnvironments": [
+        "on-prem-gdc",
+        "gcp",
+        "aws",
+        "azure"
+      ],
+      "status": "DEPLOYED"
+    }
+  ],
+  "containerImages": [
+    {
+      "component": "backend",
+      "dockerfile": "deploy/containers/Dockerfile.backend",
+      "nonRootUser": "65532:65532",
+      "sha256Digest": "b648f5e5122dc3a30244da05714e2097621440498f76b62dabfab23c90c2a032",
+      "status": "PASS"
+    },
+    {
+      "component": "ui",
+      "dockerfile": "deploy/containers/Dockerfile.ui",
+      "nonRootUser": "65532:65532",
+      "sha256Digest": "8ff479c60ec6ef41846709762a84ec96becd3bcc4b60563ab0745d40248cd448",
+      "status": "PASS"
+    }
+  ],
+  "kustomizeOverlays": [
+    {
+      "environment": "on-prem-gdc",
+      "overlayPath": "deploy/gdc/overlays/on-prem-gdc/kustomization.yaml",
+      "clusterSelector": "selector-on-prem-gdc",
+      "status": "PASS"
+    },
+    {
+      "environment": "gcp",
+      "overlayPath": "deploy/gdc/overlays/gcp/kustomization.yaml",
+      "clusterSelector": "selector-gcp",
+      "status": "PASS"
+    },
+    {
+      "environment": "aws",
+      "overlayPath": "deploy/gdc/overlays/aws/kustomization.yaml",
+      "clusterSelector": "selector-aws",
+      "status": "PASS"
+    },
+    {
+      "environment": "azure",
+      "overlayPath": "deploy/gdc/overlays/azure/kustomization.yaml",
+      "clusterSelector": "selector-azure",
+      "status": "PASS"
+    }
+  ],
+  "policyController": {
+    "constraintsFile": "deploy/gdc/policy-controller/constraints.yaml",
+    "constraintCount": 2,
+    "nonRootEnforced": true,
+    "readOnlyRootFsEnforced": true,
+    "status": "PASS"
+  },
+  "serviceMesh": {
+    "strictMtls": true,
+    "authorizationPolicies": 1,
+    "multiClusterService": true,
+    "status": "PASS"
+  },
+  "observability": {
+    "otelCollectorValid": true,
+    "sloCount": 1,
+    "alertCount": 2,
+    "fleetDashboardPanels": 5,
+    "status": "PASS"
+  },
+  "smokeProbes": [
+    {
+      "probe": "healthcheck",
+      "target": "http://127.0.0.1:8766/health",
+      "httpStatus": 200,
+      "status": "SKIPPED"
+    }
+  ],
+  "summary": {
+    "totalChecks": 10,
+    "passedChecks": 10,
+    "failedChecks": 0,
+    "verdict": "PASS"
+  }
+}

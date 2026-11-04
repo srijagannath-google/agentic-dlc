@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+test/.snapshots/
+test/.build_logs/
+.env

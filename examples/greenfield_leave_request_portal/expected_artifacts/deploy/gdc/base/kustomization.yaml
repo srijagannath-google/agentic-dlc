@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: leave-request-portal
+commonLabels:
+  app.kubernetes.io/part-of: leave-request-portal
+  gdc.cloud.google.com/fleet-managed: "true"
+  dlc.agentic.io/capability-groups: "GRP-01,GRP-02,GRP-03"
+resources:
+  - workloads.yaml

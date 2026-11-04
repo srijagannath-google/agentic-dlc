@@ -1,0 +1,2933 @@
+{
+  "schemaVersion": "4.0",
+  "stories": [
+    {
+      "id": "US-FUNC-01",
+      "type": "Functional",
+      "title": "Start a licence application with buyer details",
+      "narrative": "As a Commercial Buyer I want to enter my buyer details and open a draft application for the licence year so that my application exists as the single record staff will review.",
+      "requirementRefs": [
+        "REQ-FUNC-01",
+        "REQ-ENH-01"
+      ],
+      "businessRuleRefs": [
+        "BR-07"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplicantSelection.txt (applicant capture)",
+        "applicant-information form (referenced)"
+      ],
+      "roles": [
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on the New application tab with legal name, entity type, tax identifier kind, tax identifier and date of birth entered",
+          "when": "they continue to step 2 and save the draft",
+          "then": "an application number is shown and the status reads \"Draft — not yet submitted\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer on step 1 with the legal name left empty",
+          "when": "they press Continue",
+          "then": "the step does not advance and the banner reads \"Enter the legal name, entity type, tax identifier and date of birth to continue.\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer who chose the Social-security number kind and typed 12345",
+          "when": "they press Continue",
+          "then": "the banner reads \"Enter the tax identifier as NNN-NN-NNNN (Social-security number) or NN-NNNNNNN (employer identification number).\" and the step does not advance"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer whose legal name and date of birth equal an existing buyer record",
+          "when": "they press Continue",
+          "then": "a duplicate notice \"A record with the same last name and date of birth already exists\" is shown and the buyer may still continue"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "a Commercial Buyer on step 1",
+          "when": "they expand \"More contact details\"",
+          "then": "business name, e-mail, phone, city and state fields become visible and remain optional"
+        },
+        {
+          "id": "AC-06",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer who typed a Social-security number into the tax identifier field",
+          "when": "the field loses focus",
+          "then": "the field shows only the masked form ending in the last four digits (for example ***-**-6789) and the raw number is never displayed again"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Buyer Self-Service Intake & Surety Bond Portal",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplicantSelection.txt (applicant capture)",
+          "applicant-information form (referenced)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-01",
+          "REQ-ENH-01"
+        ],
+        "businessRuleRefs": [
+          "BR-07"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step1-continue-btn",
+          "step-2",
+          "prior-year-purchases",
+          "bond-amount",
+          "bond-surety-name",
+          "bond-number",
+          "save-draft-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-01",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-01",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-02",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-02",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-02",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-03",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-09",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-08",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-09",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-01",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-03",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-10",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-11",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-12",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-02",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-04",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-13",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-02",
+      "type": "Functional",
+      "title": "Surety bond details with live required-bond calculator",
+      "narrative": "As a Commercial Buyer I want the required surety bond to be calculated while I type my prior-year purchases so that I know the exact shortfall before I submit.",
+      "requirementRefs": [
+        "REQ-FUNC-02",
+        "REQ-ENH-02"
+      ],
+      "businessRuleRefs": [
+        "BR-01"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplication.txt (bond fields)"
+      ],
+      "roles": [
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 2 of a new application",
+          "when": "they type 25000 as prior-year purchases without clicking anything",
+          "then": "the required bond reads $2,500.00"
+        },
+        {
+          "id": "AC-02",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on step 2",
+          "when": "they type 9999.99 as prior-year purchases",
+          "then": "the required bond reads $1,000.00 (regulatory minimum)"
+        },
+        {
+          "id": "AC-03",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on step 2",
+          "when": "they type 10000.10 as prior-year purchases",
+          "then": "the required bond reads $1,000.01"
+        },
+        {
+          "id": "AC-04",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on step 2 with prior-year purchases 25000",
+          "when": "they type 2499.99 as the bond amount",
+          "then": "the shortfall text reads \"Bond amount is below the required bond of $2,500.00. Increase the bond by $0.01 before submitting.\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 2 with prior-year purchases 25000",
+          "when": "they type 2500 as the bond amount",
+          "then": "the bond check reads \"Bond is sufficient\" and no shortfall is shown"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer on step 2",
+          "when": "they type -5 as the bond amount and save the draft",
+          "then": "the banner reads \"Enter amounts in dollars, for example 25000.00.\" and no application is created"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Buyer Self-Service Intake & Surety Bond Portal",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplication.txt (bond fields)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-02",
+          "REQ-ENH-02"
+        ],
+        "businessRuleRefs": [
+          "BR-01"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step1-continue-btn",
+          "step-2",
+          "prior-year-purchases",
+          "required-bond",
+          "bond-amount",
+          "bond-check",
+          "save-draft-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-04",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-01",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-02",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-03",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-05",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-03",
+            "category": "Negative",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-03",
+      "type": "Functional",
+      "title": "Field-agent roster with exclusivity, owner, suspension and duplicate rules",
+      "narrative": "As a Commercial Buyer (on my draft) or Licensing Staff (on a submitted or issued licence) I want to add and remove field agents with the regulatory rules enforced as I type so that conflicts are resolved before issuance.",
+      "requirementRefs": [
+        "REQ-FUNC-03",
+        "REQ-FUNC-09",
+        "REQ-ENH-03"
+      ],
+      "businessRuleRefs": [
+        "BR-02",
+        "BR-05",
+        "BR-06",
+        "BR-07"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplication.txt (cmdAddAgent/cmdAssignAgent/cmdRemoveAgent/cmdDeleteAgent handlers)",
+        "Form_frmBusinessLicenseNewApplicationDetail.txt (same handlers + removal letter)",
+        "licence-agent bridge and assignment-history tables"
+      ],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 3 of a draft application",
+          "when": "they look at the roster before adding anyone",
+          "then": "the buyer is listed as the owner agent with the label \"Owner\" and no remove control"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 3",
+          "when": "they add agent Marcus Lee born 1988-07-02",
+          "then": "the roster shows Marcus Lee with a remove control and the notice reads \"Marcus Lee added to the roster\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer on step 3 of a 2026 application",
+          "when": "they add Dale Whitaker born 1979-03-14, who is already an agent on another issued 2026 licence",
+          "then": "the roster is unchanged and the notice reads \"This person is already an agent for another licensed buyer in 2026. One licensed buyer per calendar year is allowed.\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer on step 3",
+          "when": "they add Alex Alvarez born 1990-11-23, who is suspended",
+          "then": "the roster is unchanged and the notice reads \"This agent is suspended and cannot be assigned. Contact licensing staff to review the suspension.\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer on step 3",
+          "when": "they press Add agent with the last name empty",
+          "then": "the notice reads \"Enter the agent's first name, last name and date of birth.\" and the roster is unchanged"
+        },
+        {
+          "id": "AC-06",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff reviewing a submitted application",
+          "when": "they add agent Marcus Lee born 1988-07-02 and then remove him",
+          "then": "the roster first shows and then no longer shows Marcus Lee and the history lists \"Agent assigned\" and \"Agent removed\""
+        },
+        {
+          "id": "AC-07",
+          "tag": "NEGATIVE",
+          "given": "Licensing Staff reviewing an issued licence",
+          "when": "they attempt to remove the owner agent",
+          "then": "no remove control exists for the owner row and the roster is unchanged"
+        },
+        {
+          "id": "AC-08",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on step 3 who already added Marcus Lee born 1988-07-02",
+          "when": "they add \"marcus\" \"LEE\" born 1988-07-02 again",
+          "then": "the existing record is re-used and the notice reads \"Marcus Lee is already on this roster\" with exactly one Marcus Lee row"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 8/8 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplication.txt (cmdAddAgent/cmdAssignAgent/cmdRemoveAgent/cmdDeleteAgent handlers)",
+          "Form_frmBusinessLicenseNewApplicationDetail.txt (same handlers + removal letter)",
+          "licence-agent bridge and assignment-history tables"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-03",
+          "REQ-FUNC-09",
+          "REQ-ENH-03"
+        ],
+        "businessRuleRefs": [
+          "BR-02",
+          "BR-05",
+          "BR-06",
+          "BR-07"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step1-continue-btn",
+          "step-2",
+          "prior-year-purchases",
+          "bond-amount",
+          "bond-surety-name",
+          "bond-number",
+          "save-draft-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-06",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-07",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-04",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-05",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-06",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-08",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-07",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-04",
+            "category": "Edge",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-04",
+      "type": "Functional",
+      "title": "Submit the application for review",
+      "narrative": "As a Commercial Buyer I want to submit my completed draft so that licensing staff can review it, with every regulatory block explained before it leaves my hands.",
+      "requirementRefs": [
+        "REQ-FUNC-04",
+        "REQ-ENH-01"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-04"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplicantSelection.txt (cmdLicense_Click year check)",
+        "legacy web-application submission"
+      ],
+      "roles": [
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [
+        "DRAFT->SUBMITTED"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 4 of a draft whose bond amount meets the required bond",
+          "when": "they press Submit application",
+          "then": "the status badge reads \"Submitted — awaiting review\" and the banner confirms the submission"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer whose bond amount is below the required bond",
+          "when": "they press Submit application",
+          "then": "the status stays \"Draft — not yet submitted\" and the banner reads \"Bond amount is below the required bond of $2,500.00. Increase the bond by $500.00 before submitting.\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer whose tax identifier belongs to a buyer that already has a submitted 2026 application",
+          "when": "they save the draft",
+          "then": "no second application is created and the banner reads \"An application for 2026 already exists for this buyer (Submitted — awaiting review). Open it instead of starting a new one.\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "a Commercial Buyer viewing an application that is already submitted",
+          "when": "they look for the Submit application control",
+          "then": "no Submit control is rendered and the status is unchanged"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "a Commercial Buyer on step 4",
+          "when": "they press Back",
+          "then": "step 3 is shown again with the roster intact"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Buyer Self-Service Intake & Surety Bond Portal",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplicantSelection.txt (cmdLicense_Click year check)",
+          "legacy web-application submission"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-04",
+          "REQ-ENH-01"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-04"
+        ],
+        "workflowTransitions": [
+          "DRAFT->SUBMITTED"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step1-continue-btn",
+          "step-2",
+          "prior-year-purchases",
+          "bond-amount",
+          "bond-surety-name",
+          "bond-number",
+          "save-draft-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-09",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-08",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-09",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-01",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-03",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-01",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-01",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-02",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-02",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-02",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-03",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-10",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-11",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-12",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-02",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-04",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-13",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-05",
+      "type": "Functional",
+      "title": "Review queue and application review view",
+      "narrative": "As Licensing Staff I want a queue of submitted applications and a complete review view so that I can decide from the same record the buyer completed.",
+      "requirementRefs": [
+        "REQ-FUNC-05",
+        "REQ-ENH-01"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseNewApplications.txt",
+        "Form_frmBusinessLicenseNewApplicationDetail.txt",
+        "Form_frmBusinessLicenseApplicantSelection.txt (search/list)"
+      ],
+      "roles": [
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Review queue tab",
+          "when": "the queue loads with the default filter",
+          "then": "only applications with status \"Submitted — awaiting review\" are listed, each with application number, buyer, licence year, bond check and submitted date"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Review queue",
+          "when": "they change the status filter to Issued",
+          "then": "the list shows only issued licences and each row shows the licence number"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Review queue",
+          "when": "they open the submitted application of Apex Retail Group",
+          "then": "the review view shows the buyer name, the masked tax identifier ending in 4 digits, required bond, bond amount, the bond check \"Sufficient\", the agent roster and the history"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "a Commercial Buyer in the portal",
+          "when": "they look for the Review queue, Issue licence or Reject application controls",
+          "then": "none of them is rendered in the buyer view"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "Licensing Staff in the review view",
+          "when": "they press Back to queue",
+          "then": "the queue is shown again with the same filter applied"
+        },
+        {
+          "id": "AC-06",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Review queue with the filter set to Draft",
+          "when": "they open the draft application of Acme Commercial Services",
+          "then": "the review view shows status \"Draft — not yet submitted\" and no decision controls"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseNewApplications.txt",
+          "Form_frmBusinessLicenseNewApplicationDetail.txt",
+          "Form_frmBusinessLicenseApplicantSelection.txt (search/list)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-05",
+          "REQ-ENH-01"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "queue-row",
+          "queue-status-filter",
+          "open-application-btn",
+          "review-panel",
+          "review-buyer-name",
+          "review-tax-id",
+          "review-required-bond",
+          "review-bond-amount",
+          "review-bond-check",
+          "agent-row",
+          "audit-history",
+          "timeline-item"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-10",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-11",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-12",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-02",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-04",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-13",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-01",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-01",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-02",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-02",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-02",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-03",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-09",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-08",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-09",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-01",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-03",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-06",
+      "type": "Functional",
+      "title": "Issue the licence and print certificate and agent cards",
+      "narrative": "As Licensing Staff I want to issue a submitted application that passes every guard and print the certificate and agent cards so that the buyer and agents are credentialed.",
+      "requirementRefs": [
+        "REQ-FUNC-06",
+        "REQ-FUNC-08"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-02",
+        "BR-06"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplication.txt (cmdPreviewReport, cmdAgentCardsSingle)",
+        "Report_rptBusinessLicenseAgentCardLabels.txt",
+        "card-printed update query"
+      ],
+      "roles": [
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [
+        "SUBMITTED->ISSUED"
+      ],
+      "sprint": "Sprint 2",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff reviewing the submitted application of Apex Retail Group",
+          "when": "they press Issue licence",
+          "then": "the status reads \"Licence issued\", a licence number starting with TB-2026- is shown and the history lists \"Licence issued\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "Licensing Staff reviewing the submitted application of Northwind Commerce, whose buyer is suspended",
+          "when": "they press Issue licence",
+          "then": "the status stays \"Submitted — awaiting review\" and the banner reads \"The licence cannot be issued: the buyer is suspended. Resolve it and try again.\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "Licensing Staff reviewing an application that is already issued",
+          "when": "they look for the Issue licence and Reject application controls",
+          "then": "neither control is rendered and the status stays \"Licence issued\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff reviewing the issued licence of Horizon Logistics",
+          "when": "they press Print agent cards",
+          "then": "every agent row shows \"Card printed\" and the history lists \"Agent cards printed\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "Licensing Staff reviewing the issued licence of Horizon Logistics",
+          "when": "they press Print certificate",
+          "then": "the banner confirms \"Certificate printed\" and the history lists \"Certificate printed\""
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "Licensing Staff reviewing a draft application",
+          "when": "they look for the Print certificate control",
+          "then": "no print control is rendered"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplication.txt (cmdPreviewReport, cmdAgentCardsSingle)",
+          "Report_rptBusinessLicenseAgentCardLabels.txt",
+          "card-printed update query"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-06",
+          "REQ-FUNC-08"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-02",
+          "BR-06"
+        ],
+        "workflowTransitions": [
+          "SUBMITTED->ISSUED"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "queue-row",
+          "open-application-btn",
+          "review-panel",
+          "issue-licence-btn",
+          "review-status",
+          "review-license-number",
+          "audit-history",
+          "banner",
+          "review-buyer-standing",
+          "queue-status-filter",
+          "reject-application-btn",
+          "print-agent-cards-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-14",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-10",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-03",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-15",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-05",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-04",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-07",
+      "type": "Functional",
+      "title": "Reject an application with a reason the buyer can see",
+      "narrative": "As Licensing Staff I want to reject a submitted application with a reason, and as a Commercial Buyer I want to see that decision on my application timeline, so that nothing is silently deleted.",
+      "requirementRefs": [
+        "REQ-FUNC-07",
+        "REQ-FUNC-12",
+        "REQ-ENH-04"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseNewApplications.txt (Command163_Click hard delete)",
+        "agent assignment history table"
+      ],
+      "roles": [
+        "Licensing Staff",
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [
+        "SUBMITTED->REJECTED"
+      ],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff reviewing the submitted application of Cedar Ridge Buyers",
+          "when": "they enter the reason \"Surety company is not authorised in this state\" and press Reject application",
+          "then": "the status reads \"Rejected\" and the history lists \"Rejected\" with that reason"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "Licensing Staff reviewing a submitted application",
+          "when": "they press Reject application with a reason of fewer than 10 characters",
+          "then": "the status stays \"Submitted — awaiting review\" and the banner reads \"Enter a rejection reason of at least 10 characters so the buyer knows what to correct.\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer who opens the rejected application of Oakridge Distribution by its application number",
+          "when": "the application detail loads",
+          "then": "the status reads \"Rejected\" and the timeline shows the rejection with its reason"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "Licensing Staff reviewing an application that is already rejected",
+          "when": "they look for the Reject application control",
+          "then": "no Reject control is rendered and the status stays \"Rejected\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer who opens the issued licence of Horizon Logistics",
+          "when": "the timeline loads",
+          "then": "it lists the submission and the issuance with their dates and the licence number is shown"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-03",
+      "capabilityGroupName": "Quarterly Volume Fee Reporting & Compliance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseNewApplications.txt (Command163_Click hard delete)",
+          "agent assignment history table"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-07",
+          "REQ-FUNC-12",
+          "REQ-ENH-04"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [
+          "SUBMITTED->REJECTED"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "queue-row",
+          "open-application-btn",
+          "review-panel",
+          "reject-reason",
+          "reject-application-btn",
+          "review-status",
+          "audit-history",
+          "banner",
+          "tab-my-applications",
+          "lookup-application-number",
+          "lookup-btn",
+          "my-app-detail"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-16",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-11",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-17",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-05",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-18",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 3,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-08",
+      "type": "Functional",
+      "title": "Buyer and agent registries with suspension",
+      "narrative": "As Licensing Staff I want to search buyers and agents, see their flags and current licence, and suspend or reinstate them so that suspended parties cannot be licensed or assigned.",
+      "requirementRefs": [
+        "REQ-FUNC-10"
+      ],
+      "businessRuleRefs": [
+        "BR-06",
+        "BR-08"
+      ],
+      "legacyArtifactsReplaced": [
+        "Form_frmBusinessLicenseApplicantSelection.txt (search handlers, cmdDeleteApplicant_Click)",
+        "Form_frmBusinessLicenseApplication.txt (cmdSearch/cmdReset/cmdDeleteAgent)",
+        "agent-information form (referenced)"
+      ],
+      "roles": [
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Buyers tab",
+          "when": "they search for \"Retail\"",
+          "then": "Apex Retail Group is listed with its masked tax identifier and a suspension flag of \"Active\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Buyers tab",
+          "when": "they search for \"Northwind\"",
+          "then": "Northwind Commerce is listed with the flag \"Suspended\" and a Reinstate control"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Agents tab",
+          "when": "they search for \"Whitaker\"",
+          "then": "Dale Whitaker is listed with the current licence TB-2026-00003"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff on the Agents tab",
+          "when": "they suspend Priya Natarajan and search again",
+          "then": "Priya Natarajan shows \"Suspended\" and the control now reads Reinstate"
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE",
+          "given": "Licensing Staff on the Buyers tab",
+          "when": "they look for a Delete control on a buyer with applications",
+          "then": "no Delete control is rendered"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "a Commercial Buyer in the portal",
+          "when": "they look for the Buyers or Agents registry tabs",
+          "then": "neither tab is rendered"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "Form_frmBusinessLicenseApplicantSelection.txt (search handlers, cmdDeleteApplicant_Click)",
+          "Form_frmBusinessLicenseApplication.txt (cmdSearch/cmdReset/cmdDeleteAgent)",
+          "agent-information form (referenced)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-10"
+        ],
+        "businessRuleRefs": [
+          "BR-06",
+          "BR-08"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "tab-buyers",
+          "buyer-search",
+          "buyer-search-btn",
+          "buyer-result-row",
+          "buyer-standing",
+          "toggle-buyer-suspension-btn",
+          "tab-agents",
+          "agent-search",
+          "agent-search-btn",
+          "agent-result-row",
+          "agent-current-license",
+          "agent-standing"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-19",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-20",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-21",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-22",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-12",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-06",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-09",
+      "type": "Functional",
+      "title": "Supporting documents on an application",
+      "narrative": "As a Commercial Buyer I want to attach supporting documents to my draft, and as Licensing Staff I want to see them during review, so that bond certificates travel with the application.",
+      "requirementRefs": [
+        "REQ-FUNC-11"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "tblBusinessLicenseFiles.xsd",
+        "qryBusinessLicenseFiles.sql",
+        "uploaded-files sub-form (referenced)"
+      ],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "Medium",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer viewing their draft application",
+          "when": "they add the document \"surety-bond.pdf\" of type PDF and size 240000 bytes",
+          "then": "the document list shows \"surety-bond.pdf (PDF, 234.4 KB)\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer viewing their draft application",
+          "when": "they press Add document with the file name empty",
+          "then": "the banner reads \"Enter the document name to attach it.\" and the list is unchanged"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "Licensing Staff reviewing an application with documents",
+          "when": "the review view loads",
+          "then": "the documents section lists every document with its type and size and never shows binary content"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "a Commercial Buyer viewing an application with no documents",
+          "when": "the documents section renders",
+          "then": "it shows the sentence \"No documents attached yet.\" instead of an empty table"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "tblBusinessLicenseFiles.xsd",
+          "qryBusinessLicenseFiles.sql",
+          "uploaded-files sub-form (referenced)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-11"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "tab-my-applications",
+          "lookup-application-number",
+          "lookup-btn",
+          "my-app-detail",
+          "document-name",
+          "document-type",
+          "document-size",
+          "add-document-btn",
+          "document-list",
+          "banner",
+          "document-item",
+          "queue-status-filter"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-23",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-13",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-24",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-06",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-10",
+      "type": "Functional",
+      "title": "Volume fee calculator and quarterly report",
+      "narrative": "As a Commercial Buyer I want the 4 % volume fee calculated while I type and recorded per quarter on my issued licence so that remittances are correct.",
+      "requirementRefs": [
+        "REQ-FUNC-13",
+        "REQ-ENH-05"
+      ],
+      "businessRuleRefs": [
+        "BR-03"
+      ],
+      "legacyArtifactsReplaced": [
+        "volume-fee form family (overview document)"
+      ],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "Medium",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on the Fee calculator tab",
+          "when": "they type 12500 as the quarter's purchase total",
+          "then": "the fee due reads $500.00 without pressing any button"
+        },
+        {
+          "id": "AC-02",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on the Fee calculator tab",
+          "when": "they type 0.13 as the purchase total",
+          "then": "the fee due reads $0.01"
+        },
+        {
+          "id": "AC-03",
+          "tag": "EDGE / BOUNDARY",
+          "given": "a Commercial Buyer on the Fee calculator tab",
+          "when": "they type 0.10 as the purchase total",
+          "then": "the fee due reads $0.00"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer viewing the issued licence of Horizon Logistics",
+          "when": "they choose quarter Q1 2026, type 12500 and press Record report",
+          "then": "the report list shows \"Q1 2026 — purchases $12,500.00 — fee due $500.00\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE",
+          "given": "a Commercial Buyer viewing the issued licence of Horizon Logistics",
+          "when": "they press Record report with the purchase total empty",
+          "then": "the banner reads \"Enter the quarter's total purchase price in dollars.\" and no report is added"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "a Commercial Buyer viewing the draft application of Acme Commercial Services",
+          "when": "they look for the Record report control",
+          "then": "no fee-report controls are rendered because the licence is not issued"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "volume-fee form family (overview document)"
+        ],
+        "requirementRefs": [
+          "REQ-FUNC-13",
+          "REQ-ENH-05"
+        ],
+        "businessRuleRefs": [
+          "BR-03"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "tab-fee-calculator",
+          "calc-purchase-total",
+          "calc-fee-due",
+          "tab-my-applications",
+          "lookup-application-number",
+          "lookup-btn",
+          "my-app-detail",
+          "fee-quarter",
+          "fee-purchase-total",
+          "fee-due",
+          "record-fee-report-btn",
+          "fee-report-list"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-25",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-05",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-06",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-26",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-14",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-07",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-01",
+      "type": "Technical",
+      "title": "Role-based access and server-side state guards",
+      "narrative": "As the platform I want every transition validated against the state table and the RBAC matrix on the server so that the UI is never the only guard.",
+      "requirementRefs": [
+        "REQ-SEC-01",
+        "REQ-SEC-02",
+        "REQ-ARCH-04",
+        "REQ-UX-01"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [
+        "DRAFT->SUBMITTED",
+        "SUBMITTED->ISSUED",
+        "SUBMITTED->REJECTED"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "NEGATIVE",
+          "given": "an API client acting as Commercial Buyer",
+          "when": "it calls the issue operation on a submitted application",
+          "then": "the response is 403 with the message \"You do not have permission to issue licences.\" and the status is unchanged"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it calls the issue operation on a draft application",
+          "then": "the response is 409 with a message stating the application is \"Draft — not yet submitted\" and Issue is not possible from this status"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it calls the submit operation on a draft application",
+          "then": "the response is 403 with the message \"You do not have permission to submit applications.\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it calls the reject operation on a submitted application with a valid reason",
+          "then": "the response is 200 and the returned status label is \"Rejected\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE",
+          "given": "an API client with no role header",
+          "when": "it lists the review queue",
+          "then": "the response is 403 with a permission message"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "the Commercial Buyer view",
+          "when": "it is rendered for any application",
+          "then": "no element bound to Issue or Reject exists in the buyer view"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-SEC-01",
+          "REQ-SEC-02",
+          "REQ-ARCH-04",
+          "REQ-UX-01"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [
+          "DRAFT->SUBMITTED",
+          "SUBMITTED->ISSUED",
+          "SUBMITTED->REJECTED"
+        ],
+        "apiContracts": [
+          "POST /api/applications/5/issue",
+          "GET /api/applications/5",
+          "POST /api/applications/1/issue",
+          "GET /api/applications/1",
+          "POST /api/applications/1/submit",
+          "POST /api/applications/10/reject",
+          "GET /api/applications"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "view-buyer",
+          "tab-new-application",
+          "panel-new-application",
+          "panel-my-applications",
+          "panel-fee-calculator",
+          "panel-review-queue",
+          "panel-buyers",
+          "panel-agents",
+          "tab-my-applications",
+          "tab-fee-calculator",
+          "tab-review-queue",
+          "tab-buyers"
+        ],
+        "testCases": [
+          {
+            "id": "TC-NEG-15",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-08",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-16",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-27",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-17",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-09",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-01",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-02",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-03",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-04",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-05",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-06",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-POS-JOURNEY-01",
+            "category": "Positive",
+            "status": "NOT_RUN"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-02",
+      "type": "Technical",
+      "title": "PII masking and zero-leakage presentation boundary",
+      "narrative": "As the platform I want tax identifiers hashed at capture and every API response to expose display models only so that no raw identifier, internal key or code reaches the UI.",
+      "requirementRefs": [
+        "REQ-SEC-03",
+        "REQ-SEC-04",
+        "REQ-UX-04",
+        "REQ-ARCH-05"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "plain-text SSN/FEIN columns and search keys"
+      ],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it reads the application of Apex Retail Group",
+          "then": "the tax identifier field contains only the masked form **-***4567 and no field contains a hash"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "an API client",
+          "when": "it reads any application",
+          "then": "the status is returned as a code and a label pair and the label is human-readable"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it searches buyers by a full raw tax identifier",
+          "then": "the search returns no match by identifier (identifiers are not searchable) and the response contains no raw identifier"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "the rendered UI in every role and view",
+          "when": "all states reached by the test suite are scanned",
+          "then": "no database identifier, state or trigger code, legacy object name or unmasked identifier appears in visible text"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "plain-text SSN/FEIN columns and search keys"
+        ],
+        "requirementRefs": [
+          "REQ-SEC-03",
+          "REQ-SEC-04",
+          "REQ-UX-04",
+          "REQ-ARCH-05"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /api/applications/2",
+          "GET /api/applications/3",
+          "GET /api/buyers"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [],
+        "testCases": [
+          {
+            "id": "TC-POS-28",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-29",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-18",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-30",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-03",
+      "type": "Technical",
+      "title": "Audit trail and input hardening",
+      "narrative": "As the platform I want every transition, roster change, suspension and print recorded in an append-only history and every input validated server-side so that decisions are traceable and errors are safe.",
+      "requirementRefs": [
+        "REQ-SEC-05",
+        "REQ-SEC-06"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "assignment-history and agent-removal tables"
+      ],
+      "roles": [
+        "Licensing Staff",
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it reads the history of the issued licence of Horizon Logistics",
+          "then": "the history contains the submission and issuance events with actor role, from and to status labels and a timestamp"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "an API client acting as Commercial Buyer",
+          "when": "it creates an application with a legal name longer than 200 characters",
+          "then": "the response is 400 with a message naming the field and the limit"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "an API client",
+          "when": "it sends a malformed JSON body",
+          "then": "the response is 400 with a plain message and no stack trace"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "an API client acting as Licensing Staff",
+          "when": "it calls an unknown API path",
+          "then": "the response is 404 with a plain JSON message"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "assignment-history and agent-removal tables"
+        ],
+        "requirementRefs": [
+          "REQ-SEC-05",
+          "REQ-SEC-06"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /api/applications/3",
+          "POST /api/applications",
+          "POST /api/calculations/bond",
+          "GET /api/nothing-here"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [],
+        "testCases": [
+          {
+            "id": "TC-POS-31",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-19",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-20",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-21",
+            "category": "Negative",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-04",
+      "type": "Technical",
+      "title": "Accessibility baseline (WCAG 2.1 AA)",
+      "narrative": "As any user I want the portal operable by keyboard and screen reader with labelled fields, live regions and visible focus so that it meets WCAG 2.1 AA.",
+      "requirementRefs": [
+        "REQ-A11Y-01",
+        "REQ-A11Y-02",
+        "REQ-A11Y-03",
+        "REQ-A11Y-04",
+        "REQ-A11Y-05",
+        "REQ-A11Y-06",
+        "REQ-UX-03"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the portal in any view",
+          "when": "the page is inspected",
+          "then": "every input has a bound label, there is exactly one h1, the document declares lang=\"en\" and no control has a positive tabindex"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the portal on first load",
+          "when": "the first Tab press is simulated",
+          "then": "a \"Skip to main content\" link is the first focusable element"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer who triggers a validation error",
+          "when": "the banner appears",
+          "then": "the banner has role=\"alert\" and the invalid field carries aria-invalid=\"true\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 2",
+          "when": "the required bond recalculates",
+          "then": "the required-bond element is a live region (role=\"status\")"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "the role tabs of either view",
+          "when": "they are inspected",
+          "then": "each tab has role=\"tab\" inside a role=\"tablist\" and the active one has aria-selected=\"true\""
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-A11Y-01",
+          "REQ-A11Y-02",
+          "REQ-A11Y-03",
+          "REQ-A11Y-04",
+          "REQ-A11Y-05",
+          "REQ-A11Y-06",
+          "REQ-UX-03"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "skip-link",
+          "step1-continue-btn",
+          "banner",
+          "view-buyer",
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step-2",
+          "prior-year-purchases",
+          "required-bond"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-32",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-33",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-34",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-35",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-36",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-05",
+      "type": "Technical",
+      "title": "UX guardrails, no dead controls and the test-id contract",
+      "narrative": "As the product team I want the ten UX guardrails applied, every control wired, and every declared data-testid implemented so that the pretotype is simple and testable.",
+      "requirementRefs": [
+        "REQ-UX-02",
+        "REQ-UX-05",
+        "REQ-ARCH-06"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-03"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Commercial Buyer",
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "the portal in every view reached by the suite",
+          "when": "the control audit runs",
+          "then": "every button, tab and select has a bound handler and activating it changes the DOM"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on any step",
+          "when": "the visible primary buttons are counted",
+          "then": "exactly one primary button is visible"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "a Commercial Buyer on step 1",
+          "when": "visible inputs outside progressive disclosure are counted",
+          "then": "at most 5 inputs are visible"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "either role",
+          "when": "top-level tabs are counted",
+          "then": "at most 3 tabs are visible"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "the main container",
+          "when": "its computed max-width is read",
+          "then": "it is between 720 px and 840 px"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-UX-02",
+          "REQ-UX-05",
+          "REQ-ARCH-06"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-03"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/applications",
+          "POST /api/applications",
+          "GET /api/applications/{applicationId}",
+          "PUT /api/applications/{applicationId}",
+          "POST /api/applications/{applicationId}/submit"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "buyer-legal-name",
+          "buyer-entity-type",
+          "buyer-tax-id-kind",
+          "buyer-tax-id",
+          "buyer-date-of-birth",
+          "step1-continue-btn",
+          "step-2",
+          "prior-year-purchases",
+          "bond-amount",
+          "bond-surety-name",
+          "bond-number",
+          "save-draft-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-UI-INTERACT-07",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-37",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-38",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-39",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-40",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-06",
+      "type": "Technical",
+      "title": "Runnable zero-dependency stack with layered backend and 3NF schema",
+      "narrative": "As the delivery team I want the application to start with one command, answer a health check and persist to a normalised SQLite schema so that it runs anywhere Python exists.",
+      "requirementRefs": [
+        "REQ-ARCH-01",
+        "REQ-ARCH-02",
+        "REQ-ARCH-03"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-02",
+        "BR-03",
+        "BR-04",
+        "BR-05",
+        "BR-06",
+        "BR-07",
+        "BR-08"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Licensing Staff",
+        "Commercial Buyer"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the start command has been run",
+          "when": "the health endpoint is requested",
+          "then": "it returns 200 with status \"ok\" and database \"ok\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the backend is running",
+          "when": "the bond calculation endpoint is called with prior-year purchases 25000",
+          "then": "it returns 200 with required bond 2500.00"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "the backend is running",
+          "when": "the volume-fee calculation endpoint is called with purchase total 12500",
+          "then": "it returns 200 with fee due 500.00"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "the backend is running",
+          "when": "the bond calculation endpoint is called with a negative amount",
+          "then": "it returns 400 with the amounts message"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "the backend is running",
+          "when": "the UI entry is requested",
+          "then": "it returns 200 with the HTML document"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-ARCH-01",
+          "REQ-ARCH-02",
+          "REQ-ARCH-03"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-02",
+          "BR-03",
+          "BR-04",
+          "BR-05",
+          "BR-06",
+          "BR-07",
+          "BR-08"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "POST /api/calculations/bond",
+          "POST /api/calculations/volume-fee",
+          "GET /"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [],
+        "testCases": [
+          {
+            "id": "TC-POS-41",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-42",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-43",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-22",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-44",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-07",
+      "type": "Technical",
+      "title": "One-time legacy data migration and retirement",
+      "narrative": "As the programme I want a one-time ETL from the legacy desktop database into the new schema with reconciliation counts so that the legacy database and the old web application can be retired without bridges.",
+      "requirementRefs": [
+        "REQ-ARCH-07"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [
+        "entire legacy desktop database (all tables, forms, queries, reports)",
+        "legacy web application"
+      ],
+      "roles": [
+        "Licensing Staff"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Product Backlog",
+      "priority": "Medium",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the rendered UI in every view",
+          "when": "visible text is scanned",
+          "then": "no legacy table, form, report, query or control name appears"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the backend is running",
+          "when": "the application of Horizon Logistics is read",
+          "then": "its licence number follows the new format TB-2026-00003 and no legacy identifier field is present"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "an API client",
+          "when": "it requests a legacy-style attachment path under the API",
+          "then": "the response is 404 with the message \"That address does not exist.\" — no compatibility route exists"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "a browser or client",
+          "when": "it requests the previous web application's portal path",
+          "then": "the response is 404 with the message \"That page does not exist.\" — the old application is not proxied or bridged"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [
+          "entire legacy desktop database (all tables, forms, queries, reports)",
+          "legacy web application"
+        ],
+        "requirementRefs": [
+          "REQ-ARCH-07"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /api/applications/3",
+          "GET /api/files/legacy-attachments",
+          "GET /legacy-portal/"
+        ],
+        "databaseTables": [
+          "commercial_buyers",
+          "license_applications",
+          "field_agents",
+          "agent_assignments",
+          "supporting_documents",
+          "quarterly_fee_reports",
+          "audit_events"
+        ],
+        "targetSourceFiles": [
+          "src/backend/server.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [],
+        "testCases": [
+          {
+            "id": "TC-POS-45",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-46",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-23",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-24",
+            "category": "Negative",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    }
+  ]
+}

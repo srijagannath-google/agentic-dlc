@@ -1,0 +1,230 @@
+{
+  "schemaVersion": "4.0",
+  "specSha256": "da46761b820842390b60641fc8661b470f0a683d283e5328b79be11ddb66e648",
+  "inputScenario": "SCENARIO_REQUIREMENTS_DOC",
+  "reqIds": [
+    "REQ-FUNC-01",
+    "REQ-FUNC-02",
+    "REQ-FUNC-03",
+    "REQ-FUNC-04",
+    "REQ-FUNC-05",
+    "REQ-FUNC-06",
+    "REQ-FUNC-07",
+    "REQ-FUNC-08",
+    "REQ-FUNC-09",
+    "REQ-FUNC-10",
+    "REQ-SEC-01",
+    "REQ-SEC-02",
+    "REQ-SEC-03",
+    "REQ-SEC-04",
+    "REQ-SEC-05",
+    "REQ-SEC-06",
+    "REQ-A11Y-01",
+    "REQ-A11Y-02",
+    "REQ-A11Y-03",
+    "REQ-A11Y-04",
+    "REQ-A11Y-05",
+    "REQ-A11Y-06",
+    "REQ-UX-01",
+    "REQ-UX-02",
+    "REQ-UX-03",
+    "REQ-UX-04",
+    "REQ-UX-05",
+    "REQ-UX-06",
+    "REQ-UX-07",
+    "REQ-ARCH-01",
+    "REQ-ARCH-02",
+    "REQ-ARCH-03",
+    "REQ-ARCH-04",
+    "REQ-ARCH-05",
+    "REQ-ARCH-06",
+    "REQ-ARCH-07",
+    "REQ-ARCH-08",
+    "REQ-ARCH-09"
+  ],
+  "brIds": [
+    "BR-01",
+    "BR-02",
+    "BR-03",
+    "BR-04",
+    "BR-05",
+    "BR-06",
+    "BR-07"
+  ],
+  "states": [
+    "DRAFT",
+    "SUBMITTED",
+    "MANAGER_APPROVED",
+    "APPROVED",
+    "POSTED",
+    "WITHDRAWN"
+  ],
+  "initialStates": [
+    "DRAFT"
+  ],
+  "terminalStates": [
+    "POSTED",
+    "WITHDRAWN"
+  ],
+  "triggers": [
+    "Create",
+    "Submit",
+    "Manager Approve",
+    "Return",
+    "Certify",
+    "Post",
+    "Withdraw"
+  ],
+  "transitions": [
+    {
+      "from": "[*]",
+      "to": "DRAFT",
+      "trigger": "Create",
+      "roles": [
+        "Employee"
+      ],
+      "guard": "request belongs to the signed-in employee (BRD §4 step 1)"
+    },
+    {
+      "from": "DRAFT",
+      "to": "SUBMITTED",
+      "trigger": "Submit",
+      "roles": [
+        "Employee"
+      ],
+      "guard": "own request; BR-01, BR-03 and BR-04 pass, otherwise stays DRAFT with VAL-01/02/03 (BRD §4 step 2)"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "MANAGER_APPROVED",
+      "trigger": "Manager Approve",
+      "roles": [
+        "Manager"
+      ],
+      "guard": "requester is a direct report; BR-02 applies — requested hours > 40 or type Exception (BRD §4 steps 3–4)"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "APPROVED",
+      "trigger": "Manager Approve",
+      "roles": [
+        "Manager"
+      ],
+      "guard": "requester is a direct report; BR-02 does not apply (BRD §4 step 4)"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "DRAFT",
+      "trigger": "Return",
+      "roles": [
+        "Manager"
+      ],
+      "guard": "requester is a direct report; non-empty comment (BR-07) (BRD §4 step 3)"
+    },
+    {
+      "from": "MANAGER_APPROVED",
+      "to": "APPROVED",
+      "trigger": "Certify",
+      "roles": [
+        "HR Certifier"
+      ],
+      "guard": "BR-02 applies to the request (BRD §4 step 4)"
+    },
+    {
+      "from": "MANAGER_APPROVED",
+      "to": "DRAFT",
+      "trigger": "Return",
+      "roles": [
+        "HR Certifier"
+      ],
+      "guard": "non-empty comment (BR-07) (BRD §4 step 4)"
+    },
+    {
+      "from": "APPROVED",
+      "to": "POSTED",
+      "trigger": "Post",
+      "roles": [
+        "Payroll Integration"
+      ],
+      "guard": "payroll endpoint answered 2xx; otherwise stays APPROVED and an alert is raised (BRD §4 step 5, ASSUMPTION-05)"
+    },
+    {
+      "from": "DRAFT",
+      "to": "WITHDRAWN",
+      "trigger": "Withdraw",
+      "roles": [
+        "Employee"
+      ],
+      "guard": "own request; BR-05 (BRD §4 step 6)"
+    },
+    {
+      "from": "SUBMITTED",
+      "to": "WITHDRAWN",
+      "trigger": "Withdraw",
+      "roles": [
+        "Employee"
+      ],
+      "guard": "own request; BR-05 (BRD §4 step 6)"
+    },
+    {
+      "from": "MANAGER_APPROVED",
+      "to": "WITHDRAWN",
+      "trigger": "Withdraw",
+      "roles": [
+        "Employee"
+      ],
+      "guard": "own request; BR-05; ASSUMPTION-04"
+    }
+  ],
+  "roles": [
+    {
+      "role": "Employee",
+      "kind": "external",
+      "views": "My requests (balance summary, request form, history)",
+      "transitions": "Create, Submit, Withdraw"
+    },
+    {
+      "role": "Manager",
+      "kind": "internal",
+      "views": "Manager queue (direct reports' Submitted requests, request detail)",
+      "transitions": "Manager Approve, Return"
+    },
+    {
+      "role": "HR Certifier",
+      "kind": "internal",
+      "views": "Certification queue (Manager-approved requests meeting BR-02, request detail)",
+      "transitions": "Certify, Return"
+    },
+    {
+      "role": "Payroll Integration",
+      "kind": "internal",
+      "views": "Payroll postings (read-only log of posting attempts and alerts)",
+      "transitions": "Post"
+    }
+  ],
+  "views": [
+    {
+      "viewId": "my-requests",
+      "tabLabel": "My requests",
+      "uiPattern": "Form & History Console",
+      "boundRoles": [
+        "Employee"
+      ],
+      "primaryCta": "Submit request (Submit)",
+      "tabSelector": "",
+      "panelSelector": ""
+    },
+    {
+      "viewId": "policy-guide",
+      "tabLabel": "Policy & rules guide",
+      "uiPattern": "Reference Panel",
+      "boundRoles": [
+        "Employee"
+      ],
+      "primaryCta": "New request (Create)",
+      "tabSelector": "",
+      "panelSelector": ""
+    }
+  ],
+  "usesEnumCodes": true
+}

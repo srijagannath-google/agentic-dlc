@@ -1,0 +1,23 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: business-licensing-portal-spec-3-5-rbac
+  namespace: business-licensing-portal
+  annotations:
+    dlc.agentic.io/spec-section: "3.5"
+    dlc.agentic.io/roles: "Commercial Buyer, Licensing Staff"
+spec:
+  selector:
+    matchLabels:
+      app: business-licensing-portal-backend
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/health", "/", "/api/*"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["Commercial Buyer"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["Licensing Staff"]

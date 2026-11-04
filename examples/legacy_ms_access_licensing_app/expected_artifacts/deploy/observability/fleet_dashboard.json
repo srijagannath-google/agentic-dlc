@@ -1,0 +1,43 @@
+{
+  "title": "Enterprise Commercial Buyers Licensing & Volume Fee System \u2014 GDC Multi-Cloud & On-Prem Fleet Dashboard",
+  "domainSlug": "business-licensing-portal",
+  "abstractionPlane": "gdc-fleet",
+  "environments": [
+    "on-prem-gdc",
+    "gcp",
+    "aws",
+    "azure"
+  ],
+  "panels": [
+    {
+      "id": "panel-fleet-health",
+      "title": "GDC Fleet Cluster Health by Provider (on-prem-gdc, gcp, aws, azure)",
+      "type": "stat",
+      "metric": "up{job='otel-collector'}"
+    },
+    {
+      "id": "panel-latency-p95",
+      "title": "HTTP P95 Latency Across On-Prem GDC, GCP, AWS & Azure",
+      "type": "timeseries",
+      "metric": "histogram_quantile(0.95, sum(rate(http_server_duration_bucket[5m])) by (le, gdc_cluster_provider))"
+    },
+    {
+      "id": "panel-workflow-transitions",
+      "title": "Spec \u00a73.3 Workflow State Transitions by Capability Group",
+      "type": "timeseries",
+      "metric": "sum(rate(dlc_workflow_transitions_total[5m])) by (from_state, to_state, dlc_capability_group)"
+    },
+    {
+      "id": "panel-config-sync",
+      "title": "GDC Config Sync GitOps Reconciliation Status",
+      "type": "table",
+      "metric": "config_sync_last_sync_timestamp"
+    },
+    {
+      "id": "panel-mesh-mtls",
+      "title": "GDC Cloud Service Mesh STRICT mTLS & RBAC Decisions",
+      "type": "timeseries",
+      "metric": "istio_requests_total{connection_security_policy='mutual_tls'}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "agentic-dlc",
+  "version": "4.2.0",
+  "displayName": "Enterprise Agentic DLC Harness (LLM authors, scripts verify)",
+  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin for legacy-application modernization (SCENARIO_LEGACY_APP) and greenfield requirements documents (SCENARIO_REQUIREMENTS_DOC). The LLM (7 subagents, 10 skills) authors discovery, 5-Pillar spec, stories, architecture & solution design, tests, a runnable target-stack application, and cloud-agnostic OCI containers + Google Distributed Cloud (GDC) Fleet multi-cloud/on-prem KRM manifests, Config Sync GitOps bundles, and OpenTelemetry observability from the user's inputs; scripts only scan, derive, lint, execute and gate.",
+  "author": "Enterprise Agentic Architecture Team",
+  "rules": [
+    "rules/AGENTS.md"
+  ],
+  "skills": [
+    "skills/01-discovery-and-grouping",
+    "skills/02-spec-architect-and-judge",
+    "skills/03-story-and-sprint-planner",
+    "skills/04-solution-architect",
+    "skills/05-test-plan-designer",
+    "skills/06-coding-agent",
+    "skills/07-test-runner-and-healer",
+    "skills/08-container-and-gdc-packager",
+    "skills/09-gdc-fleet-deployer-and-observability",
+    "skills/google-cloud-ui-design"
+  ],
+  "agents": [
+    "agents/discovery-architect.md",
+    "agents/spec-judge.md",
+    "agents/sprint-planner-agent.md",
+    "agents/solution-architect.md",
+    "agents/testing-agent.md",
+    "agents/coding-agent.md",
+    "agents/platform-ops-agent.md"
+  ]
+}

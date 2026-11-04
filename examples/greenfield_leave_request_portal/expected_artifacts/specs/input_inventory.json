@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "4.0",
+  "scannedAtUtc": "2026-10-29T23:52:14Z",
+  "projectRoot": ".",
+  "domainSlug": "employee-leave-exception-request-portal",
+  "domainSlugSource": "primary-document-h1",
+  "primaryRequirementsDoc": "resources/inputs/sample_brd.md",
+  "inputScenario": "SCENARIO_REQUIREMENTS_DOC",
+  "scenarioEvidence": {
+    "legacyArtifactCount": 0,
+    "requirementsDocCount": 1,
+    "legacyWeight": 0,
+    "requirementsWeight": 3,
+    "decisionRule": "majority-by-weight over categorised files under resources/inputs (schema/source=3, query/form/report=2, requirements_doc=3); LOW confidence when zero files, margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
+  },
+  "scenarioConfidence": "HIGH",
+  "includeModernizationEnhancementsInSpec": false,
+  "hasPoliciesOrStatutes": false,
+  "hasUserProvidedDesignReferences": false,
+  "userProvidedDesignReferences": [],
+  "legacyObjectNames": [],
+  "inputFingerprintSha256": "b34dd5c4da8289f9e792d1df0d553667edbbd9e6122f6ccdb68d58202c58e823",
+  "totalFilesScanned": 1,
+  "files": [
+    {
+      "relativePath": "resources/inputs/sample_brd.md",
+      "name": "sample_brd.md",
+      "extension": ".md",
+      "sizeBytes": 4437,
+      "sha256": "e8341e8845277af7a86c9fd5caace523361034ede253cfaa301024f6b5fe6922",
+      "category": "requirements_doc",
+      "scenarioWeight": 3,
+      "categoryReason": "requirements keyword in name or first lines"
+    }
+  ]
+}

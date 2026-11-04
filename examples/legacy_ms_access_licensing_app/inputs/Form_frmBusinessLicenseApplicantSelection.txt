@@ -1,0 +1,375 @@
+VERSION 1.0 CLASS
+BEGIN
+  MultiUse = -1  'True
+END
+Attribute VB_Name = "Form_frmBusinessLicenseApplicantSelection"
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+'------------------------------------------------
+'
+'   Form_Activate
+'
+'------------------------------------------------
+Private Sub Form_Activate()
+
+    EditLicense = False
+    NewLicense = False
+    EditApplicant = False
+    NewApplicant = False
+    
+    Me!cmdSearch.SetFocus
+
+    CheckLicense
+    
+    DoCmd.Maximize
+    Me.ApplicantList.RowSourceType = "Table/Query"
+    Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE (((tblApplicant.Lname) is not null))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+    DoCmd.Requery "ApplicantList"
+   
+End Sub
+
+'------------------------------------------------
+'
+'   ApplicantList_Click
+'
+'------------------------------------------------
+Private Sub ApplicantList_Click()
+    'check for Calendar Year
+    If Me!CalYr = " " Or IsNull(Me!CalYr) Then
+        MsgBox "Enter a Calendar Year in order to continue."
+        Me!CalYr.SetFocus
+        Exit Sub
+    End If
+        
+    CheckLicense
+       
+End Sub
+
+'------------------------------------------------
+'
+'   CalYr_AfterUpdate
+'
+'------------------------------------------------
+Private Sub CalYr_AfterUpdate()
+    CheckLicense
+End Sub
+
+'------------------------------------------------
+'   cmdAddNew_Click
+'
+'   open form frmAddNewApplicant to get applicant info
+'------------------------------------------------
+Private Sub cmdAddNew_Click()
+    DoCmd.OpenForm "frmApplicantInfo"
+End Sub
+
+'------------------------------------------------
+'
+'   cmdEditLicense_Click
+'
+'------------------------------------------------
+Private Sub cmdEditLicense_Click()
+    DoCmd.OpenForm "frmBusinessLicenseApplication", acNormal, "qryEditLicense"
+End Sub
+
+'------------------------------------------------
+'
+'   cmdSearch_Click
+'
+'   updates list of applicants matching the criteria entered
+'   in SearchName and SearchDate
+'------------------------------------------------
+Private Sub cmdSearch_Click()
+    If IsNull(Me.SearchFName) Or Me.SearchFName = "" Then
+        GoTo LastDOBSearch
+        Exit Sub
+    Else
+        Me.ApplicantList.RowSourceType = "Table/Query"
+        Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE (((tblApplicant.FName) =[searchfname]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+        Exit Sub
+    End If
+
+LastDOBSearch:
+     If IsNull(Me.SearchName) Or Me.SearchName = "" Then
+        If IsNull(Me.SearchDate) Or Me.SearchDate = "" Then 'Neither filled in
+           
+            GoTo SSNFEINSearch
+            Exit Sub
+        Else 'Date filled in only
+           
+            Me.ApplicantList.RowSourceType = "Table/Query"
+            Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE (((tblApplicant.DOB) =[searchdate]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+            DoCmd.Requery "ApplicantList"
+            Exit Sub
+        End If
+    Else
+        If IsNull(Me.SearchDate) Or Me.SearchDate = "" Then 'Name filled in only
+         
+            Me.ApplicantList.RowSourceType = "Table/Query"
+            Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[LName]) Like '*' & [SearchName] & '*'))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+            DoCmd.Requery "ApplicantList"
+            Exit Sub
+        End If
+    End If
+    
+    'Both are filled in
+    
+    Me.ApplicantList.RowSourceType = "Table/Query"
+    Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE (((tblApplicant.DOB) =[searchdate]))and ((([tblApplicant].[LName])=[SearchName]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+    DoCmd.Requery "ApplicantList"
+    Exit Sub
+    
+SSNFEINSearch:
+
+    If IsNull(Me.SearchSSN) Or Me.SearchSSN = "" Then
+        If IsNull(Me.SearchFEIN) Or Me.SearchFEIN = "" Then 'neither filled in
+            GoTo BUSINESSSearch
+        Else 'fein filled in
+            Me.ApplicantList.RowSourceType = "Table/Query"
+            Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[FEIN]) = [SearchFEIN]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName]; "
+            DoCmd.Requery "ApplicantList"
+            Exit Sub
+        End If
+    Else 'ssn filled in
+        Me.ApplicantList.RowSourceType = "Table/Query"
+        Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[SSN]) = [SearchSSN]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+        DoCmd.Requery "ApplicantList"
+        Exit Sub
+    End If
+    
+BUSINESSSearch:
+    If IsNull(Me.SearchBusiness) Or Me.SearchBusiness = "" Then
+        GoTo APPLICANTIDSearch
+    Else 'Business Name search filled in
+        Me.ApplicantList.RowSource = "Table/Query"
+        Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[BusinessName]) = [SearchBusiness]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+        DoCmd.Requery "ApplicantList"
+        Exit Sub
+    End If
+APPLICANTIDSearch:
+    If IsNull(Me.cmbApplicantID) Or Me.cmbApplicantID = "" Then  'no criteria filled in
+       GoTo CITYSearch
+    Else
+        Me.ApplicantList.RowSource = "Table/Query"
+         Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[ApplicantID]) = [cmbApplicantID]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+        DoCmd.Requery "ApplicantList"
+        Exit Sub
+    End If
+CITYSearch:
+    If IsNull(Me.cmbCitySearch) Or Me.cmbCitySearch = "" Then  'no criteria filled in
+        GoTo EMAILSearch
+    Else
+        Me.ApplicantList.RowSource = "Table/Query"
+         Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[City]) = [cmbCitySearch]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+        DoCmd.Requery "ApplicantList"
+        Exit Sub
+    End If
+EMAILSearch:
+    If IsNull(Me.cmbEmailSearch) Or Me.cmbEmailSearch = "" Then  'no criteria filled in
+        MsgBox "You must enter criteria to search.", , "Applicant Search"
+        Me.SearchName.SetFocus
+        Exit Sub
+        GoTo EMAILSearch
+    Else
+        Me.ApplicantList.RowSource = "Table/Query"
+         Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE((([tblApplicant].[EMailAddress]) = [cmbEmailSearch]))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+        DoCmd.Requery "ApplicantList"
+        Exit Sub
+    End If
+End Sub
+
+
+'------------------------------------------------
+'
+'   cmdResetSearch
+'
+'   Refreshes full list of applicants in [ApplicantList] field
+'
+'------------------------------------------------
+Private Sub cmdResetSearch_Click()
+    Me.SearchName = ""
+    Me.SearchDate = ""
+    Me.SearchFEIN = ""
+    Me.SearchSSN = ""
+    Me.SearchBusiness = ""
+    Me.SearchFName = ""
+    Me.cmbApplicantID = ""
+    Me.cmbEmailSearch = ""
+    Me.cmbCitySearch = ""
+    Me.ApplicantList.RowSourceType = "Table/Query"
+    Me.ApplicantList.RowSource = "SELECT tblApplicant.ApplicantID, tblApplicant.LName, tblApplicant.FName, tblApplicant.MI, tblApplicant.DOB, tblApplicant.SSN, tblApplicant.BusinessName, tblApplicant.ApplicantType, tblApplicant.FEIN, tblApplicant.Suspended, tblApplicant.UnderInvestigation FROM tblApplicant WHERE (((tblApplicant.Lname) is not null))ORDER BY tblApplicant.Suspended DESC, tblApplicant.UnderInvestigation DESC, tblApplicant.LName, [tblApplicant].[FName];"
+    DoCmd.Requery "ApplicantList"
+    Me.SearchName.SetFocus
+End Sub
+
+'------------------------------------------------
+'
+'   cmdLicense_Click
+'
+'   check to see if applicant already has a license for the
+'   specified calendar year; if not, create a license
+'------------------------------------------------
+Private Sub cmdLicense_Click()
+On Error GoTo errexitsub
+Dim NewLicenseNum
+Dim db As Database
+Dim rs As Recordset
+
+    'check for selection from list of applicants
+    If Me!ApplicantList = " " Or IsNull(Me!ApplicantList) Then
+        MsgBox "Select an applicant in order to continue."
+        Me!ApplicantList.SetFocus
+        Exit Sub
+    End If
+    
+    'check for Calendar Year
+    If Me!CalYr = " " Or IsNull(Me!CalYr) Then
+        MsgBox "Enter a Calendar Year in order to continue."
+        Me!CalYr.SetFocus
+        Exit Sub
+    End If
+   
+    'calculate new license number- TBcynnnnn where cy = Calendar Year and nnnnn = applicant's ID number
+    NewLicenseNum = "TB" & Me!CalYr & Me!ApplicantList
+    
+    'check to see if applicant already has a license for this calendar year
+    Set db = CurrentDb()
+    Set rs = db.OpenRecordset("tbllicense", dbOpenSnapshot)
+    
+    rs.FindFirst "[licenseid] = " & Chr$(34) & NewLicenseNum & Chr$(34)
+    If rs.NoMatch Then
+        'create a license
+        NewLicense = True
+        DoCmd.OpenForm "frmBusinessLicenseApplication"
+    Else
+        'tell user that license exists
+        MsgBox "A 20" & Me!CalYr & " Commercial Buyer's License already exists for this applicant." & Chr$(13) & "Please select another applicant."
+    End If
+    
+       
+errexitsub:
+MsgBox Err.Description
+Exit Sub
+    
+End Sub
+
+'------------------------------------------------
+'
+'   CheckLicense
+'
+'   Check to see if applicant has license for the year selected.
+'   If so, enable 'Create License' command button, else enable
+'   'Edit License' command button.
+'
+'------------------------------------------------
+Private Sub CheckLicense()
+Dim NewLicenseNum
+Dim db As Database
+Dim rs As Recordset
+
+    'calculate new license number
+    '   TBcynnnnn where cy = Calendar Year and nnnnn = applicant's ID number
+    NewLicenseNum = "TB" & Me!CalYr & Me!ApplicantList
+    
+    'check to see if applicant already has a license for this calendar year
+    Set db = CurrentDb()
+    Set rs = db.OpenRecordset("tbllicense", dbOpenSnapshot)
+    
+    rs.FindFirst "[licenseid] = " & Chr$(34) & NewLicenseNum & Chr$(34)
+    If rs.NoMatch Then
+        Me!cmdLicense.Enabled = True
+        Me!cmdEditLicense.Enabled = False
+    Else
+        Me!cmdLicense.Enabled = False
+        Me!cmdEditLicense.Enabled = True
+    End If
+
+End Sub
+
+'------------------------------------------------
+'
+'   cmdEditViewApplicant_Click
+'
+'------------------------------------------------
+Private Sub cmdEditViewApplicant_Click()
+On Error GoTo Err_cmdEditViewApplicant_Click
+    If IsNull(Me.ApplicantList) Or Me.ApplicantList = "" Then
+        MsgBox "You must select an Applicant to continue."
+        Exit Sub
+    End If
+    EditApplicant = True
+    
+    Dim stDocName As String
+    Dim stLinkCriteria As String
+
+    stDocName = "frmApplicantInfo"
+    
+    stLinkCriteria = "[ApplicantID]=" & "'" & Me![ApplicantList] & "'"
+    DoCmd.OpenForm stDocName, , , stLinkCriteria
+
+Exit_cmdEditViewApplicant_Click:
+    Exit Sub
+
+Err_cmdEditViewApplicant_Click:
+    MsgBox Err.Description
+    Resume Exit_cmdEditViewApplicant_Click
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdClose_Click
+'
+'------------------------------------------------
+Private Sub cmdClose_Click()
+   
+    DoCmd.Close
+    
+End Sub
+
+'------------------------------------------------
+'
+'   cmdDeleteApplicant_Click
+'
+'------------------------------------------------
+Private Sub cmdDeleteApplicant_Click()
+On Error GoTo Err_cmdDeleteApplicant_Click
+    If IsNull(Me.ApplicantList) Then
+        MsgBox "You must select an Applicant to continue."
+        Exit Sub
+    Else
+        Dim db As Database
+        Dim rsLicense As Recordset
+        Dim rsApplicant As Recordset
+        Set db = CurrentDb
+        Set rsLicense = db.OpenRecordset("tblLicense", dbOpenDynaset)
+        rsLicense.FindFirst "[ApplicantID] = " & Chr$(34) & Me.ApplicantList & Chr$(34)
+        If rsLicense.NoMatch Then
+            Set rsApplicant = db.OpenRecordset("tblApplicant", dbOpenDynaset)
+            rsApplicant.FindFirst "[ApplicantID] = " & Chr$(34) & Me.ApplicantList & Chr$(34)
+            If MsgBox("Are you sure you would like to delete Applicant #" & rsApplicant![ApplicantID] & "?", vbYesNo) = vbYes Then
+                rsApplicant.Delete
+                rsApplicant.Close
+                MsgBox "Applicant successfully deleted."
+            Else
+                Exit Sub
+            End If
+        Else
+            MsgBox "Applicant has License history and cannot be deleted."
+        End If
+    End If
+Exit_cmdDeleteApplicant_Click:
+        Exit Sub
+    
+Err_cmdDeleteApplicant_Click:
+        MsgBox Err.Description
+        Resume Exit_cmdDeleteApplicant_Click
+        
+End Sub
+    
+ 

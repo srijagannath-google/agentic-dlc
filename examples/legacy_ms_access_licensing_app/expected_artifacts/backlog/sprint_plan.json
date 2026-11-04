@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "4.0",
+  "generatedAtUtc": "2026-11-03T00:01:51Z",
+  "approvalStatus": "PRE_APPROVED_BY_USER",
+  "selectedPlatform": "none",
+  "totalStories": 17,
+  "functionalStories": 10,
+  "technicalStories": 7,
+  "totalStoryPoints": 80.0,
+  "totalAcceptanceCriteria": 91,
+  "storyStatusCounts": {
+    "To Do": 0,
+    "In Progress": 0,
+    "Done": 17
+  },
+  "sprints": [
+    {
+      "name": "Sprint 1",
+      "fullLabel": "Sprint 1",
+      "storyIds": [
+        "US-FUNC-01",
+        "US-FUNC-02",
+        "US-FUNC-03",
+        "US-FUNC-04",
+        "US-TECH-01",
+        "US-TECH-02",
+        "US-TECH-04",
+        "US-TECH-05",
+        "US-TECH-06"
+      ],
+      "totalPoints": 46,
+      "storyStatuses": {
+        "US-FUNC-01": "Done",
+        "US-FUNC-02": "Done",
+        "US-FUNC-03": "Done",
+        "US-FUNC-04": "Done",
+        "US-TECH-01": "Done",
+        "US-TECH-02": "Done",
+        "US-TECH-04": "Done",
+        "US-TECH-05": "Done",
+        "US-TECH-06": "Done"
+      }
+    },
+    {
+      "name": "Sprint 2",
+      "fullLabel": "Sprint 2",
+      "storyIds": [
+        "US-FUNC-05",
+        "US-FUNC-06",
+        "US-FUNC-07",
+        "US-FUNC-08",
+        "US-FUNC-09",
+        "US-FUNC-10",
+        "US-TECH-03"
+      ],
+      "totalPoints": 29,
+      "storyStatuses": {
+        "US-FUNC-05": "Done",
+        "US-FUNC-06": "Done",
+        "US-FUNC-07": "Done",
+        "US-FUNC-08": "Done",
+        "US-FUNC-09": "Done",
+        "US-FUNC-10": "Done",
+        "US-TECH-03": "Done"
+      }
+    }
+  ],
+  "productBacklog": [
+    "US-TECH-07"
+  ],
+  "coverage": {
+    "requirementSources": [
+      "specs/application_spec.md",
+      "specs/.spec_index.json"
+    ],
+    "specRequirementsFound": [
+      "REQ-FUNC-01",
+      "REQ-FUNC-02",
+      "REQ-FUNC-03",
+      "REQ-FUNC-04",
+      "REQ-FUNC-05",
+      "REQ-FUNC-06",
+      "REQ-FUNC-07",
+      "REQ-FUNC-08",
+      "REQ-FUNC-09",
+      "REQ-FUNC-10",
+      "REQ-FUNC-11",
+      "REQ-FUNC-12",
+      "REQ-FUNC-13",
+      "REQ-ENH-01",
+      "REQ-ENH-02",
+      "REQ-ENH-03",
+      "REQ-ENH-04",
+      "REQ-ENH-05",
+      "REQ-SEC-01",
+      "REQ-SEC-02",
+      "REQ-SEC-03",
+      "REQ-SEC-04",
+      "REQ-SEC-05",
+      "REQ-SEC-06",
+      "REQ-A11Y-01",
+      "REQ-A11Y-02",
+      "REQ-A11Y-03",
+      "REQ-A11Y-04",
+      "REQ-A11Y-05",
+      "REQ-A11Y-06",
+      "REQ-UX-01",
+      "REQ-UX-02",
+      "REQ-UX-03",
+      "REQ-UX-04",
+      "REQ-UX-05",
+      "REQ-ARCH-05",
+      "REQ-ARCH-01",
+      "REQ-ARCH-02",
+      "REQ-ARCH-03",
+      "REQ-ARCH-04",
+      "REQ-ARCH-06",
+      "REQ-ARCH-07"
+    ],
+    "coveredRequirements": [
+      "REQ-A11Y-01",
+      "REQ-A11Y-02",
+      "REQ-A11Y-03",
+      "REQ-A11Y-04",
+      "REQ-A11Y-05",
+      "REQ-A11Y-06",
+      "REQ-ARCH-01",
+      "REQ-ARCH-02",
+      "REQ-ARCH-03",
+      "REQ-ARCH-04",
+      "REQ-ARCH-05",
+      "REQ-ARCH-06",
+      "REQ-ARCH-07",
+      "REQ-ENH-01",
+      "REQ-ENH-02",
+      "REQ-ENH-03",
+      "REQ-ENH-04",
+      "REQ-ENH-05",
+      "REQ-FUNC-01",
+      "REQ-FUNC-02",
+      "REQ-FUNC-03",
+      "REQ-FUNC-04",
+      "REQ-FUNC-05",
+      "REQ-FUNC-06",
+      "REQ-FUNC-07",
+      "REQ-FUNC-08",
+      "REQ-FUNC-09",
+      "REQ-FUNC-10",
+      "REQ-FUNC-11",
+      "REQ-FUNC-12",
+      "REQ-FUNC-13",
+      "REQ-SEC-01",
+      "REQ-SEC-02",
+      "REQ-SEC-03",
+      "REQ-SEC-04",
+      "REQ-SEC-05",
+      "REQ-SEC-06",
+      "REQ-UX-01",
+      "REQ-UX-02",
+      "REQ-UX-03",
+      "REQ-UX-04",
+      "REQ-UX-05"
+    ],
+    "missingRequirements": [],
+    "coveragePercent": 100.0,
+    "businessRulesFound": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-05",
+      "BR-06",
+      "BR-07",
+      "BR-08"
+    ],
+    "missingBusinessRules": [],
+    "maxStoryPoints": 8,
+    "oversizedStories": [],
+    "storiesBelowMinAcs": [],
+    "storiesWithoutNegativeAc": [
+      "US-TECH-04",
+      "US-TECH-05"
+    ],
+    "release1Sprints": [
+      "Sprint 1",
+      "Sprint 2"
+    ],
+    "productBacklogStories": 1,
+    "selectedCapabilityGroups": [
+      "ALL"
+    ],
+    "capabilityGroupsStoryCounts": {
+      "GRP-01": 3,
+      "GRP-02": 6,
+      "GRP-03": 1,
+      "SHARED": 7
+    },
+    "allowPartialCoverage": false,
+    "warnings": [
+      "US-TECH-04: no NEGATIVE-tagged acceptance criterion.",
+      "US-TECH-05: no NEGATIVE-tagged acceptance criterion."
+    ],
+    "failures": [],
+    "passed": true
+  }
+}

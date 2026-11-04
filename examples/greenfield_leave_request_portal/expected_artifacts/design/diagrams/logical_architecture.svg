@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 500" width="1320" height="500" font-family="'Google Sans', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+<defs>
+  <marker id="arrowDark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 1 1.5 L 8.5 5 L 1 8.5" fill="none" stroke="#202124" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M 1 1.5 L 8.5 5 L 1 8.5" fill="none" stroke="#D93025" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+    <path d="M 1 1.5 L 8.5 5 L 1 8.5" fill="none" stroke="#F29900" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="1320" height="500" fill="#FFFFFF"/>
+<rect x="16" y="18" width="136" height="464" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="84" y="38" text-anchor="middle" font-size="11" font-weight="500" fill="#3C4043">Business Personas</text>
+<text x="84" y="52" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5F6368">&amp; Actors</text>
+<rect x="24.0" y="66.0" width="120.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(28.5,80.0)"><circle cx="11" cy="12" r="10" fill="#E8F0FE" stroke="#1A73E8" stroke-width="1.5"/><circle cx="11" cy="9.2" r="3.2" fill="#1A73E8"/><path d="M5.5 18.2 C5.5 14.8 16.5 14.8 16.5 18.2" fill="#1A73E8"/></g>
+<text x="52.5" y="89.5" font-size="8.8" font-weight="600" fill="#202124">Employee</text>
+<text x="52.5" y="100.5" font-size="7.3" font-weight="400" fill="#3C4043">Request &amp; Cancel Leave</text>
+<rect x="24.0" y="140.0" width="120.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(28.5,154.0)"><circle cx="11" cy="12" r="10" fill="#E8F0FE" stroke="#1A73E8" stroke-width="1.5"/><circle cx="11" cy="9.2" r="3.2" fill="#1A73E8"/><path d="M5.5 18.2 C5.5 14.8 16.5 14.8 16.5 18.2" fill="#1A73E8"/></g>
+<text x="52.5" y="163.5" font-size="8.8" font-weight="600" fill="#202124">Line Manager</text>
+<text x="52.5" y="174.5" font-size="7.3" font-weight="400" fill="#3C4043">Team Review &amp; Approval</text>
+<rect x="24.0" y="214.0" width="120.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(28.5,228.0)"><circle cx="11" cy="12" r="10" fill="#E8F0FE" stroke="#1A73E8" stroke-width="1.5"/><circle cx="11" cy="9.2" r="3.2" fill="#1A73E8"/><path d="M5.5 18.2 C5.5 14.8 16.5 14.8 16.5 18.2" fill="#1A73E8"/></g>
+<text x="52.5" y="237.5" font-size="8.8" font-weight="600" fill="#202124">HR Administrator</text>
+<text x="52.5" y="248.5" font-size="7.3" font-weight="400" fill="#3C4043">Extended Leave &amp; Poli…</text>
+<rect x="168" y="18" width="1136" height="464" rx="3" fill="#1A73E8" stroke="#1A73E8" stroke-width="2"/>
+<text x="184" y="42" font-size="17" font-weight="500" fill="#FFFFFF">Enterprise Target Architecture — Employee Leave Portal Logical Business Capability View</text>
+<rect x="176" y="54" width="1120" height="420" rx="2" fill="#FFFFFF"/>
+<rect x="196.0" y="118.0" width="122.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(200.5,132.0)"><rect x="2" y="3" width="18" height="16" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><rect x="2" y="3" width="18" height="4.5" rx="1.5" fill="#4285F4"/><rect x="4.5" y="10" width="5.5" height="6.5" rx="1" fill="#34A853"/><rect x="11.5" y="10" width="6" height="2.8" rx="0.8" fill="#FBBC04"/><rect x="11.5" y="13.8" width="6" height="2.7" rx="0.8" fill="#EA4335"/></g>
+<text x="224.5" y="141.5" font-size="8.2" font-weight="600" fill="#202124">Employee Self-Service</text>
+<text x="224.5" y="152.5" font-size="7.3" font-weight="400" fill="#3C4043">Leave Request &amp; Balanc…</text>
+<rect x="196.0" y="196.0" width="122.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(200.5,210.0)"><rect x="2" y="3" width="18" height="16" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><rect x="2" y="3" width="18" height="4.5" rx="1.5" fill="#4285F4"/><rect x="4.5" y="10" width="5.5" height="6.5" rx="1" fill="#34A853"/><rect x="11.5" y="10" width="6" height="2.8" rx="0.8" fill="#FBBC04"/><rect x="11.5" y="13.8" width="6" height="2.7" rx="0.8" fill="#EA4335"/></g>
+<text x="224.5" y="219.5" font-size="8.2" font-weight="600" fill="#202124">Manager Review Queue</text>
+<text x="224.5" y="230.5" font-size="7.3" font-weight="400" fill="#3C4043">Team Calendar &amp; Approv…</text>
+<rect x="196.0" y="274.0" width="122.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(200.5,288.0)"><rect x="2" y="3" width="18" height="16" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><rect x="2" y="3" width="18" height="4.5" rx="1.5" fill="#4285F4"/><rect x="4.5" y="10" width="5.5" height="6.5" rx="1" fill="#34A853"/><rect x="11.5" y="10" width="6" height="2.8" rx="0.8" fill="#FBBC04"/><rect x="11.5" y="13.8" width="6" height="2.7" rx="0.8" fill="#EA4335"/></g>
+<text x="224.5" y="297.5" font-size="8.2" font-weight="600" fill="#202124">HR Oversight Console</text>
+<text x="224.5" y="308.5" font-size="7.3" font-weight="400" fill="#3C4043">Extended Leave &amp; Audits</text>
+<rect x="196.0" y="352.0" width="122.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(200.5,366.0)"><path d="M11 2.5 L19 5.8 L19 11.8 C19 16.5 15.6 19.9 11 21.5 C6.4 19.9 3 16.5 3 11.8 L3 5.8 Z" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.6"/><path d="M11 4.2 L17.3 6.8 L17.3 11.6 C17.3 15.4 14.6 18.2 11 19.6 Z" fill="#4285F4" opacity="0.25"/><path d="M7.8 12.2 L10.1 14.5 L14.6 9.5" fill="none" stroke="#1E8E3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="224.5" y="375.5" font-size="8.2" font-weight="600" fill="#202124">Data Privacy Gateway</text>
+<text x="224.5" y="386.5" font-size="7.3" font-weight="400" fill="#3C4043">PII Masking &amp; Formatti…</text>
+<line x1="144" y1="91.0" x2="182" y2="91.0" stroke="#202124" stroke-width="1.2"/>
+<line x1="144" y1="165.0" x2="182" y2="165.0" stroke="#202124" stroke-width="1.2"/>
+<line x1="144" y1="239.0" x2="182" y2="239.0" stroke="#202124" stroke-width="1.2"/>
+<line x1="182" y1="91.0" x2="182" y2="378.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="144" x2="182" y2="378" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="144" x2="194" y2="144" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="182" y1="222" x2="194" y2="222" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="182" y1="300" x2="194" y2="300" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="182" y1="378" x2="194" y2="378" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="318" y1="144" x2="332" y2="144" stroke="#202124" stroke-width="1.3"/>
+<line x1="318" y1="222" x2="332" y2="222" stroke="#202124" stroke-width="1.3"/>
+<line x1="318" y1="300" x2="332" y2="300" stroke="#202124" stroke-width="1.3"/>
+<line x1="318" y1="378" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>
+<line x1="332" y1="144" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>
+<line x1="332" y1="292" x2="356" y2="292" stroke="#202124" stroke-width="1.3"/>
+<rect x="344" y="96" width="398" height="356" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="364" y="116" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
+<rect x="360" y="112" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
+<rect x="356" y="108" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#5F6368" stroke-width="1.3"/>
+<text x="539" y="126.5" text-anchor="middle" font-size="9.5" font-weight="500" fill="#202124">Core Leave Domain Orchestration &amp; Business Policy Engine</text>
+<rect x="368" y="136" width="342" height="282" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.2"/>
+<text x="539" y="153" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Stateless Workflow, Access Control &amp; Leave Calculation Plane</text>
+<rect x="378" y="162" width="322" height="118" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
+<text x="388" y="177.5" text-anchor="start" font-size="9.0" font-weight="500" fill="#3C4043">Identity, Access &amp; Workflow Orchestration</text>
+<rect x="386.0" y="204.0" width="92.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(390.5,218.0)"><path d="M11 2.5 L19 5.8 L19 11.8 C19 16.5 15.6 19.9 11 21.5 C6.4 19.9 3 16.5 3 11.8 L3 5.8 Z" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.6"/><path d="M11 4.2 L17.3 6.8 L17.3 11.6 C17.3 15.4 14.6 18.2 11 19.6 Z" fill="#4285F4" opacity="0.25"/><path d="M7.8 12.2 L10.1 14.5 L14.6 9.5" fill="none" stroke="#1E8E3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="414.5" y="227.5" font-size="7.8" font-weight="600" fill="#202124">Role-Based Acc…</text>
+<text x="414.5" y="238.5" font-size="7.0" font-weight="400" fill="#3C4043">Persona Authoriz…</text>
+<rect x="484.0" y="204.0" width="94.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(488.5,218.0)"><rect x="2" y="3" width="6.5" height="5" rx="1.2" fill="#4285F4"/><polygon points="15.5,2.5 20.5,6 15.5,9.5 10.5,6" fill="#FBBC04" stroke="#E37400" stroke-width="1"/><rect x="12" y="14.5" width="7.5" height="5.5" rx="1.2" fill="#34A853"/><rect x="2" y="14.5" width="6.5" height="5.5" rx="1.2" fill="#EA4335"/><path d="M8.5 5.8 L10.5 5.8 M15.5 9.5 L15.5 14.5 M10.5 6 L5.2 14.5" fill="none" stroke="#3C4043" stroke-width="1.3"/></g>
+<text x="512.5" y="227.5" font-size="7.8" font-weight="600" fill="#202124">Leave Lifecycle…</text>
+<text x="512.5" y="238.5" font-size="7.0" font-weight="400" fill="#3C4043">Workflow Orchestr…</text>
+<rect x="586" y="180" width="106" height="90" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.1"/>
+<text x="639" y="195" text-anchor="middle" font-size="9.5" font-weight="500" fill="#202124">Separation of Duties</text>
+<rect x="592.0" y="204.0" width="94.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(596.5,218.0)"><path d="M11 2.5 L19 5.8 L19 11.8 C19 16.5 15.6 19.9 11 21.5 C6.4 19.9 3 16.5 3 11.8 L3 5.8 Z" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.6"/><path d="M11 4.2 L17.3 6.8 L17.3 11.6 C17.3 15.4 14.6 18.2 11 19.6 Z" fill="#4285F4" opacity="0.25"/><path d="M7.8 12.2 L10.1 14.5 L14.6 9.5" fill="none" stroke="#1E8E3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="620.5" y="222.5" font-size="8.0" font-weight="600" fill="#202124">No Self-Approval</text>
+<text x="620.5" y="232.0" font-size="7.2" font-weight="400" fill="#3C4043">&amp; Eligibility</text>
+<text x="620.5" y="241.0" font-size="7.0" font-weight="400" fill="#5F6368">Policy Gate</text>
+<line x1="478" y1="230" x2="484" y2="230" stroke="#202124" stroke-width="1.3"/>
+<line x1="578" y1="230" x2="592" y2="230" stroke="#202124" stroke-width="1.3"/>
+<rect x="378" y="290" width="322" height="118" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
+<text x="388" y="305.5" text-anchor="start" font-size="9.0" font-weight="500" fill="#3C4043">Leave Accrual &amp; Business Rules Engine</text>
+<rect x="386.0" y="332.0" width="92.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(390.5,346.0)"><rect x="2.5" y="3" width="17" height="18" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><line x1="6" y1="7.5" x2="16" y2="7.5" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="12" x2="16" y2="12" stroke="#34A853" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="16.5" x2="13" y2="16.5" stroke="#FBBC04" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16.5" r="1.4" fill="#EA4335"/></g>
+<text x="414.5" y="355.5" font-size="7.8" font-weight="600" fill="#202124">Working-Day Ca…</text>
+<text x="414.5" y="366.5" font-size="7.0" font-weight="400" fill="#3C4043">Weekdays &amp; Holid…</text>
+<rect x="484.0" y="332.0" width="94.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(488.5,346.0)"><rect x="2.5" y="3" width="17" height="18" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><line x1="6" y1="7.5" x2="16" y2="7.5" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="12" x2="16" y2="12" stroke="#34A853" stroke-width="2" stroke-linecap="round"/><line x1="6" y1="16.5" x2="13" y2="16.5" stroke="#FBBC04" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16.5" r="1.4" fill="#EA4335"/></g>
+<text x="512.5" y="355.5" font-size="7.8" font-weight="600" fill="#202124">Balance &amp; Overl…</text>
+<text x="512.5" y="366.5" font-size="7.0" font-weight="400" fill="#3C4043">Accrual &amp; Date Ch…</text>
+<rect x="586" y="308" width="106" height="90" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.1"/>
+<text x="639" y="323" text-anchor="middle" font-size="9.5" font-weight="500" fill="#202124">Escalation Gate</text>
+<rect x="592.0" y="332.0" width="94.0" height="52.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(596.5,346.0)"><path d="M11 2.5 L19 5.8 L19 11.8 C19 16.5 15.6 19.9 11 21.5 C6.4 19.9 3 16.5 3 11.8 L3 5.8 Z" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.6"/><path d="M11 4.2 L17.3 6.8 L17.3 11.6 C17.3 15.4 14.6 18.2 11 19.6 Z" fill="#4285F4" opacity="0.25"/><path d="M7.8 12.2 L10.1 14.5 L14.6 9.5" fill="none" stroke="#1E8E3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="620.5" y="350.5" font-size="8.0" font-weight="600" fill="#202124">Extended Leave …</text>
+<text x="620.5" y="360.0" font-size="7.2" font-weight="400" fill="#3C4043">Escalation</text>
+<text x="620.5" y="369.0" font-size="7.0" font-weight="400" fill="#5F6368">Policy Gate</text>
+<line x1="478" y1="358" x2="484" y2="358" stroke="#202124" stroke-width="1.3"/>
+<line x1="578" y1="358" x2="592" y2="358" stroke="#202124" stroke-width="1.3"/>
+<path d="M 432 204 L 432 88 L 146 88" fill="none" stroke="#D93025" stroke-width="1.4" stroke-dasharray="5,4" marker-end="url(#arrowRed)"/>
+<text x="262" y="65" text-anchor="middle" font-size="8.3" font-weight="600" fill="#D93025">Policy Rejection:</text>
+<text x="262" y="74.5" text-anchor="middle" font-size="8.2" font-weight="500" fill="#202124">Unauthorized | Invalid</text>
+<text x="262" y="84" text-anchor="middle" font-size="8.0" font-weight="400" fill="#3C4043">State | Balance Alert</text>
+<rect x="766" y="72" width="516" height="388" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>
+<rect x="778" y="84" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="856" y="101" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Core Business</text>
+<text x="856" y="113" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="792.0" y="124.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(796.5,141.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="820.5" y="150.5" font-size="8.2" font-weight="600" fill="#202124">Leave Request Intake</text>
+<text x="820.5" y="161.5" font-size="7.3" font-weight="400" fill="#3C4043">Drafting &amp; Submission</text>
+<rect x="946" y="84" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1024" y="101" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Core Business</text>
+<text x="1024" y="113" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="960.0" y="124.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(964.5,141.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="988.5" y="150.5" font-size="8.8" font-weight="600" fill="#202124">Balance &amp; Accrual</text>
+<text x="988.5" y="161.5" font-size="7.3" font-weight="400" fill="#3C4043">Entitlement Calculation</text>
+<rect x="1114" y="84" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1192" y="101" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Core Business</text>
+<text x="1192" y="113" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="1128.0" y="124.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(1132.5,141.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="1156.5" y="150.5" font-size="8.8" font-weight="600" fill="#202124">Leave Cancellation</text>
+<text x="1156.5" y="161.5" font-size="7.3" font-weight="400" fill="#3C4043">Withdrawal &amp; Re-Credit</text>
+<rect x="778" y="208" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="856" y="225" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Supporting Business</text>
+<text x="856" y="237" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="792.0" y="248.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(796.5,265.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="820.5" y="274.5" font-size="8.8" font-weight="600" fill="#202124">Managerial Review</text>
+<text x="820.5" y="285.5" font-size="7.8" font-weight="400" fill="#3C4043">Approval &amp; Rejection</text>
+<rect x="946" y="208" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1024" y="225" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Supporting Business</text>
+<text x="1024" y="237" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="960.0" y="248.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(964.5,265.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="988.5" y="274.5" font-size="8.8" font-weight="600" fill="#202124">HR Extended Review</text>
+<text x="988.5" y="285.5" font-size="7.3" font-weight="400" fill="#3C4043">Escalation &amp; Exceptions</text>
+<rect x="1114" y="208" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1192" y="225" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Shared Business</text>
+<text x="1192" y="237" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Capability</text>
+<rect x="1128.0" y="248.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(1132.5,265.0)"><rect x="6" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="10.9" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="15.8" y="1" width="2.2" height="4" fill="#4285F4"/><rect x="1" y="6" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="10.9" width="4" height="2.2" fill="#4285F4"/><rect x="1" y="15.8" width="4" height="2.2" fill="#4285F4"/><rect x="6" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="10.9" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="15.8" y="19" width="2.2" height="4" fill="#FBBC04"/><rect x="19" y="6" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="10.9" width="4" height="2.2" fill="#EA4335"/><rect x="19" y="15.8" width="4" height="2.2" fill="#EA4335"/><path d="M5,5 L19,5 L19,12 L5,12 Z" fill="none" stroke="#4285F4" stroke-width="1.6"/><path d="M5,12 L12,12 L12,19 L5,19 Z" fill="none" stroke="#FBBC04" stroke-width="1.6"/><path d="M12,12 L19,12 L19,19 L12,19 Z" fill="none" stroke="#EA4335" stroke-width="1.6"/><rect x="5" y="5" width="14" height="14" rx="1.5" fill="#FFFFFF" stroke="#4285F4" stroke-width="1.4"/><rect x="8.2" y="8.2" width="7.6" height="7.6" rx="1" fill="none" stroke="#34A853" stroke-width="1.8"/></g>
+<text x="1156.5" y="274.5" font-size="8.2" font-weight="600" fill="#202124">Holiday &amp; Notificatio…</text>
+<text x="1156.5" y="285.5" font-size="7.3" font-weight="400" fill="#3C4043">Corporate Calendar &amp; Al…</text>
+<rect x="778" y="332" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="856" y="349" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Employee &amp;</text>
+<text x="856" y="361" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Balance Store</text>
+<rect x="792.0" y="372.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(796.5,389.0)"><path d="M3 6.5 L8.5 6.5 L10.5 8.5 L19 8.5 L19 18.5 L3 18.5 Z" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><rect x="6" y="11" width="10" height="2" rx="0.8" fill="#4285F4"/><rect x="6" y="14.2" width="7" height="2" rx="0.8" fill="#FBBC04"/></g>
+<text x="820.5" y="398.5" font-size="8.2" font-weight="600" fill="#202124">Employee &amp; Balance St…</text>
+<text x="820.5" y="409.5" font-size="7.3" font-weight="400" fill="#3C4043">Profiles &amp; Entitlements</text>
+<rect x="946" y="332" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1024" y="349" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Leave Request Store</text>
+<text x="1024" y="361" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043"></text>
+<rect x="960.0" y="372.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(964.5,389.0)"><ellipse cx="11" cy="5.5" rx="7.5" ry="2.8" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><path d="M3.5 5.5 L3.5 11.5 C3.5 13.1 6.9 14.3 11 14.3 C15.1 14.3 18.5 13.1 18.5 11.5 L18.5 5.5" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><path d="M3.5 11.5 L3.5 17.5 C3.5 19.1 6.9 20.3 11 20.3 C15.1 20.3 18.5 19.1 18.5 17.5 L18.5 11.5" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><circle cx="15" cy="10.2" r="1.2" fill="#34A853"/><circle cx="15" cy="16.2" r="1.2" fill="#34A853"/></g>
+<text x="988.5" y="398.5" font-size="8.2" font-weight="600" fill="#202124">Leave Request Store</text>
+<text x="988.5" y="409.5" font-size="7.3" font-weight="400" fill="#3C4043">Requests &amp; Leave Types</text>
+<rect x="1114" y="332" width="156" height="114" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>
+<text x="1192" y="349" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">Compliance Audit &amp;</text>
+<text x="1192" y="361" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">Document Archive</text>
+<rect x="1128.0" y="372.0" width="128.0" height="58.0" rx="4" fill="#FFFFFF" stroke="#3C4043" stroke-width="1.25"/>
+<g transform="translate(1132.5,389.0)"><ellipse cx="11" cy="5.5" rx="7.5" ry="2.8" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><path d="M3.5 5.5 L3.5 11.5 C3.5 13.1 6.9 14.3 11 14.3 C15.1 14.3 18.5 13.1 18.5 11.5 L18.5 5.5" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><path d="M3.5 11.5 L3.5 17.5 C3.5 19.1 6.9 20.3 11 20.3 C15.1 20.3 18.5 19.1 18.5 17.5 L18.5 11.5" fill="#E8F0FE" stroke="#1967D2" stroke-width="1.5"/><circle cx="15" cy="10.2" r="1.2" fill="#34A853"/><circle cx="15" cy="16.2" r="1.2" fill="#34A853"/></g>
+<text x="1156.5" y="398.5" font-size="8.2" font-weight="600" fill="#202124">Audit &amp; Calendar Store</text>
+<text x="1156.5" y="409.5" font-size="7.3" font-weight="400" fill="#3C4043">Immutable History &amp; Hol…</text>
+<line x1="710" y1="292" x2="750" y2="292" stroke="#F29900" stroke-width="1.6"/>
+<line x1="750" y1="153" x2="750" y2="401" stroke="#F29900" stroke-width="1.6"/>
+<line x1="750" y1="153" x2="790" y2="153" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+<line x1="750" y1="277" x2="790" y2="277" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+<line x1="750" y1="401" x2="790" y2="401" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
+</svg>

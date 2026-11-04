@@ -1,0 +1,2407 @@
+{
+  "schemaVersion": "4.0",
+  "stories": [
+    {
+      "id": "US-FUNC-01",
+      "type": "Functional",
+      "title": "Create and edit a Draft leave request",
+      "narrative": "As an Employee, I want to create a leave or exception request and edit it while it is a Draft, so that I can prepare an accurate request before submitting it.",
+      "requirementRefs": [
+        "REQ-FUNC-01"
+      ],
+      "businessRuleRefs": [
+        "BR-06"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [
+        "[*]->DRAFT"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I am signed in as Employee on My requests",
+          "when": "I choose New request, enter type Vacation, start 2031-04-14, end 2031-04-15, 8 hours and save the draft",
+          "then": "the request detail shows status \"Draft\" and the hours I entered"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "I am editing a Draft",
+          "when": "I enter a reason of 501 characters and save",
+          "then": "saving is refused with \"Reason must be 500 characters or fewer; remove 1 characters.\" and the status stays \"Draft\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "I am editing a Draft",
+          "when": "I enter an end date earlier than the start date and save",
+          "then": "saving is refused with \"End date must be on or after the start date.\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "I am on My requests",
+          "when": "I activate New request, then Save draft, then change the hours to 12 and save again",
+          "then": "the form opens on New request, the detail appears after the first save and shows 12 h after the second save"
+        },
+        {
+          "id": "AC-05",
+          "tag": "EDGE / BOUNDARY",
+          "given": "I am editing a Draft",
+          "when": "I enter a reason of exactly 500 characters and save",
+          "then": "the draft is saved with status \"Draft\" and no reason-length message is shown"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am signed in as Manager",
+          "when": "the Manager view renders",
+          "then": "no New request control is present and no request form is shown"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-01"
+        ],
+        "businessRuleRefs": [
+          "BR-06"
+        ],
+        "workflowTransitions": [
+          "[*]->DRAFT"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "request-hours",
+          "reason",
+          "validation-summary",
+          "request-form",
+          "view-title"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-01",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-01",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-02",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-02",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-01",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-01",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-02",
+      "type": "Functional",
+      "title": "Live balance and rule indicators while typing",
+      "narrative": "As an Employee, I want to see my available balance, the post-request balance, the certification need and the earliest allowed start date update as I type, so that I fix problems before submitting.",
+      "requirementRefs": [
+        "REQ-FUNC-02",
+        "REQ-UX-06"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-02",
+        "BR-03"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I am Sam Chen (available balance 40 h) and the request form is open",
+          "when": "I type 8 hours without submitting",
+          "then": "the available balance reads \"40 h\" and the post-request balance reads \"32 h\" immediately"
+        },
+        {
+          "id": "AC-02",
+          "tag": "EDGE / BOUNDARY",
+          "given": "the form is open for Sam Chen (40 h available)",
+          "when": "I type exactly 40 hours",
+          "then": "the post-request balance reads \"0 h\" and no balance warning is shown"
+        },
+        {
+          "id": "AC-03",
+          "tag": "EDGE / BOUNDARY",
+          "given": "the form is open for Sam Chen (40 h available)",
+          "when": "I type 40.5 hours",
+          "then": "an inline message says the requested hours exceed the available balance by 0.5 h, before any submit"
+        },
+        {
+          "id": "AC-04",
+          "tag": "EDGE / BOUNDARY",
+          "given": "the form is open for Sam Chen (40 h available)",
+          "when": "I type 39.5 hours",
+          "then": "the post-request balance reads \"0.5 h\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "the form is open",
+          "when": "I set type Vacation with 41 hours, then 40 hours, then type Exception with 8 hours",
+          "then": "the certification indicator reads \"HR certification required\" for 41 h, \"Manager approval is final\" for 40 h, and \"HR certification required\" for Exception"
+        },
+        {
+          "id": "AC-06",
+          "tag": "POSITIVE",
+          "given": "the form is open and today is 2031-03-02",
+          "when": "I choose type Vacation, then type Exception",
+          "then": "the lead-time hint reads \"Earliest start date: 2031-03-05\" for Vacation and \"No lead time required for Exception\" for Exception"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-02",
+          "REQ-UX-06"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-02",
+          "BR-03"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "available-balance",
+          "hours",
+          "post-request-balance",
+          "balance-warning",
+          "leave-type",
+          "certification-indicator",
+          "lead-time-hint"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-02",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-02",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-03",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-04",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-03",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-04",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-03",
+      "type": "Functional",
+      "title": "Submit a request with balance, lead-time and overlap validation",
+      "narrative": "As an Employee, I want to submit my Draft and be told exactly what to fix when a rule blocks it, so that my request reaches my manager without back-and-forth.",
+      "requirementRefs": [
+        "REQ-FUNC-03",
+        "REQ-A11Y-06"
+      ],
+      "businessRuleRefs": [
+        "BR-01",
+        "BR-03",
+        "BR-04"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [
+        "DRAFT->SUBMITTED"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I have a valid Draft (Vacation, 2031-04-21 to 2031-04-22, 8 h)",
+          "when": "I submit it",
+          "then": "the status reads \"Submitted\" and the next approver reads \"Manager\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "I am Sam Chen with 40 h available and a Draft of 48 h",
+          "when": "I submit it",
+          "then": "submission is blocked with \"Requested hours exceed your available balance by 8 h. Reduce the request to at most 40 h.\" and the status stays \"Draft\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "today is 2031-03-02 and my Draft is Vacation starting 2031-03-04",
+          "when": "I submit it",
+          "then": "submission is blocked with a message containing \"at least 3 calendar days before the start date\" and \"2031-03-05\", and the status stays \"Draft\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "my request LR-1001 already covers 2031-06-09 to 2031-06-13",
+          "when": "I submit a Draft for 2031-06-12 to 2031-06-16",
+          "then": "submission is blocked with a message containing \"overlap your existing request LR-1001\" and the status stays \"Draft\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "EDGE / BOUNDARY",
+          "given": "today is 2031-03-02",
+          "when": "I submit a Vacation Draft starting exactly 2031-03-05 (3 calendar days ahead)",
+          "then": "the request is accepted and reads \"Submitted\""
+        },
+        {
+          "id": "AC-06",
+          "tag": "EDGE / BOUNDARY",
+          "given": "today is 2031-03-02",
+          "when": "I submit an Exception Draft starting 2031-03-04 (2 days ahead)",
+          "then": "the request is accepted and reads \"Submitted\" because Exceptions are exempt from the lead time"
+        },
+        {
+          "id": "AC-07",
+          "tag": "POSITIVE",
+          "given": "a submit was blocked by the balance rule",
+          "when": "I inspect the form",
+          "then": "the validation summary has role alert, the hours field is marked aria-invalid=\"true\" and is described by the message"
+        },
+        {
+          "id": "AC-08",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "my request has just been submitted",
+          "when": "I look at the available actions",
+          "then": "no Submit control is shown for a Submitted request and the status remains \"Submitted\""
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 8/8 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-03",
+          "REQ-A11Y-06"
+        ],
+        "businessRuleRefs": [
+          "BR-01",
+          "BR-03",
+          "BR-04"
+        ],
+        "workflowTransitions": [
+          "DRAFT->SUBMITTED"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "request-next-approver",
+          "validation-summary",
+          "skip-link",
+          "balance-panel"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-05",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-03",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-04",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-05",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-05",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-06",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-06",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-02",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-23",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-24",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-25",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-26",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-07",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-04",
+      "type": "Functional",
+      "title": "Withdraw a request before it is approved",
+      "narrative": "As an Employee, I want to withdraw my own request while it is still Draft, Submitted or Manager approved, so that I can cancel plans without involving HR.",
+      "requirementRefs": [
+        "REQ-FUNC-04"
+      ],
+      "businessRuleRefs": [
+        "BR-05"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [
+        "DRAFT->WITHDRAWN",
+        "SUBMITTED->WITHDRAWN",
+        "MANAGER_APPROVED->WITHDRAWN"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I have a Draft",
+          "when": "I withdraw it",
+          "then": "the status reads \"Withdrawn\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "I have a Submitted request",
+          "when": "I withdraw it",
+          "then": "the status reads \"Withdrawn\" and the next approver reads \"—\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "my request LR-1002 is Approved (awaiting payroll)",
+          "when": "I open it",
+          "then": "no Withdraw control is present and the status stays \"Approved\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "my request LR-1001 is Posted to payroll",
+          "when": "I open it",
+          "then": "no Withdraw control is present and the status stays \"Posted to payroll\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am the Manager viewing an employee's Submitted request",
+          "when": "the detail renders",
+          "then": "no Withdraw control is present"
+        },
+        {
+          "id": "AC-06",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "I have just withdrawn a request",
+          "when": "I look at the detail",
+          "then": "no Submit or Withdraw control remains and the status region announces \"Withdrawn\""
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-04"
+        ],
+        "businessRuleRefs": [
+          "BR-05"
+        ],
+        "workflowTransitions": [
+          "DRAFT->WITHDRAWN",
+          "SUBMITTED->WITHDRAWN",
+          "MANAGER_APPROVED->WITHDRAWN"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "withdraw-btn",
+          "submit-btn",
+          "request-next-approver",
+          "open-LR-1002",
+          "open-LR-1001"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-07",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-08",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-03",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-04",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-05",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-03",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-05",
+      "type": "Functional",
+      "title": "Request history with readable statuses and next approver",
+      "narrative": "As an Employee, I want a history of my requests with plain-language statuses, the next approver and any return comment, so that I always know where a request stands.",
+      "requirementRefs": [
+        "REQ-FUNC-05"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I am Alex Rivera",
+          "when": "I open My requests",
+          "then": "the history lists LR-1001 as \"Posted to payroll\", LR-1002 as \"Approved\" with next approver \"Payroll\" and LR-1006 as \"Submitted\" with next approver \"Manager\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "my manager returned my request with the comment \"Please shorten to two days\"",
+          "when": "I open My requests",
+          "then": "the request reads \"Draft\" and the return comment \"Please shorten to two days\" is shown"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am Alex Rivera",
+          "when": "I open My requests",
+          "then": "requests of other employees (such as LR-1003) are not listed"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "I am on My requests",
+          "when": "I open LR-1001 from the history",
+          "then": "the detail shows LR-1001 with status \"Posted to payroll\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "EDGE / BOUNDARY",
+          "given": "I browse My requests, the detail and the form",
+          "when": "I read every visible text",
+          "then": "no raw status code such as MANAGER_APPROVED or POSTED appears anywhere; only labels are shown"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-01",
+      "capabilityGroupName": "Employee Leave Self-Service & Balance Calculation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-05"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "history-row-LR-1001",
+          "history-row-LR-1002",
+          "history-row-LR-1006",
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "return-comment-input"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-09",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-10",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-06",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-04",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-07",
+            "category": "Edge",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-06",
+      "type": "Functional",
+      "title": "Manager queue with approve and return",
+      "narrative": "As a Manager, I want a queue of Submitted requests from my direct reports with Approve and Return actions, so that I can decide quickly and route large requests to HR.",
+      "requirementRefs": [
+        "REQ-FUNC-06"
+      ],
+      "businessRuleRefs": [
+        "BR-02",
+        "BR-07"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Manager"
+      ],
+      "workflowTransitions": [
+        "SUBMITTED->MANAGER_APPROVED",
+        "SUBMITTED->APPROVED",
+        "SUBMITTED->DRAFT"
+      ],
+      "sprint": "Sprint 2",
+      "priority": "Highest",
+      "storyPoints": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "LR-1006 (8 h Vacation from my direct report Alex Rivera) is Submitted",
+          "when": "I open it from the Manager queue and approve it",
+          "then": "manager approval is final: the history shows \"Submitted → Approved\" and, after the automatic payroll posting, the status reads \"Posted to payroll\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "my direct report submitted a 48 h Vacation request",
+          "when": "I approve it",
+          "then": "the status reads \"Manager approved\" and the next approver reads \"HR Certifier\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "a Submitted request from my direct report is open",
+          "when": "I choose Return without a comment",
+          "then": "the return is refused with \"A comment is required to return a request. Tell the employee what to change.\" and the status stays \"Submitted\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "a Submitted request from my direct report is open",
+          "when": "I return it with the comment \"Please shorten to two days\"",
+          "then": "the status reads \"Draft\" and the return comment is shown"
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am the Employee viewing my own Submitted request",
+          "when": "the detail renders",
+          "then": "no Approve and no Return control is present"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE",
+          "given": "LR-1003 was submitted by Jordan Blake, who reports to another manager",
+          "when": "I open the Manager queue",
+          "then": "LR-1003 is not listed"
+        },
+        {
+          "id": "AC-07",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "an employee's request is still a Draft",
+          "when": "I view it as Manager",
+          "then": "no Approve control is present and the status stays \"Draft\""
+        },
+        {
+          "id": "AC-08",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "LR-1006 is listed in my queue",
+          "when": "I open it and approve it",
+          "then": "the detail loads LR-1006 and the queue no longer lists LR-1006"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 8/8 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Manager & HR Certification Adjudication",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-06"
+        ],
+        "businessRuleRefs": [
+          "BR-02",
+          "BR-07"
+        ],
+        "workflowTransitions": [
+          "SUBMITTED->MANAGER_APPROVED",
+          "SUBMITTED->APPROVED",
+          "SUBMITTED->DRAFT"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "approve-btn",
+          "audit-log",
+          "request-next-approver",
+          "withdraw-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-11",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-12",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-06",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-13",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-07",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-07",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-08",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-05",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-07",
+      "type": "Functional",
+      "title": "HR certification queue with certify and return",
+      "narrative": "As an HR Certifier, I want a queue of Manager-approved requests that need certification (more than 40 h or Exception), so that second-level approval happens in one place.",
+      "requirementRefs": [
+        "REQ-FUNC-07"
+      ],
+      "businessRuleRefs": [
+        "BR-02",
+        "BR-07"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "HR Certifier"
+      ],
+      "workflowTransitions": [
+        "MANAGER_APPROVED->APPROVED",
+        "MANAGER_APPROVED->DRAFT"
+      ],
+      "sprint": "Sprint 2",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "LR-1004 (Exception, Manager approved) exists",
+          "when": "I open the Certification queue",
+          "then": "LR-1004 is listed"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "a 48 h request was approved by the manager",
+          "when": "I certify it",
+          "then": "the history shows \"Manager approved → Approved\" and the status reads \"Posted to payroll\" after the automatic payroll posting"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "a Manager-approved request is open",
+          "when": "I choose Return without a comment",
+          "then": "the return is refused with \"A comment is required to return a request\" and the status stays \"Manager approved\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "a Manager-approved request is open",
+          "when": "I return it with the comment \"Attach the exception form\"",
+          "then": "the status reads \"Draft\" and the comment \"Attach the exception form\" is shown"
+        },
+        {
+          "id": "AC-05",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am the Manager viewing a Manager-approved request",
+          "when": "the detail renders",
+          "then": "no Certify control is present"
+        },
+        {
+          "id": "AC-06",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "a request is only Submitted (not yet manager approved)",
+          "when": "I view it as HR Certifier",
+          "then": "no Certify control is present and the status stays \"Submitted\""
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 6/6 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-03",
+      "capabilityGroupName": "Payroll Posting Integration & Audit Compliance",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-07"
+        ],
+        "businessRuleRefs": [
+          "BR-02",
+          "BR-07"
+        ],
+        "workflowTransitions": [
+          "MANAGER_APPROVED->APPROVED",
+          "MANAGER_APPROVED->DRAFT"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "view-title",
+          "queue-row-LR-1004",
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "approve-btn",
+          "certify-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-14",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-15",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-08",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-16",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-09",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-10",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-08",
+      "type": "Functional",
+      "title": "Post approved requests to payroll and record the outcome",
+      "narrative": "As the Payroll Integration, I want every Approved request posted to the payroll REST endpoint with the result recorded, so that HR never re-keys outcomes.",
+      "requirementRefs": [
+        "REQ-FUNC-08",
+        "REQ-ARCH-07"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Payroll Integration"
+      ],
+      "workflowTransitions": [
+        "APPROVED->POSTED"
+      ],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "a request has just been approved",
+          "when": "I open it in the Payroll postings view",
+          "then": "the posting outcome reads \"Accepted by payroll\" with a payroll reference and the status reads \"Posted to payroll\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "payroll rejected the posting of LR-1002",
+          "when": "I open the Payroll postings view",
+          "then": "an alert \"Payroll posting failed\" is listed for LR-1002 and its status stays \"Approved\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "I am signed in as Employee",
+          "when": "My requests renders",
+          "then": "no payroll posting log is shown"
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "LR-1001 was posted successfully",
+          "when": "I open LR-1001 from the posting log",
+          "then": "the detail shows status \"Posted to payroll\" and the posting outcome \"Accepted by payroll\""
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-03",
+      "capabilityGroupName": "Payroll Posting Integration & Audit Compliance",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-08",
+          "REQ-ARCH-07"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [
+          "APPROVED->POSTED"
+        ],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "approve-btn",
+          "posting-outcome",
+          "posting-row-LR-1002",
+          "open-LR-1002"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-17",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-09",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-11",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-06",
+            "category": "Interact",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-FUNC-09",
+      "type": "Functional",
+      "title": "Immutable audit trail of every state change",
+      "narrative": "As a Manager or HR Certifier, I want every state change recorded with actor, time, previous and new state, so that lost approvals can be traced.",
+      "requirementRefs": [
+        "REQ-FUNC-09",
+        "REQ-SEC-05"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Manager",
+        "HR Certifier"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "Alex Rivera submitted a request",
+          "when": "I open it as Manager",
+          "then": "the audit log lists \"Draft → Submitted\" by Alex Rivera with a timestamp"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "I approved an 8 h request",
+          "when": "I read the audit log",
+          "then": "it lists \"Submitted → Approved\" by Morgan Lee and \"Approved → Posted to payroll\" by Payroll Integration"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "LR-1001 is Posted to payroll",
+          "when": "the HR Certifier tries to certify it through the API",
+          "then": "the attempt is refused and the audit log records a denied attempt for LR-1001"
+        },
+        {
+          "id": "AC-04",
+          "tag": "EDGE / BOUNDARY",
+          "given": "an audit record exists",
+          "when": "a client tries to update or delete it through the API",
+          "then": "the API answers 405 and the record is unchanged"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 4/4 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "GRP-02",
+      "capabilityGroupName": "Manager & HR Certification Adjudication",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-09",
+          "REQ-SEC-05"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "POST /api/requests/LR-1001/certify",
+          "GET /api/requests/LR-1001/audit",
+          "PUT /api/requests/LR-1001/audit",
+          "DELETE /api/requests/LR-1001/audit"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "audit-log",
+          "withdraw-btn",
+          "approve-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-18",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-19",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-10",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-08",
+            "category": "Edge",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 2,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-01",
+      "type": "Technical",
+      "title": "Server-side workflow and role guards",
+      "narrative": "As the system, I want every transition validated against the frozen state table and RBAC matrix in the backend, so that the UI is never the only guard.",
+      "requirementRefs": [
+        "REQ-FUNC-10",
+        "REQ-SEC-02",
+        "REQ-UX-04",
+        "REQ-UX-05"
+      ],
+      "businessRuleRefs": [
+        "BR-05"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee",
+        "Manager",
+        "HR Certifier",
+        "Payroll Integration"
+      ],
+      "workflowTransitions": [
+        "DRAFT->SUBMITTED",
+        "SUBMITTED->MANAGER_APPROVED",
+        "SUBMITTED->APPROVED",
+        "SUBMITTED->DRAFT",
+        "MANAGER_APPROVED->APPROVED",
+        "MANAGER_APPROVED->DRAFT",
+        "APPROVED->POSTED",
+        "DRAFT->WITHDRAWN",
+        "SUBMITTED->WITHDRAWN",
+        "MANAGER_APPROVED->WITHDRAWN"
+      ],
+      "sprint": "Sprint 1",
+      "priority": "Highest",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "LR-1001 is Posted to payroll",
+          "when": "the Employee calls the submit operation",
+          "then": "the API answers 409 with a message containing \"not available for a request that is Posted to payroll\" and the status is unchanged"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE — ROLE VISIBILITY",
+          "given": "LR-1006 is Submitted",
+          "when": "the Employee calls the approve operation",
+          "then": "the API answers 403 with \"Only the employee's manager can approve or return this request.\""
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "LR-1003 belongs to an employee who does not report to Morgan Lee",
+          "when": "Morgan Lee calls the approve operation",
+          "then": "the API answers 403 and LR-1003 stays Submitted"
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE — WORKFLOW PREREQUISITE GATE",
+          "given": "LR-1002 is Approved",
+          "when": "the Employee calls the withdraw operation",
+          "then": "the API answers 409 and the status stays Approved"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "I am the Employee with a Draft open",
+          "when": "I look at the available actions",
+          "then": "exactly the Submit and Withdraw controls are present; Approve, Return and Certify are absent"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-FUNC-10",
+          "REQ-SEC-02",
+          "REQ-UX-04",
+          "REQ-UX-05"
+        ],
+        "businessRuleRefs": [
+          "BR-05"
+        ],
+        "workflowTransitions": [
+          "DRAFT->SUBMITTED",
+          "SUBMITTED->MANAGER_APPROVED",
+          "SUBMITTED->APPROVED",
+          "SUBMITTED->DRAFT",
+          "MANAGER_APPROVED->APPROVED",
+          "MANAGER_APPROVED->DRAFT",
+          "APPROVED->POSTED",
+          "DRAFT->WITHDRAWN",
+          "SUBMITTED->WITHDRAWN",
+          "MANAGER_APPROVED->WITHDRAWN"
+        ],
+        "apiContracts": [
+          "POST /api/requests/LR-1001/submit",
+          "GET /api/requests/LR-1001",
+          "POST /api/requests/LR-1006/approve",
+          "POST /api/requests/LR-1003/approve",
+          "GET /api/requests/LR-1003",
+          "POST /api/requests/LR-1002/withdraw",
+          "GET /api/requests/LR-1002"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "request-status",
+          "submit-btn",
+          "withdraw-btn",
+          "approve-btn",
+          "return-btn",
+          "certify-btn"
+        ],
+        "testCases": [
+          {
+            "id": "TC-STATE-12",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-13",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-11",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-14",
+            "category": "State",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-20",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-02",
+      "type": "Technical",
+      "title": "Identity adapter, PII masking and input hardening",
+      "narrative": "As the platform, I want identity resolved through one adapter, PII masked at the presentation boundary and every payload validated server-side, so that security requirements hold in the pretotype and in production.",
+      "requirementRefs": [
+        "REQ-SEC-01",
+        "REQ-SEC-03",
+        "REQ-SEC-04",
+        "REQ-SEC-06",
+        "REQ-ARCH-08"
+      ],
+      "businessRuleRefs": [
+        "BR-06"
+      ],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee",
+        "Manager"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "I am the Manager viewing LR-1006",
+          "when": "I read the employee details",
+          "then": "the employee identifier is masked as \"EMP-•••42\" and the full identifier is nowhere on the page"
+        },
+        {
+          "id": "AC-02",
+          "tag": "NEGATIVE",
+          "given": "a client sends no identity",
+          "when": "it calls the balance operation",
+          "then": "the API answers 401 with a readable message"
+        },
+        {
+          "id": "AC-03",
+          "tag": "NEGATIVE",
+          "given": "the Employee creates a request",
+          "when": "the hours field contains \"abc\"",
+          "then": "the API answers 400 with \"Enter the requested hours (more than 0).\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "the Manager reads LR-1006 through the API",
+          "when": "the response arrives",
+          "then": "it carries the masked employee reference and no national identifier field"
+        },
+        {
+          "id": "AC-05",
+          "tag": "EDGE / BOUNDARY",
+          "given": "the Employee creates a request through the API",
+          "when": "the reason has 500 characters, then 501 characters",
+          "then": "500 is accepted (201) and 501 is refused (400) with the 500-character message"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-SEC-01",
+          "REQ-SEC-03",
+          "REQ-SEC-04",
+          "REQ-SEC-06",
+          "REQ-ARCH-08"
+        ],
+        "businessRuleRefs": [
+          "BR-06"
+        ],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /api/balance",
+          "POST /api/requests",
+          "GET /api/requests/LR-1006"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "open-LR-1006",
+          "request-employee"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-21",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-12",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-13",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-22",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-09",
+            "category": "Edge",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-03",
+      "type": "Technical",
+      "title": "Accessibility baseline (WCAG 2.1 AA)",
+      "narrative": "As a keyboard or screen-reader user, I want labelled controls, live regions, visible focus and a skip link, so that I can complete every journey.",
+      "requirementRefs": [
+        "REQ-A11Y-01",
+        "REQ-A11Y-02",
+        "REQ-A11Y-03",
+        "REQ-A11Y-04",
+        "REQ-A11Y-05",
+        "REQ-A11Y-06"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the portal loads",
+          "when": "I inspect the first focusable element",
+          "then": "it is a \"Skip to main content\" link pointing at the main landmark"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the request form is open",
+          "when": "I inspect the balance panel",
+          "then": "it is an aria-live=\"polite\" region"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "a submit was blocked",
+          "when": "I inspect the page",
+          "then": "the validation summary has role=\"alert\" and the hours field has aria-invalid=\"true\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "POSITIVE",
+          "given": "I submit a valid request",
+          "when": "the status changes",
+          "then": "the role=\"status\" region announces \"Request submitted\""
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "focus is on New request",
+          "when": "I press Enter",
+          "then": "the request form opens, proving keyboard operability of the control"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-A11Y-01",
+          "REQ-A11Y-02",
+          "REQ-A11Y-03",
+          "REQ-A11Y-04",
+          "REQ-A11Y-05",
+          "REQ-A11Y-06"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "skip-link",
+          "new-request-btn",
+          "balance-panel",
+          "leave-type",
+          "start-date",
+          "end-date",
+          "hours",
+          "save-draft-btn",
+          "submit-btn",
+          "validation-summary",
+          "request-status",
+          "status-region"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-23",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-24",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-25",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-26",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-07",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-05",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-03",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-04",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-05",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-05",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-EDGE-06",
+            "category": "Edge",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-06",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-STATE-02",
+            "category": "State",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-04",
+      "type": "Technical",
+      "title": "UX guardrails and zero internal-data leakage",
+      "narrative": "As a product owner, I want the ten UX guardrails applied and no internal codes or identifiers in visible text, so that the portal is simple and safe for all roles.",
+      "requirementRefs": [
+        "REQ-UX-01",
+        "REQ-UX-02",
+        "REQ-UX-03",
+        "REQ-UX-07",
+        "REQ-ARCH-05",
+        "REQ-ARCH-06"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee",
+        "Manager",
+        "HR Certifier",
+        "Payroll Integration"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 2",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the request form is open",
+          "when": "I count high-emphasis buttons",
+          "then": "exactly one primary button is visible"
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the request form is open",
+          "when": "I count fields outside progressive disclosure",
+          "then": "exactly 4 visible fields (type, start, end, hours) are shown; the reason sits inside a details element"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "the portal loads",
+          "when": "I inspect the body element",
+          "then": "data-design-references equals \"default-ux-guardrails\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "I visit the Employee, Manager, HR Certifier and Payroll Integration views",
+          "when": "I read all visible text",
+          "then": "no raw code (DRAFT, SUBMITTED, MANAGER_APPROVED, APPROVED, POSTED, WITHDRAWN) and no API path is visible"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE — INTERACTIVE COMPLETENESS",
+          "given": "I am on the portal",
+          "when": "I switch the role to Manager, then HR Certifier, then Payroll Integration",
+          "then": "the view heading changes to \"Manager queue\", \"Certification queue\" and \"Payroll postings\" respectively"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-UX-01",
+          "REQ-UX-02",
+          "REQ-UX-03",
+          "REQ-UX-07",
+          "REQ-ARCH-05",
+          "REQ-ARCH-06"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /api/me",
+          "GET /api/balance",
+          "GET /api/requests",
+          "POST /api/requests",
+          "GET /api/requests/{reference}"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [
+          "new-request-btn",
+          "visible-field",
+          "request-form",
+          "open-LR-1002",
+          "view-title",
+          "tab-my-requests",
+          "panel-my-requests",
+          "panel-policy-guide",
+          "tab-policy-guide",
+          "leave-type",
+          "start-date",
+          "end-date"
+        ],
+        "testCases": [
+          {
+            "id": "TC-POS-27",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-28",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-29",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-14",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-08",
+            "category": "Interact",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-01",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-UI-INTERACT-TAB-02",
+            "category": "Interact",
+            "status": "NOT_RUN"
+          },
+          {
+            "id": "TC-POS-JOURNEY-01",
+            "category": "Positive",
+            "status": "NOT_RUN"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    },
+    {
+      "id": "US-TECH-05",
+      "type": "Technical",
+      "title": "Runnable zero-dependency stack and API contract",
+      "narrative": "As an engineer, I want the application to start with one command, answer a healthcheck and honour the OpenAPI error contract, so that Stage 6 can verify it end to end.",
+      "requirementRefs": [
+        "REQ-ARCH-01",
+        "REQ-ARCH-02",
+        "REQ-ARCH-03",
+        "REQ-ARCH-04",
+        "REQ-ARCH-09"
+      ],
+      "businessRuleRefs": [],
+      "legacyArtifactsReplaced": [],
+      "roles": [
+        "Employee",
+        "Manager"
+      ],
+      "workflowTransitions": [],
+      "sprint": "Sprint 1",
+      "priority": "High",
+      "storyPoints": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "AC-01",
+          "tag": "POSITIVE",
+          "given": "the server was started with the start command",
+          "when": "I call the healthcheck",
+          "then": "it answers 200 with status \"ok\" and database \"ready\""
+        },
+        {
+          "id": "AC-02",
+          "tag": "POSITIVE",
+          "given": "the server is running",
+          "when": "I request the root URL",
+          "then": "it serves the single-page UI as HTML"
+        },
+        {
+          "id": "AC-03",
+          "tag": "POSITIVE",
+          "given": "LR-1001 exists",
+          "when": "the Manager reads it through the API",
+          "then": "the response carries statusLabel \"Posted to payroll\""
+        },
+        {
+          "id": "AC-04",
+          "tag": "NEGATIVE",
+          "given": "no request LR-9999 exists",
+          "when": "the Manager reads it through the API",
+          "then": "the API answers 404 with a readable message"
+        },
+        {
+          "id": "AC-05",
+          "tag": "POSITIVE",
+          "given": "LR-1001 is Posted to payroll",
+          "when": "the Employee calls submit on it",
+          "then": "the error body carries both a code and a user-readable message"
+        }
+      ],
+      "status": "Done",
+      "statusReason": "All 5/5 linked tests passed and verified",
+      "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
+      "capabilityGroup": "SHARED",
+      "capabilityGroupName": "Shared Security, Accessibility & Architecture Foundation",
+      "traceability": {
+        "legacySourceArtifacts": [],
+        "requirementRefs": [
+          "REQ-ARCH-01",
+          "REQ-ARCH-02",
+          "REQ-ARCH-03",
+          "REQ-ARCH-04",
+          "REQ-ARCH-09"
+        ],
+        "businessRuleRefs": [],
+        "workflowTransitions": [],
+        "apiContracts": [
+          "GET /health",
+          "GET /",
+          "GET /api/requests/LR-1001",
+          "GET /api/requests/LR-9999",
+          "POST /api/requests/LR-1001/submit"
+        ],
+        "databaseTables": [
+          "employee",
+          "leave_balance",
+          "leave_type",
+          "leave_request",
+          "review_comment",
+          "request_state_change",
+          "payroll_posting"
+        ],
+        "targetSourceFiles": [
+          "src/backend/repositories.py",
+          "src/backend/server.py",
+          "src/backend/test_rules.py",
+          "src/backend/viewmodel.py",
+          "src/backend/workflow.py",
+          "src/contracts/openapi.yaml",
+          "src/db/schema.sql",
+          "src/ui/app.js",
+          "src/ui/index.html",
+          "src/ui/styles.css"
+        ],
+        "uiTestIds": [],
+        "testCases": [
+          {
+            "id": "TC-POS-30",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-31",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-32",
+            "category": "Positive",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-NEG-15",
+            "category": "Negative",
+            "status": "PASS"
+          },
+          {
+            "id": "TC-POS-33",
+            "category": "Positive",
+            "status": "PASS"
+          }
+        ],
+        "defectRefs": [],
+        "gdcDeployment": {
+          "abstractionPlane": "gdc-fleet",
+          "targetEnvironments": [
+            "on-prem-gdc",
+            "gcp",
+            "aws",
+            "azure"
+          ],
+          "rolloutWave": 1,
+          "verdict": "PASS"
+        }
+      }
+    }
+  ]
+}

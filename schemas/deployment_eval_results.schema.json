@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/deployment_eval_results.schema.json",
+  "title": "deploy/deployment_eval_report.json (Stage 8 — written by 09/scripts/run_gdc_fleet_deploy_and_verify.py)",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "evaluatedAtUtc",
+    "abstractionPlane",
+    "connectivityMode",
+    "targetEnvironments",
+    "rolloutWaves",
+    "containerImages",
+    "kustomizeOverlays",
+    "policyController",
+    "serviceMesh",
+    "observability",
+    "smokeProbes",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "evaluatedAtUtc": { "type": "string" },
+    "abstractionPlane": { "type": "string", "const": "gdc-fleet" },
+    "connectivityMode": { "type": "string", "enum": ["gdc-connected", "gdc-air-gapped"] },
+    "executionMode": { "type": "string", "enum": ["gdc-live-fleet", "local-runtime-verified"] },
+    "targetEnvironments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "enum": ["on-prem-gdc", "gcp", "aws", "azure"] }
+    },
+    "rolloutWaves": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["wave", "capabilityGroup", "dependsOnGroups", "status"],
+        "properties": {
+          "wave": { "type": "integer", "minimum": 1 },
+          "capabilityGroup": { "type": "string" },
+          "capabilityGroupName": { "type": "string" },
+          "dependsOnGroups": { "type": "array", "items": { "type": "string" } },
+          "targetEnvironments": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["READY", "DEPLOYED", "FAILED"] }
+        }
+      }
+    },
+    "containerImages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["component", "dockerfile", "nonRootUser", "sha256Digest", "status"],
+        "properties": {
+          "component": { "type": "string" },
+          "dockerfile": { "type": "string" },
+          "nonRootUser": { "type": "string" },
+          "sha256Digest": { "type": "string" },
+          "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+        }
+      }
+    },
+    "kustomizeOverlays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["environment", "overlayPath", "clusterSelector", "status"],
+        "properties": {
+          "environment": { "type": "string", "enum": ["on-prem-gdc", "gcp", "aws", "azure"] },
+          "overlayPath": { "type": "string" },
+          "clusterSelector": { "type": "string" },
+          "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+        }
+      }
+    },
+    "policyController": {
+      "type": "object",
+      "required": ["constraintsFile", "constraintCount", "nonRootEnforced", "readOnlyRootFsEnforced", "status"],
+      "properties": {
+        "constraintsFile": { "type": "string" },
+        "constraintCount": { "type": "integer", "minimum": 1 },
+        "nonRootEnforced": { "type": "boolean" },
+        "readOnlyRootFsEnforced": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "serviceMesh": {
+      "type": "object",
+      "required": ["strictMtls", "authorizationPolicies", "multiClusterService", "status"],
+      "properties": {
+        "strictMtls": { "type": "boolean" },
+        "authorizationPolicies": { "type": "integer", "minimum": 1 },
+        "multiClusterService": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "required": ["otelCollectorValid", "sloCount", "alertCount", "fleetDashboardPanels", "status"],
+      "properties": {
+        "otelCollectorValid": { "type": "boolean" },
+        "sloCount": { "type": "integer", "minimum": 1 },
+        "alertCount": { "type": "integer", "minimum": 1 },
+        "fleetDashboardPanels": { "type": "integer", "minimum": 1 },
+        "status": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+    "smokeProbes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["probe", "target", "status"],
+        "properties": {
+          "probe": { "type": "string" },
+          "target": { "type": "string" },
+          "httpStatus": { "type": "integer" },
+          "status": { "type": "string", "enum": ["PASS", "FAIL", "SKIPPED"] }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["totalChecks", "passedChecks", "failedChecks", "verdict"],
+      "properties": {
+        "totalChecks": { "type": "integer", "minimum": 1 },
+        "passedChecks": { "type": "integer", "minimum": 0 },
+        "failedChecks": { "type": "integer", "minimum": 0 },
+        "verdict": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    }
+  }
+}

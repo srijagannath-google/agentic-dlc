@@ -1,0 +1,31 @@
+apiVersion: monitoring.googleapis.com/v3
+kind: ServiceLevelObjective
+metadata:
+  name: leave-request-portal-availability-slo
+spec:
+  displayName: "Employee Leave Request & Certification Portal — 99.9% Multi-Cloud Availability SLO"
+  goal: 0.999
+  rollingPeriodDays: 30
+  serviceLevelIndicator:
+    requestBased:
+      goodTotalRatio:
+        goodServiceFilter: 'metric.type="prometheus.googleapis.com/http_requests_total/counter" AND metric.label.status_class!="5xx"'
+        totalServiceFilter: 'metric.type="prometheus.googleapis.com/http_requests_total/counter"'
+---
+groups:
+  - name: leave-request-portal-gdc-fleet-alerts
+    rules:
+      - alert: GdcFleetHighErrorBurnRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (gdc_cluster_provider) / sum(rate(http_requests_total[5m])) by (gdc_cluster_provider) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error burn rate on GDC Fleet provider {{ $labels.gdc_cluster_provider }}"
+      - alert: GdcConfigSyncDriftDetected
+        expr: config_sync_sync_errors_total > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GDC Config Sync GitOps reconciliation error detected"

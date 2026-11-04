@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/spec_scorecard.schema.json",
+  "title": "specs/application_eval_scorecard.json (Stage 2 — written by the LLM spec-judge against schemas/spec_rubric.json; validated by 02/scripts/validate_spec_scorecard.py)",
+  "type": "object",
+  "required": ["schemaVersion", "rubricVersion", "specSha256", "inputScenario", "criteria", "pillarTotals", "totalScore", "verdict", "blockingGaps"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "rubricVersion": { "type": "string" },
+    "specSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "inputScenario": { "type": "string", "enum": ["SCENARIO_LEGACY_APP", "SCENARIO_REQUIREMENTS_DOC"] },
+    "judgedAtUtc": { "type": "string" },
+    "judgeModel": { "type": "string" },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "pillar", "maxPoints", "awarded", "evidence", "gap"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^P[1-5]-C[0-9]+$" },
+          "pillar": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "maxPoints": { "type": "integer", "minimum": 0 },
+          "awarded": { "type": "integer", "minimum": 0 },
+          "evidence": { "type": "string", "description": "Verbatim quote(s) from specs/application_spec.md; several quotes separated by ' … '. Empty only when awarded == 0 or criterion is not applicable." },
+          "gap": { "type": "string", "description": "What is missing to reach maxPoints; empty when awarded == maxPoints." }
+        }
+      }
+    },
+    "pillarTotals": {
+      "type": "object",
+      "required": ["1", "2", "3", "4", "5"],
+      "properties": {
+        "1": { "type": "integer", "minimum": 0 },
+        "2": { "type": "integer", "minimum": 0 },
+        "3": { "type": "integer", "minimum": 0 },
+        "4": { "type": "integer", "minimum": 0 },
+        "5": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "totalScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "verdict": { "type": "string", "enum": ["PASS", "FAIL"] },
+    "blockingGaps": { "type": "array", "items": { "type": "string" } }
+  }
+}

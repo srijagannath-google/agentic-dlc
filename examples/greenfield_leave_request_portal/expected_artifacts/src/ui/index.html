@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leave &amp; Exception Requests</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-design-references="default-ux-guardrails">
+  <a class="skip-link" href="#main" data-testid="skip-link">Skip to main content</a>
+  <header class="app-header">
+    <h1>Leave &amp; Exception Requests</h1>
+    <div class="identity">
+      <label for="role-switcher">Signed in as</label>
+      <select id="role-switcher" data-testid="role-switcher" aria-describedby="identity-hint">
+        <option value="employee:EMP-10042">Employee (Alex Rivera)</option>
+        <option value="employee:EMP-10077">Employee (Sam Chen)</option>
+        <option value="manager:EMP-20001">Manager (Morgan Lee)</option>
+        <option value="hr:EMP-30001">HR Certifier (Priya Nair)</option>
+        <option value="payroll:SYS-PAYROLL">Payroll Integration (system)</option>
+      </select>
+      <span id="identity-hint" class="caption">Demo identities stand in for single sign-on group membership.</span>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <p class="status-region" id="status-region" role="status" aria-live="polite" data-testid="status-region"></p>
+
+    <!-- ===================== Employee (external) ===================== -->
+    <section id="employee-view" data-testid="employee-view" data-view="employee" hidden>
+      <h2 data-testid="view-title" tabindex="-1">My requests</h2>
+      <nav aria-label="Employee workspace tabs">
+        <div role="tablist" aria-label="Employee workspace tabs" class="tabs" data-testid="employee-tabs">
+          <button type="button" role="tab" aria-selected="true" aria-controls="panel-my-requests" id="tab-my-requests" data-tab="my-requests" data-testid="tab-my-requests" data-action="switch-tab">My requests</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-policy-guide" id="tab-policy-guide" data-tab="policy-guide" data-testid="tab-policy-guide" data-action="switch-tab">Policy &amp; rules guide</button>
+        </div>
+      </nav>
+
+      <div role="tabpanel" id="panel-my-requests" aria-labelledby="tab-my-requests" data-panel="my-requests" data-testid="panel-my-requests">
+      <div class="panel balance" data-testid="balance-panel" aria-live="polite" aria-atomic="true">
+        <div><span class="caption">Available balance</span><strong data-testid="available-balance" id="available-balance">—</strong></div>
+        <div><span class="caption">Balance after this request</span><strong data-testid="post-request-balance" id="post-request-balance">—</strong></div>
+        <div><span class="caption">Pending approval</span><strong id="pending-balance">—</strong></div>
+      </div>
+
+      <div class="toolbar">
+        <button type="button" class="btn btn-secondary" data-testid="new-request-btn" data-action="new-request">New request</button>
+      </div>
+
+      <form id="request-form" data-testid="request-form" class="panel" novalidate hidden aria-labelledby="form-title">
+        <h3 id="form-title">Request details</h3>
+        <div class="alert alert-error" id="validation-summary" data-testid="validation-summary" role="alert" tabindex="-1" hidden></div>
+        <div class="fields">
+          <div class="field" data-testid="visible-field">
+            <label for="leave-type">Leave type</label>
+            <select id="leave-type" name="leaveType" data-testid="leave-type" required>
+              <option value="Vacation">Vacation</option>
+              <option value="Sick">Sick</option>
+              <option value="Exception">Exception</option>
+            </select>
+            <span class="caption" id="certification-indicator" data-testid="certification-indicator"></span>
+          </div>
+          <div class="field" data-testid="visible-field">
+            <label for="start-date">Start date</label>
+            <input id="start-date" name="startDate" type="date" data-testid="start-date" required>
+            <span class="caption" id="lead-time-hint" data-testid="lead-time-hint"></span>
+          </div>
+          <div class="field" data-testid="visible-field">
+            <label for="end-date">End date</label>
+            <input id="end-date" name="endDate" type="date" data-testid="end-date" required>
+          </div>
+          <div class="field" data-testid="visible-field">
+            <label for="hours">Hours requested</label>
+            <input id="hours" name="hours" type="number" min="0.5" step="0.5" inputmode="decimal" data-testid="hours" required>
+            <span class="caption msg-error" id="hours-error" data-testid="balance-warning" hidden></span>
+          </div>
+        </div>
+        <details>
+          <summary>Add a reason (optional, up to 500 characters)</summary>
+          <div class="field">
+            <label for="reason">Reason</label>
+            <textarea id="reason" name="reason" rows="3" data-testid="reason"></textarea>
+            <span class="caption" id="reason-count"></span>
+          </div>
+        </details>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" data-testid="save-draft-btn" data-action="save-draft">Save draft</button>
+          <button type="submit" class="btn btn-primary" data-testid="submit-btn" data-action="submit">Submit request</button>
+        </div>
+      </form>
+
+      <div class="panel" id="history-panel">
+        <h3>History</h3>
+        <p class="caption" id="history-empty" hidden>You have no requests yet.</p>
+        <table id="history-table" data-testid="history-table" hidden>
+          <caption class="visually-hidden">Your leave and exception requests</caption>
+          <thead>
+            <tr><th scope="col">Reference</th><th scope="col">Type</th><th scope="col">Dates</th><th scope="col">Hours</th><th scope="col">Status</th><th scope="col">Next approver</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      </div>
+
+      <div role="tabpanel" id="panel-policy-guide" aria-labelledby="tab-policy-guide" data-panel="policy-guide" data-testid="panel-policy-guide" class="panel" hidden>
+        <h3>Leave &amp; Certification Policy Summary</h3>
+        <p>Available balance equals accrued minus taken and pending hours. Requests exceeding 40 hours or marked as Exception leave require HR certification after manager approval. Standard Vacation and Sick requests require at least 3 calendar days of lead time from today.</p>
+      </div>
+    </section>
+
+    <!-- ===================== Manager (internal) ===================== -->
+    <section id="manager-view" data-testid="manager-view" data-view="manager" hidden>
+      <h2 data-testid="view-title" tabindex="-1">Manager queue</h2>
+      <div class="panel">
+        <h3>Submitted requests from your direct reports</h3>
+        <p class="caption" id="manager-queue-empty" data-testid="queue-empty" hidden>No requests waiting.</p>
+        <table id="manager-queue" data-testid="manager-queue" hidden>
+          <caption class="visually-hidden">Requests waiting for your decision</caption>
+          <thead><tr><th scope="col">Reference</th><th scope="col">Employee</th><th scope="col">Type</th><th scope="col">Dates</th><th scope="col">Hours</th><th scope="col">Routing</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== HR Certifier (internal) ===================== -->
+    <section id="hr-view" data-testid="hr-view" data-view="hr" hidden>
+      <h2 data-testid="view-title" tabindex="-1">Certification queue</h2>
+      <div class="panel">
+        <h3>Manager-approved requests that need HR certification</h3>
+        <p class="caption" id="hr-queue-empty" hidden>No requests waiting.</p>
+        <table id="hr-queue" data-testid="hr-queue" hidden>
+          <caption class="visually-hidden">Requests waiting for certification</caption>
+          <thead><tr><th scope="col">Reference</th><th scope="col">Employee</th><th scope="col">Type</th><th scope="col">Dates</th><th scope="col">Hours</th><th scope="col">Why</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== Payroll Integration (internal, system) ===================== -->
+    <section id="payroll-view" data-testid="payroll-view" data-view="payroll" hidden>
+      <h2 data-testid="view-title" tabindex="-1">Payroll postings</h2>
+      <div class="panel">
+        <h3>Posting attempts and alerts</h3>
+        <p class="caption" id="posting-empty" hidden>No postings yet.</p>
+        <table id="posting-log" data-testid="posting-log" hidden>
+          <caption class="visually-hidden">Payroll posting attempts</caption>
+          <thead><tr><th scope="col">Reference</th><th scope="col">Outcome</th><th scope="col">Payroll reference</th><th scope="col">Attempted</th><th scope="col">Request status</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== Shared request detail (rendered from the ViewModel) ===================== -->
+    <section id="request-detail" data-testid="request-detail" class="panel detail" aria-labelledby="detail-title" hidden>
+      <h3 id="detail-title">Request <span data-testid="request-reference" id="request-reference"></span></h3>
+      <dl class="detail-grid">
+        <div><dt>Status</dt><dd><span class="chip" data-testid="request-status" id="request-status"></span></dd></div>
+        <div><dt>Next approver</dt><dd data-testid="request-next-approver" id="request-next-approver"></dd></div>
+        <div><dt>Employee</dt><dd data-testid="request-employee" id="request-employee"></dd></div>
+        <div><dt>Type</dt><dd id="request-type"></dd></div>
+        <div><dt>Dates</dt><dd id="request-dates"></dd></div>
+        <div><dt>Hours</dt><dd data-testid="request-hours" id="request-hours"></dd></div>
+        <div><dt>Routing</dt><dd id="request-routing"></dd></div>
+      </dl>
+      <p class="alert alert-warning" id="return-comment" data-testid="return-comment" hidden></p>
+      <p class="alert" id="posting-outcome" data-testid="posting-outcome" hidden></p>
+      <p id="request-reason" class="caption" hidden></p>
+
+      <div class="alert alert-error" id="action-error" data-testid="validation-summary" role="alert" tabindex="-1" hidden></div>
+      <div id="review-box" class="field" hidden>
+        <label for="return-comment-input">Comment for the employee (required to return)</label>
+        <textarea id="return-comment-input" data-testid="return-comment-input" rows="2"></textarea>
+      </div>
+      <div class="actions" id="detail-actions"></div>
+
+      <h4>Activity</h4>
+      <ol class="audit" id="audit-log" data-testid="audit-log"></ol>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

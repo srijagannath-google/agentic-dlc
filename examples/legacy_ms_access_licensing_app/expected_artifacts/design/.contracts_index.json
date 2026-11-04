@@ -1,0 +1,279 @@
+{
+  "schemaVersion": "4.0",
+  "architectureSha256": "b6c4c7ca9f8f37d53e13bf82ac87f803dbf2869f341c2a87976c2bf9d26b5a1f",
+  "designSha256": "f8ffbd24220efc498fbd591bdc65847c89f32ed903ca2e6dc979a774d17980f1",
+  "openapiVersion": "3.1.0",
+  "tables": [
+    {
+      "name": "commercial_buyers",
+      "columns": [
+        "buyer_id",
+        "legal_name",
+        "business_name",
+        "entity_type",
+        "tax_id_kind",
+        "tax_id_hash",
+        "tax_id_last4",
+        "date_of_birth",
+        "email",
+        "phone",
+        "city",
+        "state_code",
+        "is_suspended",
+        "under_investigation",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "license_applications",
+      "columns": [
+        "application_id",
+        "buyer_id",
+        "license_year",
+        "status",
+        "license_number",
+        "prior_year_purchases",
+        "required_bond_amount",
+        "bond_amount",
+        "bond_surety_name",
+        "bond_number",
+        "bond_expiry",
+        "decision_reason",
+        "submitted_at",
+        "decided_at",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "field_agents",
+      "columns": [
+        "agent_id",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "is_suspended",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "name": "agent_assignments",
+      "columns": [
+        "assignment_id",
+        "application_id",
+        "agent_id",
+        "relationship",
+        "assigned_on",
+        "removed_on",
+        "card_printed_at"
+      ]
+    },
+    {
+      "name": "supporting_documents",
+      "columns": [
+        "document_id",
+        "application_id",
+        "file_name",
+        "content_type",
+        "size_bytes",
+        "vault_reference",
+        "uploaded_at"
+      ]
+    },
+    {
+      "name": "quarterly_fee_reports",
+      "columns": [
+        "report_id",
+        "application_id",
+        "quarter",
+        "purchase_total",
+        "fee_due",
+        "reported_at"
+      ]
+    },
+    {
+      "name": "audit_events",
+      "columns": [
+        "event_id",
+        "application_id",
+        "buyer_id",
+        "agent_id",
+        "actor_role",
+        "actor_name",
+        "action",
+        "from_status",
+        "to_status",
+        "reason",
+        "occurred_at"
+      ]
+    }
+  ],
+  "paths": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "operationId": "getHealth"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications",
+      "operationId": "listApplications"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications",
+      "operationId": "createApplication"
+    },
+    {
+      "method": "GET",
+      "path": "/api/applications/{applicationId}",
+      "operationId": "getApplication"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/applications/{applicationId}",
+      "operationId": "updateDraftApplication"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/submit",
+      "operationId": "submitApplication"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/issue",
+      "operationId": "issueLicense"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/reject",
+      "operationId": "rejectApplication"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/agents",
+      "operationId": "addAgent"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/applications/{applicationId}/agents/{agentId}",
+      "operationId": "removeAgent"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/documents",
+      "operationId": "addDocument"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/fee-reports",
+      "operationId": "addFeeReport"
+    },
+    {
+      "method": "POST",
+      "path": "/api/applications/{applicationId}/prints",
+      "operationId": "recordPrint"
+    },
+    {
+      "method": "GET",
+      "path": "/api/buyers",
+      "operationId": "searchBuyers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/buyers/duplicate-check",
+      "operationId": "checkBuyerDuplicate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/buyers/{buyerId}/suspension",
+      "operationId": "setBuyerSuspension"
+    },
+    {
+      "method": "GET",
+      "path": "/api/agents",
+      "operationId": "searchAgents"
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/{agentId}/suspension",
+      "operationId": "setAgentSuspension"
+    },
+    {
+      "method": "POST",
+      "path": "/api/calculations/bond",
+      "operationId": "calculateRequiredBond"
+    },
+    {
+      "method": "POST",
+      "path": "/api/calculations/volume-fee",
+      "operationId": "calculateHarvestFee"
+    }
+  ],
+  "enums": [
+    "DRAFT",
+    "SUBMITTED",
+    "ISSUED",
+    "REJECTED",
+    "SUBMIT",
+    "ISSUE",
+    "REJECT",
+    "Commercial Buyer",
+    "Licensing Staff",
+    "INDIVIDUAL",
+    "LLC",
+    "CORPORATION",
+    "PARTNERSHIP",
+    "OTHER",
+    "SSN",
+    "FEIN",
+    "certificate",
+    "agent-cards"
+  ],
+  "internalFields": [
+    "code",
+    "taxId",
+    "taxIdHash"
+  ],
+  "schemas": [
+    "BadRequest",
+    "Forbidden",
+    "NotFound",
+    "Conflict",
+    "StatusCode",
+    "Trigger",
+    "Role",
+    "Error",
+    "Health",
+    "Status",
+    "ApplicationSummary",
+    "Application",
+    "ApplicationCreate",
+    "BondUpdate",
+    "Decision",
+    "Buyer",
+    "Agent",
+    "RosterEntry",
+    "AgentRoster",
+    "AgentInput",
+    "Document",
+    "DocumentInput",
+    "FeeReport",
+    "FeeReportInput",
+    "PrintInput",
+    "SuspensionInput",
+    "DuplicateCheck",
+    "HistoryEvent",
+    "BondCalculationInput",
+    "BondCalculation",
+    "FeeCalculationInput",
+    "FeeCalculation"
+  ],
+  "stateTriggers": [
+    "Submit",
+    "Issue",
+    "Reject"
+  ]
+}

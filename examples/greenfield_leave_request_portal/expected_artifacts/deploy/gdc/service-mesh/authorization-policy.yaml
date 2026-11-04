@@ -1,0 +1,29 @@
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: leave-request-portal-spec-3-5-rbac
+  namespace: leave-request-portal
+  annotations:
+    dlc.agentic.io/spec-section: "3.5"
+    dlc.agentic.io/roles: "Employee, Manager, HR Certifier, Payroll Integration"
+spec:
+  selector:
+    matchLabels:
+      app: leave-request-portal-backend
+  action: ALLOW
+  rules:
+    - to:
+        - operation:
+            paths: ["/health", "/", "/api/*"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["Employee"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["Manager"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["HR Certifier"]
+    - when:
+        - key: request.headers[x-actor-role]
+          values: ["Payroll Integration"]

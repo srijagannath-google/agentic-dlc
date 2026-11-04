@@ -1,0 +1,21 @@
+apiVersion: networking.gke.io/v1
+kind: MultiClusterService
+metadata:
+  name: business-licensing-portal-global-mcs
+  namespace: business-licensing-portal
+spec:
+  template:
+    spec:
+      selector:
+        app: business-licensing-portal-backend
+      ports:
+        - name: http
+          protocol: TCP
+          port: 8767
+          targetPort: 8767
+---
+apiVersion: net.gke.io/v1
+kind: ServiceExport
+metadata:
+  name: business-licensing-portal-backend
+  namespace: business-licensing-portal
