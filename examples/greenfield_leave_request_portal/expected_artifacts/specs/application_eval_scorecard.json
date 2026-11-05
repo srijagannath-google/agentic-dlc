@@ -1,17 +1,17 @@
 {
   "schemaVersion": "4.0",
   "rubricVersion": "4.0",
-  "specSha256": "da46761b820842390b60641fc8661b470f0a683d283e5328b79be11ddb66e648",
+  "specSha256": "122f76cd2e98b6d8f4a42e43441e084607e19c645bd4447424736bba1ff814ef",
   "inputScenario": "SCENARIO_REQUIREMENTS_DOC",
   "judgedAtUtc": "2026-10-29T23:40:15Z",
-  "judgeModel": "spec-judge (LLM)",
+  "judgeModel": "Enterprise Specification Quality Assessor",
   "criteria": [
     {
       "id": "P1-C1",
       "pillar": 1,
       "maxPoints": 6,
       "awarded": 6,
-      "evidence": "Capability coverage is complete: all 11 capabilities CAP-01\u2026CAP-11 of the discovery inventory map to at least one requirement below \u2026 REQ-FUNC-06 | The Manager queue lists only `SUBMITTED` requests whose requester reports directly to the signed-in Manager",
+      "evidence": "Capability coverage is complete: all 11 capabilities CAP-01…CAP-11 of the discovery inventory map to at least one requirement below … REQ-FUNC-06 | The Manager queue lists only `SUBMITTED` requests whose requester reports directly to the signed-in Manager",
       "gap": ""
     },
     {
@@ -19,7 +19,7 @@
       "pillar": 1,
       "maxPoints": 6,
       "awarded": 6,
-      "evidence": "| SUBMITTED | MANAGER_APPROVED | Manager Approve | Manager | requester is a direct report; BR-02 applies \u2014 requested hours > 40 or type Exception (BRD \u00a74 steps 3\u20134) | \u2026 Terminal states: `POSTED`, `WITHDRAWN` (ASSUMPTION-03). Initial state: `DRAFT`.",
+      "evidence": "| SUBMITTED | MANAGER_APPROVED | Manager Approve | Manager | requester is a direct report; BR-02 applies — requested hours > 40 or type Exception (BRD §4 steps 3–4) | … Terminal states: `POSTED`, `WITHDRAWN` (ASSUMPTION-03). Initial state: `DRAFT`.",
       "gap": ""
     },
     {
@@ -27,7 +27,7 @@
       "pillar": 1,
       "maxPoints": 5,
       "awarded": 5,
-      "evidence": "| BR-03 | `start_date \u2212 submit_date \u2265 3` calendar days unless `leave_type = Exception`; `earliest_date = submit_date + 3 days` | start date, submit date (today, UTC), leave type | BRD \u00a73 BR-03; HR policy \u00a74.2 |",
+      "evidence": "| BR-03 | `start_date − submit_date ≥ 3` calendar days unless `leave_type = Exception`; `earliest_date = submit_date + 3 days` | start date, submit date (today, UTC), leave type | BRD §3 BR-03; HR policy §4.2 |",
       "gap": ""
     },
     {
@@ -35,7 +35,7 @@
       "pillar": 1,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "**Input Scenario:** `SCENARIO_REQUIREMENTS_DOC` \u2026 scope is strictly the input document (BRD v1.0, FR-01\u2026FR-08, NFR-01\u2026NFR-05, BR-01\u2026BR-05); nothing unsolicited is added and no modernization enhancements exist for this scenario.",
+      "evidence": "**Input Scenario:** `Greenfield Requirements Specification` … scope is strictly the input document (BRD v1.0, FR-01…FR-08, NFR-01…NFR-05, BR-01…BR-05); nothing unsolicited is added and no modernization enhancements exist for this scenario.",
       "gap": ""
     },
     {
@@ -43,7 +43,7 @@
       "pillar": 1,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "`ASSUMPTION-04` \u2014 Withdrawal is possible from `DRAFT`, `SUBMITTED` and `MANAGER_APPROVED` only; an `APPROVED` request can no longer be withdrawn even if payroll posting has not yet succeeded.",
+      "evidence": "`ASSUMPTION-04` — Withdrawal is possible from `DRAFT`, `SUBMITTED` and `MANAGER_APPROVED` only; an `APPROVED` request can no longer be withdrawn even if payroll posting has not yet succeeded.",
       "gap": ""
     },
     {
@@ -59,7 +59,7 @@
       "pillar": 2,
       "maxPoints": 5,
       "awarded": 5,
-      "evidence": "| Manager Approve (`SUBMITTED \u2192 MANAGER_APPROVED / APPROVED`) | \u2717 | \u2713 (direct reports) | \u2717 | \u2717 | \u2026 a denied attempt returns 403 (role) or 409 (state) with a user-readable message, changes nothing and is audited (REQ-FUNC-10). External-role views never render internal controls.",
+      "evidence": "| Manager Approve (`SUBMITTED → MANAGER_APPROVED / APPROVED`) | ✗ | ✓ (direct reports) | ✗ | ✗ | … a denied attempt returns 403 (role) or 409 (state) with a user-readable message, changes nothing and is audited (REQ-FUNC-10). External-role views never render internal controls.",
       "gap": ""
     },
     {
@@ -67,7 +67,7 @@
       "pillar": 2,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "| Employee identifier (format `EMP-\\d{5}`) | Personal identifier | Last two digits only: `EMP-\u2022\u2022\u202242`; full value never rendered | Encrypted at rest; audit on access | Life of the employment record + 7 years (audit) |",
+      "evidence": "| Employee identifier (format `EMP-\\d{5}`) | Personal identifier | Last two digits only: `EMP-•••42`; full value never rendered | Encrypted at rest; audit on access | Life of the employment record + 7 years (audit) |",
       "gap": ""
     },
     {
@@ -84,14 +84,14 @@
       "maxPoints": 4,
       "awarded": 3,
       "evidence": "REQ-SEC-05 | Audit trail: every state transition, denied attempt and payroll posting writes an append-only record `{request, actor, role, previous state, new state, timestamp UTC, reason/comment}`; records cannot be updated or deleted through any API and are retained for 7 years; only internal roles can read them.",
-      "gap": "Read access to PII (e.g. a manager opening a request's reason text) is not listed as an audited event in \u00a72.3; only transitions, denied attempts and payroll postings are. Add a 'PII access' event row or state explicitly why display-name/reason reads are not audited."
+      "gap": "Read access to PII (e.g. a manager opening a request's reason text) is not listed as an audited event in §2.3; only transitions, denied attempts and payroll postings are. Add a 'PII access' event row or state explicitly why display-name/reason reads are not audited."
     },
     {
       "id": "P3-C1",
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-A11Y-01 | Text contrast \u2265 4.5:1 and large text / UI component contrast \u2265 3:1 using the three semantic status tokens; every status and validation severity is conveyed by text (label or icon with text), never by colour alone.",
+      "evidence": "REQ-A11Y-01 | Text contrast ≥ 4.5:1 and large text / UI component contrast ≥ 3:1 using the three semantic status tokens; every status and validation severity is conveyed by text (label or icon with text), never by colour alone.",
       "gap": ""
     },
     {
@@ -107,7 +107,7 @@
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-A11Y-03 | Focus management: a visible focus indicator (\u2265 3:1 outline) on every control; after Submit, focus moves to the validation summary (on failure) or to the status heading (on success); after a view/role change focus moves to the view's `h2`.",
+      "evidence": "REQ-A11Y-03 | Focus management: a visible focus indicator (≥ 3:1 outline) on every control; after Submit, focus moves to the validation summary (on failure) or to the status heading (on success); after a view/role change focus moves to the view's `h2`.",
       "gap": ""
     },
     {
@@ -131,7 +131,7 @@
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-A11Y-06 | Error identification: each validation message names the field, describes the problem in plain language and states the fix (\u00a71.3); the field gets `aria-invalid=\"true\"` and `aria-describedby` pointing at the message; a summary is shown above the form.",
+      "evidence": "REQ-A11Y-06 | Error identification: each validation message names the field, describes the problem in plain language and states the fix (§1.3); the field gets `aria-invalid=\"true\"` and `aria-describedby` pointing at the message; a summary is shown above the form.",
       "gap": ""
     },
     {
@@ -139,7 +139,7 @@
       "pillar": 4,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "**Employee (external):** 1. Open the portal \u2192 \"My requests\" view with balance summary. 2. Choose \"New request\", fill type, dates, hours, reason; live balance updates (REQ-FUNC-02); save \u2192 `DRAFT`.",
+      "evidence": "**Employee (external):** 1. Open the portal → \"My requests\" view with balance summary. 2. Choose \"New request\", fill type, dates, hours, reason; live balance updates (REQ-FUNC-02); save → `DRAFT`.",
       "gap": ""
     },
     {
@@ -147,7 +147,7 @@
       "pillar": 4,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-UX-01 | The ten UX guardrails of `_shared/ux_guardrails.md` are adopted as defaults with no overrides (\u00a74.1)",
+      "evidence": "REQ-UX-01 | The ten Enterprise UX Simplicity Guardrails are adopted as defaults with no overrides (§4.1)",
       "gap": ""
     },
     {
@@ -163,7 +163,7 @@
       "pillar": 4,
       "maxPoints": 5,
       "awarded": 5,
-      "evidence": "| MANAGER_APPROVED | Manager approved | HR Certifier | \u2026 REQ-UX-03 | Zero internal-data leakage per `_shared/zero_leak.md`: visible text never contains database table/column identifiers, raw `UPPER_SNAKE_CASE` state/trigger/error codes, internal keys or UUIDs, API paths, SQL, or engineering notes",
+      "evidence": "| MANAGER_APPROVED | Manager approved | HR Certifier | … REQ-UX-03 | Zero internal-data leakage boundary: visible text never contains database table/column identifiers, raw `UPPER_SNAKE_CASE` state/trigger/error codes, internal keys or UUIDs, API paths, SQL, or engineering notes",
       "gap": ""
     },
     {
@@ -179,7 +179,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-ARCH-03 | Normalised 3NF schema in business `snake_case` (`employee`, `leave_balance`, `leave_type`, `leave_request`, `review_comment`, `request_state_change`, `payroll_posting`) with primary keys, foreign keys, a `status` column constrained to the \u00a73.3 state codes, no derived columns",
+      "evidence": "REQ-ARCH-03 | Normalised 3NF schema in business `snake_case` (`employee`, `leave_balance`, `leave_type`, `leave_request`, `review_comment`, `request_state_change`, `payroll_posting`) with primary keys, foreign keys, a `status` column constrained to the §3.3 state codes, no derived columns",
       "gap": ""
     },
     {
@@ -187,7 +187,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-ARCH-04 | Contract-first API: `design/solution_design.md` contains an OpenAPI 3.1 document with one operation per \u00a73.3 trigger \u2026 a common error schema `{code, message}` whose `message` is user-readable; transition endpoints validate `(fromState, trigger, role)`.",
+      "evidence": "REQ-ARCH-04 | Contract-first API: `design/solution_design.md` contains an OpenAPI 3.1 document with one operation per §3.3 trigger … a common error schema `{code, message}` whose `message` is user-readable; transition endpoints validate `(fromState, trigger, role)`.",
       "gap": ""
     },
     {
@@ -195,7 +195,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "REQ-ARCH-05 | ViewModel / DTO boundary: API responses consumed by the UI are display models \u2014 codes mapped to labels, employee identifier masked, national identifier and internal keys excluded; templates never bind to raw persistence rows.",
+      "evidence": "REQ-ARCH-05 | ViewModel / DTO boundary: API responses consumed by the UI are display models — codes mapped to labels, employee identifier masked, national identifier and internal keys excluded; templates never bind to raw persistence rows.",
       "gap": ""
     },
     {
@@ -211,7 +211,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "See `specs/traceability_matrix.md` \u2014 every `REQ-*` above maps to capability \u2192 source paragraph \u2192 business rules \u2192 planned story \u2192 test category.",
+      "evidence": "See `specs/traceability_matrix.md` — every `REQ-*` above maps to capability → source paragraph → business rules → planned story → test category.",
       "gap": ""
     },
     {
@@ -219,7 +219,7 @@
       "pillar": 5,
       "maxPoints": 2,
       "awarded": 2,
-      "evidence": "N/A \u2014 not applicable to SCENARIO_REQUIREMENTS_DOC",
+      "evidence": "N/A — not applicable to Greenfield Requirements Specification",
       "gap": "not applicable: greenfield requirements document, no legacy estate"
     }
   ],

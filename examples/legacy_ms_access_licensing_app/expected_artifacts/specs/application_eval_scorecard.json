@@ -1,17 +1,17 @@
 {
   "schemaVersion": "4.0",
   "rubricVersion": "4.0",
-  "specSha256": "23ea0f354ea86c56efa08c5ef308e4bee0ef246369e4893977356c76bf0a4813",
+  "specSha256": "f24b55aef673007206243087e327f4794cabc93d61dd9f2145ffac1ada99c73b",
   "inputScenario": "SCENARIO_LEGACY_APP",
   "judgedAtUtc": "2026-10-29T23:30:00Z",
-  "judgeModel": "spec-judge (LLM)",
+  "judgeModel": "Enterprise Specification Quality Assessor",
   "criteria": [
     {
       "id": "P1-C1",
       "pillar": 1,
       "maxPoints": 6,
       "awarded": 6,
-      "evidence": "Capability coverage is complete: all 8 discovered capabilities map to at least one `REQ-FUNC` row below \u2026 A Commercial Buyer can start a licence application for a calendar year by entering buyer details (legal name, business name, entity type, tax identifier kind and number, date of birth, e-mail, phone, city, state); the application is created in state `DRAFT` with a generated application number shown to the buyer.",
+      "evidence": "Capability coverage is complete: all 8 discovered capabilities map to at least one `REQ-FUNC` row below … A Commercial Buyer can start a licence application for a calendar year by entering buyer details (legal name, business name, entity type, tax identifier kind and number, date of birth, e-mail, phone, city, state); the application is created in state `DRAFT` with a generated application number shown to the buyer.",
       "gap": ""
     },
     {
@@ -19,7 +19,7 @@
       "pillar": 1,
       "maxPoints": 6,
       "awarded": 6,
-      "evidence": "| SUBMITTED | ISSUED | Issue | Licensing Staff | buyer not suspended; bond amount \u2265 required bond (BR-01); every active agent satisfies exclusivity (BR-02) and is not suspended (BR-06); evidence: discovery \u00a73 row 2 | \u2026 Initial state: `DRAFT`. Terminal states: `ISSUED`, `REJECTED` (no outgoing transitions; `ASSUMPTION-03`).",
+      "evidence": "| SUBMITTED | ISSUED | Issue | Licensing Staff | buyer not suspended; bond amount ≥ required bond (BR-01); every active agent satisfies exclusivity (BR-02) and is not suspended (BR-06); evidence: discovery §3 row 2 | … Initial state: `DRAFT`. Terminal states: `ISSUED`, `REJECTED` (no outgoing transitions; `ASSUMPTION-03`).",
       "gap": ""
     },
     {
@@ -27,7 +27,7 @@
       "pillar": 1,
       "maxPoints": 5,
       "awarded": 5,
-      "evidence": "| BR-01 | `required_bond_amount = max(1000.00, round_half_up(0.10 \u00d7 prior_year_purchases, 2))`; shortfall = `max(0, required_bond_amount \u2212 bond_amount)`; examples: 0 \u2192 1000.00; 9,999.99 \u2192 1000.00; 10,000.00 \u2192 1000.00; 10,000.10 \u2192 1000.01; 25,000.00 \u2192 2500.00; 250,000.00 \u2192 25000.00 | prior_year_purchases (USD, \u2265 0), bond_amount (USD) | Act section 4 (`resources/policies_and_policies`) |",
+      "evidence": "| BR-01 | `required_bond_amount = max(1000.00, round_half_up(0.10 × prior_year_purchases, 2))`; shortfall = `max(0, required_bond_amount − bond_amount)`; examples: 0 → 1000.00; 9,999.99 → 1000.00; 10,000.00 → 1000.00; 10,000.10 → 1000.01; 25,000.00 → 2500.00; 250,000.00 → 25000.00 | prior_year_purchases (USD, ≥ 0), bond_amount (USD) | Act section 4 (`resources/policies_and_policies`) |",
       "gap": ""
     },
     {
@@ -35,7 +35,7 @@
       "pillar": 1,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "**Input Scenario:** `SCENARIO_LEGACY_APP` (legacy desktop-database estate; modernization enhancements included in \u00a71.4) \u2026 | `REQ-ENH-02` | Live surety-bond requirement calculator (`BR-01`) with shortfall coaching while the buyer types, before any submit. | \u00a75 #2 \u2014 bond computed by hand |",
+      "evidence": "**Input Scenario:** `Legacy Application Modernization` (legacy desktop-database estate; modernization enhancements included in §1.4) … | `REQ-ENH-02` | Live surety-bond requirement calculator (`BR-01`) with shortfall coaching while the buyer types, before any submit. | §5 #2 — bond computed by hand |",
       "gap": ""
     },
     {
@@ -43,7 +43,7 @@
       "pillar": 1,
       "maxPoints": 4,
       "awarded": 3,
-      "evidence": "`ASSUMPTION-02` \u2014 Only the Commercial Buyer triggers `Submit`; Licensing Staff review, issue and reject. Staff-entered applications on behalf of a buyer are out of scope for Release 1.",
+      "evidence": "`ASSUMPTION-02` — Only the Commercial Buyer triggers `Submit`; Licensing Staff review, issue and reject. Staff-entered applications on behalf of a buyer are out of scope for Release 1.",
       "gap": "Each ASSUMPTION states the chosen reading but not its concrete impact on stories/tests (e.g. which capability is deferred and what a later reversal would change); add an 'Impact' clause per assumption."
     },
     {
@@ -59,7 +59,7 @@
       "pillar": 2,
       "maxPoints": 5,
       "awarded": 5,
-      "evidence": "| `Issue` (SUBMITTED \u2192 ISSUED) | denied | allowed | \u2026 a denied attempt returns HTTP 403 with the message \"You do not have permission to <action>.\" and writes an audit event; internal-role controls are never rendered on external views.",
+      "evidence": "| `Issue` (SUBMITTED → ISSUED) | denied | allowed | … a denied attempt returns HTTP 403 with the message \"You do not have permission to <action>.\" and writes an audit event; internal-role controls are never rendered on external views.",
       "gap": ""
     },
     {
@@ -91,7 +91,7 @@
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "Text contrast \u2265 4.5:1 and large text / UI component contrast \u2265 3:1 using the style-guide tokens (navy `#002855`, action blue `#1A73E8`, green `#1E8E3E`, amber `#F9AB00`, red `#D93025` on white); every status (draft, submitted, issued, rejected, suspended, shortfall) is conveyed by a text label and an icon glyph, never by colour alone.",
+      "evidence": "Text contrast ≥ 4.5:1 and large text / UI component contrast ≥ 3:1 using the style-guide tokens (navy `#002855`, action blue `#1A73E8`, green `#1E8E3E`, amber `#F9AB00`, red `#D93025` on white); every status (draft, submitted, issued, rejected, suspended, shortfall) is conveyed by a text label and an icon glyph, never by colour alone.",
       "gap": ""
     },
     {
@@ -123,7 +123,7 @@
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "the validation banner uses `role=\"alert\"` (assertive); the status badge, the live bond calculation and the fee calculation use `role=\"status\"` / `aria-live=\"polite\"`; announcements are deliberate \u2014 one region per view.",
+      "evidence": "the validation banner uses `role=\"alert\"` (assertive); the status badge, the live bond calculation and the fee calculation use `role=\"status\"` / `aria-live=\"polite\"`; announcements are deliberate — one region per view.",
       "gap": ""
     },
     {
@@ -131,7 +131,7 @@
       "pillar": 3,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "each validation error names the field, describes the problem in plain language and states the concrete fix (messages VAL-01\u2026VAL-12); the field receives `aria-invalid=\"true\"` and `aria-describedby` pointing at the message; a summary appears at the top of the step.",
+      "evidence": "each validation error names the field, describes the problem in plain language and states the concrete fix (messages VAL-01…VAL-12); the field receives `aria-invalid=\"true\"` and `aria-describedby` pointing at the message; a summary appears at the top of the step.",
       "gap": ""
     },
     {
@@ -139,7 +139,7 @@
       "pillar": 4,
       "maxPoints": 4,
       "awarded": 4,
-      "evidence": "**Commercial Buyer \u2014 \"Apply for this year's licence\" (`DRAFT` \u2192 `SUBMITTED`)** 1. Open the portal (external role is the initial role); choose **New application**. \u2026 **Licensing Staff \u2014 \"Review and decide\" (`SUBMITTED` \u2192 `ISSUED` | `REJECTED`)** 1. Switch to the internal role \u2192 **Review queue** (default filter: submitted).",
+      "evidence": "**Commercial Buyer — \"Apply for this year's licence\" (`DRAFT` → `SUBMITTED`)** 1. Open the portal (external role is the initial role); choose **New application**. … **Licensing Staff — \"Review and decide\" (`SUBMITTED` → `ISSUED` | `REJECTED`)** 1. Switch to the internal role → **Review queue** (default filter: submitted).",
       "gap": ""
     },
     {
@@ -147,7 +147,7 @@
       "pillar": 4,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "The UX guardrails in `_shared/ux_guardrails.md` are adopted as defaults: one primary action per screen, \u2264 3 top-level tabs per role, \u2264 5 visible fields per step (extra fields behind progressive disclosure) \u2026 | \u2014 | none \u2014 all ten guardrails apply as written | no design reference or Gate 1 instruction overrides them |",
+      "evidence": "The Enterprise UX Simplicity Guardrails are adopted as defaults: one primary action per screen, ≤ 3 top-level tabs per role, ≤ 5 visible fields per step (extra fields behind progressive disclosure) … | — | none — all ten guardrails apply as written | no design reference or Gate 1 instruction overrides them |",
       "gap": ""
     },
     {
@@ -163,8 +163,8 @@
       "pillar": 4,
       "maxPoints": 5,
       "awarded": 4,
-      "evidence": "| SUBMITTED | Submitted \u2014 awaiting review | \u2026 visible text never contains database table or column identifiers, raw state / trigger / error codes, internal keys or hashes, legacy object or file names, engineering notes, SQL or API paths, or unmasked identifiers; all codes pass through the label dictionary in \u00a73.3 and the ViewModel boundary in `REQ-ARCH-05`.",
-      "gap": "Trigger labels are given in prose and error codes are mapped only generically to the VAL messages; add an explicit code \u2192 label table for triggers and API error codes."
+      "evidence": "| SUBMITTED | Submitted — awaiting review | … visible text never contains database table or column identifiers, raw state / trigger / error codes, internal keys or hashes, legacy object or file names, engineering notes, SQL or API paths, or unmasked identifiers; all codes pass through the label dictionary in §3.3 and the ViewModel boundary in `REQ-ARCH-05`.",
+      "gap": "Trigger labels are given in prose and error codes are mapped only generically to the VAL messages; add an explicit code → label table for triggers and API error codes."
     },
     {
       "id": "P5-C1",
@@ -179,7 +179,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "Normalised 3NF schema: tables in business `snake_case` with surrogate primary keys, foreign keys, unique constraints (`license_number`, buyer + year), `CHECK` constraints restricting `status` to the \u00a73.3 codes and `relationship` to OWNER / AGENT, audit columns, and indexes for the queue and registry queries",
+      "evidence": "Normalised 3NF schema: tables in business `snake_case` with surrogate primary keys, foreign keys, unique constraints (`license_number`, buyer + year), `CHECK` constraints restricting `status` to the §3.3 codes and `relationship` to OWNER / AGENT, audit columns, and indexes for the queue and registry queries",
       "gap": ""
     },
     {
@@ -187,7 +187,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "`design/solution_design.md` contains an OpenAPI 3.1 document with one operation per \u00a73.3 trigger (`submit`, `issue`, `reject`), read operations for queue, application, agents, documents, reports and history, and calculation endpoints for BR-01 and BR-03; enums equal the \u00a73.3 state codes; every 4xx response carries a `message` the UI can show verbatim; transition operations validate (fromState, trigger, role) server-side and return 409 (illegal state) or 403 (role)",
+      "evidence": "`design/solution_design.md` contains an OpenAPI 3.1 document with one operation per §3.3 trigger (`submit`, `issue`, `reject`), read operations for queue, application, agents, documents, reports and history, and calculation endpoints for BR-01 and BR-03; enums equal the §3.3 state codes; every 4xx response carries a `message` the UI can show verbatim; transition operations validate (fromState, trigger, role) server-side and return 409 (illegal state) or 403 (role)",
       "gap": ""
     },
     {
@@ -195,7 +195,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "API responses expose display models only \u2014 state label and code pair, masked identifier, formatted amounts \u2014 and never persistence rows; internal keys other than the application number, hashes and audit columns are marked `x-internal` and excluded; templates bind only to ViewModels.",
+      "evidence": "API responses expose display models only — state label and code pair, masked identifier, formatted amounts — and never persistence rows; internal keys other than the application number, hashes and audit columns are marked `x-internal` and excluded; templates bind only to ViewModels.",
       "gap": ""
     },
     {
@@ -211,7 +211,7 @@
       "pillar": 5,
       "maxPoints": 3,
       "awarded": 3,
-      "evidence": "See `specs/traceability_matrix.md` \u2014 every `REQ-*` above maps to capability \u2192 business rules \u2192 planned story \u2192 test category; the traceability matrix is maintained with this specification and audited by the Stage 2 lint and the Stage 3 backlog audit.",
+      "evidence": "See `specs/traceability_matrix.md` — every `REQ-*` above maps to capability → business rules → planned story → test category; the traceability matrix is maintained with this specification and audited by the Stage 2 lint and the Stage 3 backlog audit.",
       "gap": ""
     },
     {

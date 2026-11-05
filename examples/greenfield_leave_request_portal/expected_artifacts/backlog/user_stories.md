@@ -2,7 +2,7 @@
 
 > All functional (`US-FUNC-NN`) and technical (`US-TECH-NN`) stories for the Employee Leave & Exception Request Portal,
 > authored from `specs/application_spec.md` after Gate 2 (99/100). Machine twin: `backlog/user_stories.json`.
-> Scenario `SCENARIO_REQUIREMENTS_DOC`: every story traces to a documented requirement; no enhancement stories exist.
+> Input Scenario `Greenfield Requirements Specification`: every story traces to a documented requirement; no enhancement stories exist.
 
 ## 0. Coverage
 | Source | Items | Covered by stories | Uncovered |

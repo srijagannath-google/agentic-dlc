@@ -56,7 +56,7 @@ src/
 ├── ui/            index.html · app.js · styles.css      (single page, role-separated views, data-testid contract)
 ├── backend/       server.py (HTTP + identity adapter + payroll client/stub) · workflow.py (TRANSITIONS, BR-01…BR-07)
 │                  repositories.py (sqlite3 + demo seed) · viewmodel.py (labels, masking) · test_rules.py
-├── db/            schema.sql (extracted from design/solution_design.md); the runtime SQLite file lives outside src/ (PORTAL_DB_PATH)
-├── contracts/     openapi.yaml (extracted from design/solution_design.md)
+├── db/            schema.sql (authoritative 3NF relational schema); the runtime SQLite file lives outside src/ (PORTAL_DB_PATH)
+├── contracts/     openapi.yaml (authoritative OpenAPI 3.1 contract)
 └── run.sh         wrapper around the start command
 ```

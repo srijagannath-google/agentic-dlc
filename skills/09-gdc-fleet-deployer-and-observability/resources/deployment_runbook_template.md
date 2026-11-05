@@ -1,7 +1,7 @@
 # GDC Multi-Cloud & On-Prem Deployment Runbook (`deploy/deployment_and_runbook.md`)
 
 - **Project Name:** `<Project Name>`
-- **Input Scenario:** `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC`
+- **Input Scenario:** `Legacy Application Modernization` | `Greenfield Requirements Specification`
 - **Abstraction Control Plane:** `Google Distributed Cloud (GDC) / GKE Enterprise Fleet`
 - **Connectivity Mode:** `gdc-connected` | `gdc-air-gapped`
 - **Target Environments:** `on-prem-gdc` · `gcp` · `aws` · `azure`
@@ -38,7 +38,7 @@ flowchart LR
 
 ## 3. Portable Database Initialization & Data Migration Cutover
 - **Schema Initialization:** KRM `Job` `db-schema-migration` applies `src/db/schema.sql` before application pods pass readiness.
-- **Legacy Cutover (`SCENARIO_LEGACY_APP` only):** One-time ETL `Job` `legacy-data-cutover` executes the mapping and reconciliation checksums in `design/data_migration_and_cutover.md`.
+- **Legacy Cutover (Legacy Application Modernization only):** One-time ETL `Job` `legacy-data-cutover` executes the mapping and reconciliation checksums in `design/data_migration_and_cutover.md`.
 
 ---
 

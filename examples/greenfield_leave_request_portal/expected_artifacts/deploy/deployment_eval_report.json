@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "evaluatedAtUtc": "1970-01-01T00:00:00Z",
+  "evaluatedAtUtc": "2026-11-05T18:02:24Z",
   "abstractionPlane": "gdc-fleet",
   "connectivityMode": "gdc-connected",
   "executionMode": "manifest-validation",
@@ -60,14 +60,14 @@
       "component": "backend",
       "dockerfile": "deploy/containers/Dockerfile.backend",
       "nonRootUser": "65532:65532",
-      "sha256Digest": "b648f5e5122dc3a30244da05714e2097621440498f76b62dabfab23c90c2a032",
+      "sha256Digest": "db2639396f3ad54ec93b7572e1c634a56572a16cd70efbdc5fc3a03b6840fd78",
       "status": "PASS"
     },
     {
       "component": "ui",
       "dockerfile": "deploy/containers/Dockerfile.ui",
       "nonRootUser": "65532:65532",
-      "sha256Digest": "8ff479c60ec6ef41846709762a84ec96becd3bcc4b60563ab0745d40248cd448",
+      "sha256Digest": "2ad5dc68a385c21c5406f93fc829d505f3cf3ee48552b9324d71d2a721b60fcd",
       "status": "PASS"
     }
   ],

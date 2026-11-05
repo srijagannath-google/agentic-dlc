@@ -1,6 +1,6 @@
 # Test Plan — Business Licensing & Renewal Portal (`test/test_plan.md`)
 
-- **Executable twin:** `test/test_cases.json` (skeleton derived by `05/scripts/derive_test_cases.py`, steps completed by `testing-agent`, validated by `05/scripts/validate_test_cases.py`)
+- **Executable twin:** `test/test_cases.json` (contract-first executable test suite with deterministic browser, HTTP, and static steps)
 - **Derived from:** `backlog/user_stories.json` (sha `5081e696a894…`), `specs/application_spec.md` (sha `595174a5493f…`), `src/db/schema.sql`, `src/contracts/openapi.yaml`, `specs/input_inventory.json`
 - **Environment:** `specs/target_stack.json#commands` — start `python3 src/backend/server.py`, healthcheck `http://127.0.0.1:8767/health`, uiEntry `http://127.0.0.1:8767/`; browser runtime chain `playwright → chrome-headless → NOT_RUN`; http runtime via `urllib`; static scans over every rendered state reached by the browser tests.
 - **Fixtures:** the backend recreates the database and loads the demo data on every start (`APP_DB_RESET=1`), so the suite starts from the same seven-plus-three applications each run (see `src/README.md`). Tests that mutate a seeded record own that record (e.g. APP-2026-000002 is issued by US-FUNC-06/AC-01, 000006 is rejected by US-FUNC-07/AC-01, 000008/000009/000010 are consumed by API and permission tests); tests that need a fresh draft create one through the wizard with a unique tax identifier.

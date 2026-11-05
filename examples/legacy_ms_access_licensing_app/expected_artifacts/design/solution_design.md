@@ -1,9 +1,9 @@
 # Solution Design — Business Licensing & Renewal Portal (`design/solution_design.md`)
 
-- **Input Scenario:** `SCENARIO_LEGACY_APP`
+- **Input Scenario:** `Legacy Application Modernization`
 - **Target stack:** frontend `static-html` · backend `python-stdlib-http` · database `sqlite` (from `specs/target_stack.json`)
 - **Companion Architecture Document:** `design/architecture_design.md` (Google Cloud Well-Architected Logical & Technical Architecture, Sequence Diagram, Layering Table & 6-Pillar Grilling Matrices)
-- **Principles:** clean target (no legacy table/form/report/query names, no desktop-database bridge, no dual run); contract-first (this document is the source of `src/contracts/openapi.yaml` and `src/db/schema.sql`, while `design/architecture_design.md` owns all Logical & Technical Architecture diagrams); **one** state table (spec §3.3) enforced in the UI **and** in the backend; ViewModel boundary per `_shared/zero_leak.md`; UX guardrails per `_shared/ux_guardrails.md`.
+- **Principles:** clean target (no legacy table/form/report/query names, no desktop-database bridge, no dual run); contract-first (this document is the source of `src/contracts/openapi.yaml` and `src/db/schema.sql`, while `design/architecture_design.md` owns all Logical & Technical Architecture diagrams); **one** state table (spec §3.3) enforced in the UI **and** in the backend; Zero-Leak ViewModel/DTO boundary; Enterprise UX Simplicity Guardrails.
 - **Upstream:** `specs/application_spec.md` (REQ-*, §3.3 states `DRAFT`, `SUBMITTED`, `ISSUED`, `REJECTED`; triggers `Submit`, `Issue`, `Reject`; §3.4 BR-01…BR-08; §3.5 roles `Commercial Buyer` (external), `Licensing Staff` (internal)); `backlog/user_stories.json` (17 stories, Sprint 1–2 + backlog).
 
 ## 1. Future-State ("To-Be") Domain Model — Normalised 3NF ERD & SQL DDL Schema
@@ -93,7 +93,7 @@ erDiagram
     }
 ```
 
-### 2.1 Legacy → Target 3NF Entity Mapping *(SCENARIO_LEGACY_APP)*
+### 2.1 Legacy → Target 3NF Entity Mapping *(Legacy Application Modernization)*
 | # | Legacy Object (from Discovery §2.1) | Target Entity | Transformation (normalisation, retired columns, merged/split) | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- | :-- |
 | 1 | Applicant table bound to the applicant-selection form (columns: applicant id, last/first name, middle initial, date of birth, SSN, business name, applicant type, FEIN, suspended, under investigation, e-mail, city) | `commercial_buyers` | Plain-text SSN/FEIN replaced by `tax_id_kind` + one-way `tax_id_hash` + `tax_id_last4`; suspended / under-investigation flags kept as booleans; search keys become name, city, e-mail and last-4 only | `Form_frmBusinessLicenseApplicantSelection.txt:31` (list row source), `:93–180` (search variants) |
@@ -106,7 +106,7 @@ erDiagram
 | 8 | New-applications list form and new-application detail form (review of web-submitted, unissued licences; hard delete button) | `license_applications.status` + `audit_events` | Hard delete replaced by the `Reject` transition with a recorded reason and actor | `Form_frmBusinessLicenseNewApplications.txt:19–27, 33–47`; overview document ("New Applications" paragraph) |
 
 ### 2.2 Target 3NF SQL DDL Schema
-*(Exactly one block tagged `sql ddl` — extracted to `src/db/schema.sql` by `extract_contracts.py`.)*
+*(Single authoritative `sql ddl` schema materialized to `src/db/schema.sql`.)*
 
 ```sql ddl
 -- Business Licensing & Renewal Portal — normalised schema (SQLite dialect, 3NF)
@@ -1114,7 +1114,7 @@ Persistence rows never leave the repository layer; every handler returns the Vie
 - **Initial role:** the UI starts as `Commercial Buyer` (external role first, REQ-UX-01); the role switcher is a `<select data-testid="role-switcher">`.
 
 ## 6. Frontend Design Tokens & Components
-- **Design references applied:** none in `resources/design_references/` → `_shared/ux_guardrails.md` defaults + tokens from `resources/shared_services/ui_style_guide_enterprise.md`; stamped as `<body data-design-references="ux-guardrails-default; shared_services/ui_style_guide_enterprise.md">`.
+- **Design references applied:** none in `resources/design_references/` → Enterprise UX Simplicity Guardrail defaults + tokens from `resources/shared_services/ui_style_guide_enterprise.md`; stamped as `<body data-design-references="ux-guardrails-default; shared_services/ui_style_guide_enterprise.md">`.
 - **Tokens:** `--color-brand: #002855`, `--color-action: #1A73E8`, `--color-success: #1E8E3E`, `--color-warning: #F9AB00` (used with dark text), `--color-error: #D93025`, `--color-text: #1f2933`, `--color-muted: #52606d`, `--color-surface: #ffffff`, `--color-page: #f4f6f8`, `--focus-ring: 3px solid #1A73E8`; spacing `--space-1…5` = 4/8/12/16/24 px; type scale title 1.5 rem / section 1.2 rem / body 1 rem / caption 0.85 rem; `main { max-width: 800px }`.
 - **Components:** header with role switcher; skip link; `role=tablist` task tabs (≤ 3 per role); stepper (`[data-step]`, one primary button each, ≤ 5 visible inputs, `<details>` for optional fields); status badge (`role=status`, icon glyph + label); banner (`role=alert`); live calculation chips (`role=status`); roster list; queue table (`<th scope="col">`); review panel; registry search panels; document and fee-report lists with empty-state sentences.
 - **`data-testid` convention (contract-first, declared in `test/test_cases.json`):** kebab-case `<entity>-<field>` for inputs (`buyer-legal-name`, `bond-amount`, `agent-last-name`), `<action>-btn` for controls (`save-draft-btn`, `submit-application-btn`, `issue-licence-btn`, `reject-application-btn`, `add-agent-btn`, `remove-agent-btn`), `<entity>-status` / `<scope>-status` for status displays (`application-status`, `review-status`), `view-<role-slug>` for role views, `tab-<name>` for tabs, `role-switcher` for the role select, `banner` for the alert region.
@@ -1137,5 +1137,5 @@ Persistence rows never leave the repository layer; every handler returns the Vie
 | **Health & Readiness Probes** | `GET /health` (`livenessProbe` & `readinessProbe` verifying relational database connectivity) |
 | **Target Deployment Plane** | Multi-cloud / hybrid GDC Fleet (`on-prem-gdc`, `gcp`, `aws`, `azure`) managed by `GDC Config Sync`, `Policy Controller`, and `Cloud Service Mesh` |
 
-## 9. Migration Reference *(SCENARIO_LEGACY_APP)*
+## 9. Migration Reference *(Legacy Application Modernization)*
 See `design/data_migration_and_cutover.md` — legacy → target column mapping, cleansing, reconciliation, cutover and rollback; the legacy desktop database and the previous web application are retired after cutover (no bridge, no dual run).

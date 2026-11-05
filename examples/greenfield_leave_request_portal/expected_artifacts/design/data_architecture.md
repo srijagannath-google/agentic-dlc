@@ -1,6 +1,6 @@
 # Data Architecture (`design/data_architecture.md`)
 
-- **Project:** Employee Leave Request Portal (`SCENARIO_REQUIREMENTS_DOC`)
+- **Project:** Employee Leave Request Portal (Greenfield Requirements Specification)
 - **Perspective:** **Data Architecture — Information Pipeline, Normalised 3NF Domain Model, AI Grounding & Data Governance** (Standalone Perspective Artifact 5 of 7)
 - **Visual Renderer:** `design/diagrams/data_architecture.svg` (`.png`) — 5-Stage Left-to-Right Information Pipeline + Bottom Governance Bar
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
@@ -12,64 +12,6 @@
 *(Depicts the end-to-end flow of leave data across **5 Pipeline Stages** — **Data Sources & Producers**, **Ingestion, Validation & CDC**, **Operational 3NF System of Record & MDM**, **Unified Data & AI Grounding / RAG**, and **Consumption, Analytics & Archival** — underpinned by the **Unified Data Governance, Lineage, PII Masking & Retention** bar.)*
 
 ![Data Architecture](diagrams/data_architecture.png)
-
-<details>
-<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/data_architecture.png)</summary>
-
-```diagram-dsl
-flowchart LR
-    %% title: Employee Leave Request Portal — End-to-End Data & AI Grounding Architecture
-    %% subtitle: 5-Stage Data Pipeline from Leave Intake to 3NF System of Record, Policy RAG Grounding, and Payroll Export
-    subgraph SG_Stage1["1. Data Sources & Producers"]
-        S1["<b>Employee Leave Portal</b><br/>Leave Requests &amp; Edits"]:::dataCard
-        S2["<b>Corporate HR Directory</b><br/>Employee &amp; Manager Hierarchy"]:::dataCard
-        S3["<b>Regional Holiday Feed</b><br/>Public Holiday Calendars"]:::dataCard
-        S4["<b>Medical Cert Uploads</b><br/>Encrypted Attachments"]:::dataCard
-    end
-
-    subgraph SG_Stage2["2. Ingestion, Validation & CDC"]
-        I1["<b>OpenAPI Schema Gate</b><br/>Type, Date &amp; Enum Checks"]:::dataCard
-        I2["<b>Working-Day Validator</b><br/>Holiday &amp; Overlap Filter"]:::dataCard
-        I3["<b>Transactional Outbox</b><br/>State Event Capture"]:::dataCard
-        I4["<b>PII Tokenization</b><br/>Medical &amp; Reason Redaction"]:::dataCard
-    end
-
-    subgraph SG_Stage3["3. Operational 3NF System of Record"]
-        D1["<b>3NF Relational Primary</b><br/>ACID Leave &amp; Balance Tables"]:::dataCard
-        D2["<b>Cross-Zone HA Standby</b><br/>Synchronous Replication"]:::dataCard
-        D3["<b>Employee &amp; Quota Master</b><br/>Accrual &amp; Leave Type Lookup"]:::dataCard
-        D4["<b>Append-Only Audit Log</b><br/>Immutable State History"]:::dataCard
-    end
-
-    subgraph SG_Stage4["4. Unified Data & AI Grounding"]
-        A1["<b>Curated Leave Mart</b><br/>Read-Optimized Views"]:::dataCard
-        A2["<b>HR Policy Vector Index</b><br/>Leave Handbook Embeddings"]:::dataCard
-        A3["<b>Semantic Balance Layer</b><br/>Accrual &amp; Coverage Metrics"]:::dataCard
-        A4["<b>De-Identified Analytics</b><br/>Privacy-Safe Aggregates"]:::dataCard
-    end
-
-    subgraph SG_Stage5["5. Consumption, Analytics & Export"]
-        C1["<b>Zero-Leak DTO APIs</b><br/>Role-Scoped UI Payloads"]:::dataCard
-        C2["<b>Workforce KPI Dashboards</b><br/>Absence &amp; SLA Reporting"]:::dataCard
-        C3["<b>Leave Policy AI Copilot</b><br/>Grounded Policy Answers"]:::dataCard
-        C4["<b>Payroll Webhook Export</b><br/>Approved Leave Postings"]:::dataCard
-    end
-
-    subgraph SG_GovBar["Unified Data Governance, Lineage, PII Masking, KMS Encryption & Retention Policies"]
-        G1["<b>Data Catalog &amp; Lineage</b><br/>Schema Registry"]:::govCard
-        G2["<b>Zero-Leak PII Masking</b><br/>Role-Based Redaction"]:::govCard
-        G3["<b>KMS Encryption (CMEK)</b><br/>TLS 1.3 &amp; AES-256"]:::govCard
-        G4["<b>Retention &amp; Archival</b><br/>7-Year Labor Audit Lifecycle"]:::govCard
-    end
-
-    SG_Stage1 ==> SG_Stage2 ==> SG_Stage3 ==> SG_Stage4 ==> SG_Stage5
-    SG_Stage3 -.-> SG_GovBar
-
-    classDef dataCard fill:#FFFFFF,stroke:#2B5B84,stroke-width:1.5px,color:#202124;
-    classDef govCard fill:#E8F0FE,stroke:#1A73E8,stroke-width:1.5px,color:#0D47A1;
-```
-
-</details>
 
 ---
 

@@ -22,6 +22,9 @@ import sys
 import zipfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import dlc_common as dlc  # noqa: E402
+
 # 1. Worked-example domain literals and vendor-marketing phrases forbidden outside examples/
 FORBIDDEN_CORE = [
     r"business-licensing-portal",
@@ -103,6 +106,44 @@ def main() -> int:
             for m in core_pattern.finditer(line):
                 hits += 1
                 print(f"[CORE] {rel}:{n}: '{m.group(0)}'  | {line.strip()[:120]}")
+
+    # 3. Deliverable templates (`skills/*/resources/*`) & golden project deliverables (`examples/*/expected_artifacts/*`)
+    #    must NEVER contain internal DLC script names, plugin paths (`_shared/`), subagent slugs, `diagram-dsl` scaffolding,
+    #    or raw `SCENARIO_*` enum constants in prose/code deliverables.
+    template_files = [
+        f for f in sorted((root / "skills").glob("*/resources/**/*"))
+        if f.is_file() and f.suffix.lower() in TEXT_EXT and "diagram_specs" not in f.parts
+    ] + [
+        f for f in sorted((root / "skills").glob("*/resources/*"))
+        if f.is_file() and f.suffix.lower() in TEXT_EXT
+    ]
+    for f in sorted(set(template_files)):
+        rel = f.relative_to(root).as_posix()
+        if rel in allow:
+            continue
+        rx = dlc.DELIVERABLE_JSON_INTERNAL_LEAK_RE if f.suffix.lower() == ".json" else dlc.DELIVERABLE_INTERNAL_LEAK_RE
+        for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = rx.search(line)
+            if m:
+                hits += 1
+                print(f"[TEMPLATE-LEAK] {rel}:{n}: '{m.group(0)}'  | {line.strip()[:120]}")
+
+    for mmd_f in sorted((root / "skills").glob("*/resources/diagram_specs/*.mmd")):
+        rel = mmd_f.relative_to(root).as_posix()
+        if rel in allow:
+            continue
+        for n, line in enumerate(mmd_f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            m = dlc.DELIVERABLE_JSON_INTERNAL_LEAK_RE.search(line)
+            if m:
+                hits += 1
+                print(f"[DIAGRAM-SPEC-LEAK] {rel}:{n}: '{m.group(0)}'  | {line.strip()[:120]}")
+
+    examples_dir = root / "examples"
+    if examples_dir.is_dir():
+        for ex_art in sorted(examples_dir.glob("*/expected_artifacts")):
+            for leak in dlc.scan_deliverable_internal_leaks(ex_art):
+                hits += 1
+                print(f"[GOLDEN-LEAK] {ex_art.parent.name}/expected_artifacts/{leak}")
 
     all_files = [
         f for f in sorted(root.rglob("*"))

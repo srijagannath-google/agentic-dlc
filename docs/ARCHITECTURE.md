@@ -32,8 +32,9 @@ plugin must read it first.
 6. **Real verification.** Spec quality is judged by an LLM against `schemas/spec_rubric.json` with quoted
    evidence; UI behaviour is executed in a real browser runtime; backend contracts are hit over HTTP;
    reports are generated from results and real diffs. Nothing prints a static PASS.
-7. **No duplication.** Long shared text lives once in `_shared/` and is referenced, not pasted.
+7. **No duplication in plugin rules.** Long shared plugin guidance lives once in `_shared/` for skills and agents to read; **deliverable files inside `<PROJECT_ROOT>/` must never reference `_shared/*.md`, internal script paths, subagent slugs, `<details>` diagram-dsl blocks, or `SCENARIO_*` enum constants**.
    Shared Python lives once in `scripts/dlc_common.py` (skills import it via `sys.path` insertion).
+8. **Zero internal harness leakage in deliverables.** Every published deliverable under `<PROJECT_ROOT>/{specs,backlog,design,test,src,deploy}/` is customer-facing and scanned fail-closed by `dlc_common.scan_deliverable_internal_leaks()` across all stage gates and `scripts/lint_domain_neutrality.py`. Machine-readable diagram DSL specifications live exclusively in hidden dot-files `design/diagrams/.specs/<stem>.mmd`.
 
 ## 2. Plugin layout
 
@@ -101,6 +102,7 @@ agentic-dlc/
 │   ├── data_architecture.md             # Stage 4A (LLM) — 5-Stage Data & AI Grounding Pipeline + 3NF erDiagram
 │   ├── security_architecture.md         # Stage 4A (LLM) — 5-Layer Defense-in-Depth & AI Trust Layer
 │   ├── infrastructure_architecture.md   # Stage 4A (LLM) — Multi-Region Deployment Topology + Well-Architected & Grilling Matrices
+│   ├── diagrams/.specs/*.mmd            # Stage 4A (LLM, hidden dot-dir) — 7 diagram DSL specifications
 │   ├── diagrams/*.{svg,png}             # Stage 4A (script) — 7 rendered perspective diagrams
 │   ├── solution_design.md               # Stage 4A (LLM) — must contain fenced ```yaml openapi and ```sql ddl blocks
 │   └── data_migration_and_cutover.md    # Stage 4A (LLM) — SCENARIO_LEGACY_APP only

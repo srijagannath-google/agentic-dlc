@@ -1,4 +1,3 @@
--- ---- block 1 (extracted from design/solution_design.md) ----
 -- Employee Leave & Exception Request Portal — SQLite 3 DDL (3NF). Status values = spec §3.3 state codes.
 PRAGMA foreign_keys = ON;
 

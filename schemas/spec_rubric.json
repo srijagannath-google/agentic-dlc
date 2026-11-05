@@ -8,7 +8,7 @@
   "scoringRules": [
     "Score every criterion 0..maxPoints. Any criterion awarded > 0 MUST quote verbatim evidence from specs/application_spec.md (the validator checks the quote is present, whitespace-normalised, case-insensitive). Separate several quotes with ' … '.",
     "Evidence must be a real quote: at least 25 characters and 5 words after whitespace normalisation, never a bare id (REQ-FUNC-01), a single word or the criterion id. The validator warns when no quote comes from the criterion's own pillar section (or the section(s) named by the criterion's optional 'evidenceSections' heading patterns; the header block, §3.3–§3.5 tables and traceability section count for every pillar).",
-    "Criteria with 'appliesTo' not containing the project's inputScenario are not applicable: award maxPoints and set evidence to 'N/A — not applicable to <scenario>'.",
+    "Criteria with 'appliesTo' not containing the project's inputScenario are not applicable: award maxPoints and set evidence to 'N/A — not applicable to greenfield requirements specifications'.",
     "A criterion marked blocking:true that scores 0 forces verdict FAIL regardless of the total.",
     "Verdict is PASS iff totalScore >= 90 and no blocking criterion scored 0. Self-heal the spec (not the scorecard) until PASS."
   ],
@@ -111,7 +111,7 @@
     },
     {
       "id": "P4-C2", "pillar": 4, "title": "UX guardrails adopted or explicitly overridden", "maxPoints": 3, "blocking": false,
-      "whatGoodLooksLike": "References _shared/ux_guardrails.md and lists any guardrail overridden by a design reference or Gate 1 instruction with the reason; no silent deviations.",
+      "whatGoodLooksLike": "Adopts the enterprise UX guardrails (single primary action per screen, mutual tab exclusivity, progressive disclosure, role-separated views, default-persona landing reachability) and lists any guardrail overridden by a design reference or Gate 1 instruction with the reason; no silent deviations.",
       "evidenceHint": "Quote the guardrail-adoption/override statement."
     },
     {
@@ -121,7 +121,7 @@
     },
     {
       "id": "P4-C4", "pillar": 4, "title": "Zero internal-data-leakage mandate with label mapping", "maxPoints": 5, "blocking": true,
-      "whatGoodLooksLike": "References _shared/zero_leak.md, lists the token classes forbidden in visible text, and provides a human-label mapping for every state/trigger/error code in §3.3 (code → label) so the UI never renders raw codes, identifiers or engineering notes.",
+      "whatGoodLooksLike": "Enforces the zero internal-data-leakage presentation mandate, lists the token classes forbidden in visible text, and provides a human-label mapping for every state/trigger/error code in §3.3 (code → label) so the UI never renders raw codes, identifiers or engineering notes.",
       "evidenceHint": "Quote one code→label mapping row and the leakage prohibition sentence."
     },
 

@@ -1,7 +1,7 @@
 # Unified User Story Backlog (`backlog/user_stories.md`)
 
 > All functional (`US-FUNC-NN`) and technical (`US-TECH-NN`) stories for the whole application, authored from
-> `specs/application_spec.md` after Gate 2. Machine twin: `backlog/user_stories.json` (ARCHITECTURE §4.5).
+> `specs/application_spec.md` after Gate 2. Machine twin: `backlog/user_stories.json`.
 > AC counts vary by story (4 → 10+); workflow stories always carry role-visibility and prerequisite-gate ACs.
 
 ## 0. Coverage

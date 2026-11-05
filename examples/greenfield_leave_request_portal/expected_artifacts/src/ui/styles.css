@@ -1,4 +1,4 @@
-/* Default theme — _shared/ux_guardrails.md defaults (no design reference supplied).
+/* Default theme — Enterprise UX Simplicity Guardrail tokens (no external design reference supplied).
    4-level type scale, 3 semantic status tokens (always paired with text), single-column 800px layout. */
 :root {
   --color-primary: #1a5fb4;

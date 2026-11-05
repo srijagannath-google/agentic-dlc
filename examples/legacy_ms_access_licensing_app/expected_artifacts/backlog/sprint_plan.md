@@ -33,7 +33,7 @@
 | :-- | :-- | :-: | :-- |
 | US-TECH-07 | One-time legacy data migration and retirement | 5 | Runs once at cutover after Release 1 is accepted; the plan (`design/data_migration_and_cutover.md`) is written in Stage 4A, the ETL tooling is built after the target schema is frozen |
 
-## Retired / Not Carried Forward *(SCENARIO_LEGACY_APP)*
+## Retired / Not Carried Forward *(Legacy Application Modernization)*
 | Legacy artefact | Decision | Rationale |
 | :-- | :-- | :-- |
 | Hard delete of unissued applications (`Command163_Click`) | retired | replaced by the audited `Reject` transition (ASSUMPTION-01) |

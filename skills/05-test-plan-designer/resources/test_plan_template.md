@@ -1,6 +1,6 @@
 # Test Plan (`test/test_plan.md`)
 
-- **Executable twin:** `test/test_cases.json` (derived by `derive_test_cases.py`, steps completed by `testing-agent`, validated by `validate_test_cases.py`)
+- **Executable twin:** `test/test_cases.json` (contract-first executable test suite with deterministic browser, HTTP, and static steps)
 - **Derived from:** `backlog/user_stories.json` (sha `<…>`), `specs/application_spec.md` (sha `<…>`), `src/db/schema.sql`, `src/contracts/openapi.yaml`, `specs/input_inventory.json`
 - **Environment:** `specs/target_stack.json#commands` (start / healthcheck / uiEntry); browser runtime chain `playwright → chrome-headless → NOT_RUN`
 

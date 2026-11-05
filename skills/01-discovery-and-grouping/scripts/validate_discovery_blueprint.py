@@ -76,13 +76,17 @@ def main() -> int:
             if re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", name.lower()):
                 warns.append(f"Project Name should be the business/domain name only — it contains a target tech-stack word ('{w}'): {name!r}")
 
-    # 2. Scenario header must agree with the inventory
-    sm = re.search(r"\*\*Input Scenario(?: Mode)?:?\*\*:?\s*`?(SCENARIO_[A-Z_]+)", md)
-    if not sm:
-        fails.append("Missing '- **Input Scenario Mode:** SCENARIO_…' header line.")
-    elif sm.group(1) != scenario:
-        fails.append(f"Document states {sm.group(1)} but specs/input_inventory.json says {scenario}. "
-                     f"Confirm with the user and re-run scan_input_sources.py (--domain-slug) or fix the document.")
+    # 2. Scenario header must agree with the inventory (human-readable label required; SCENARIO_* enum forbidden by leak scan)
+    parsed_scn = dlc.parse_scenario_label(md)
+    if not parsed_scn:
+        fails.append(
+            f"Missing '- **Input Scenario Mode:** {dlc.scenario_display_label(scenario)}' header line."
+        )
+    elif parsed_scn != scenario:
+        fails.append(
+            f"Document states scenario '{dlc.scenario_display_label(parsed_scn)}' but specs/input_inventory.json says "
+            f"{scenario} ({dlc.scenario_display_label(scenario)}). Confirm with the user or fix the document."
+        )
 
     # 3. Narrative §1 subsections
     if not heading_present(md, r"business context|mission|purpose"):
@@ -197,6 +201,9 @@ def main() -> int:
                 unknown = sorted(set(sel_groups) - known_ids)
                 if unknown:
                     fails.append(f"specs/target_stack.json#selectedCapabilityGroups contains unknown group ID(s) {unknown} (known: {sorted(known_ids)} or 'ALL').")
+
+    # 10. Zero internal harness workings leak check
+    fails.extend(dlc.scan_deliverable_internal_leaks(root, [args.file]))
 
     result = {
         "file": str(doc_path), "inputScenario": scenario, "hasPoliciesOrStatutes": has_statutes,

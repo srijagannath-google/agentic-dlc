@@ -4,13 +4,13 @@
 - **Abstraction Control Plane:** `gdc-fleet` (`gdc-connected`)
 - **Execution Mode:** `manifest-validation` — manifests validated statically; nothing was applied to a cluster.
 - **Target Fleet Environments:** `on-prem-gdc, gcp, aws, azure`
-- **Evaluated At (UTC):** `1970-01-01T00:00:00Z`
+- **Evaluated At (UTC):** `2026-11-05T18:04:09Z`
 
 ## 1. OCI Container Images
 | Component | Dockerfile | Non-Root User | SHA-256 Digest | Status |
 | :-- | :-- | :-- | :-- | :-: |
-| `backend` | `deploy/containers/Dockerfile.backend` | `65532:65532` | `075a2835fff53b3b…` | `PASS` |
-| `ui` | `deploy/containers/Dockerfile.ui` | `65532:65532` | `2696755001267aec…` | `PASS` |
+| `backend` | `deploy/containers/Dockerfile.backend` | `65532:65532` | `2f1e576064da5918…` | `PASS` |
+| `ui` | `deploy/containers/Dockerfile.ui` | `65532:65532` | `0ba4f6f6c768d56b…` | `PASS` |
 
 ## 2. GDC Kustomize Provider Overlays
 | Environment | Overlay Path | GDC Cluster Selector | Status |

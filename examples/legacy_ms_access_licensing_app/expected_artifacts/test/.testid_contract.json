@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "sourceSha256": "2dff81eba589f2b9494ccd5c9411ee4fc0f83b5cda2526034583323f4d4843ad",
+  "sourceSha256": "4f5b132c73be54869a73169fc146b07f3f72a392e7889de73b46a9a7652a9ecc",
   "testIds": [
     "add-agent-btn",
     "add-document-btn",

@@ -24,7 +24,7 @@ Gate 1 answers / `ASSUMPTION-NN` list, `resources/policies_and_statutes/` (if an
 
 ### 1. Author the spec (`discovery-architect`)
 Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITECTURE §4.3):
-- Header block: project name, `Input Scenario`, `Domain Slug`, accessibility standard(s), regulations, assumptions.
+- Header block: project name, `Input Scenario` (human-readable label: `Legacy Application Modernization` or `Greenfield Requirements Specification` — never internal `SCENARIO_*` enum constants), `Domain Slug`, accessibility standard(s), regulations, assumptions.
 - `## 1 Pillar 1 — Functionality` (`REQ-FUNC-NN`); `### 1.4 Modernization Enhancements (REQ-ENH-NN)` **legacy only**.
 - `## 2 Pillar 2 — Security` (`REQ-SEC-NN`) incl. RBAC matrix per §3.5 role and the **PII field list** to mask.
 - `## 3 Pillar 3 — Accessibility` (`REQ-A11Y-NN`) per `target_stack.json#accessibilityStandard` — **and** the
@@ -81,5 +81,5 @@ Once `validate_spec_scorecard.py` returns `PASS` (`total ≥ 90`, zero blocking 
 ## Do not
 - Start Stage 2 before `gate_1_discovery` is `APPROVED_BY_USER`, or auto-start Stage 3 before `gate_2_spec` is `APPROVED_BY_USER`.
 - Let the author score or the judge edit the spec.
-- Paste the UX guardrails or zero-leak rule text into the spec; cite them and record only overrides.
+- Expose internal harness paths (`_shared/*.md`, `*.py` scripts, `schemas/*.json`, subagent slugs, or `SCENARIO_*` enum constants) inside `specs/application_spec.md`, `specs/traceability_matrix.md`, or `specs/application_eval_scorecard.json` — express UX guardrails and zero-leakage presentation standards in clean professional prose and record only overrides.
 - Add jurisdiction-specific accessibility/regulatory standards the user did not name.

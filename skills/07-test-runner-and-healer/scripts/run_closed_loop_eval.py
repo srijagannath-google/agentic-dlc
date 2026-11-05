@@ -91,7 +91,7 @@ HEURISTIC_PATTERNS = {
 LEAK_CLASS_BY_INDEX = {
     1: ["schemaIdentifiers"],
     2: ["enumCodes"],
-    3: ["legacyIdentifiers", "engineeringNotePatterns", "internalIds"],
+    3: ["legacyIdentifiers", "engineeringNotePatterns", "internalIds", "internalHarnessLeak"],
     4: ["piiPatterns"],
 }
 LEAK_REGEX_CLASSES = {"piiPatterns", "engineeringNotePatterns"}  # these classes hold regexes, not literal tokens
@@ -1836,10 +1836,10 @@ def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]]
     history_rows = build_cumulative_history_rows(root, iteration, results, now_ts)
     lines = [f"# Remediation & Guardrail Audit Report — Iteration {iteration}", "",
              f"Generated: {now_ts}  ", f"Project: `{root.name}`  ",
-             f"Compared: `test/.snapshots/{baseline_label}` → `test/.snapshots/iter-{iteration}`" + ("" if has_baseline else " (baseline missing)") + "  ",
+             f"Compared: `{baseline_label}` → `iter-{iteration}`" + ("" if has_baseline else " (baseline missing)") + "  ",
              f"Preserved Per-Run Archive: `test/history/iter-{iteration}/` · `test/*.iter-{iteration:02d}.*`", "",
              "## 0. Cumulative Run & Remediation History (All Iterations)", "",
-             "> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/`, `test/.snapshots/iter-<N>/`, and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.", ""]
+             "> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/` and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.", ""]
     lines += history_table_lines(history_rows) + [""]
     # §1 what failed
     lines += ["## 1. What failed", ""]
@@ -1938,7 +1938,7 @@ def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]]
             lines.append(f"| `{f['file']}` | {f['hunk']} `{f['header'][:30]}` | `{f['hash'][:12]}` | {', '.join(f['categories'])} | {ch} |")
         lines += ["", "Review each hunk: confirm it does not relax a role check, a workflow prerequisite, a business-rule formula, PII masking, an accessibility attribute or an enum→label mapping. Record the decision in this file, then re-run with `--approve-guardrail-flags`.", ""]
     if approved_rows:
-        lines += [f"{len(approved_rows)} guardrail-sensitive hunk(s) in this diff were previously approved (hashes recorded in `{GUARDRAIL_STATE_FILE}`): " + ", ".join(f"`{f['hash'][:12]}`" for f in approved_rows), ""]
+        lines += [f"{len(approved_rows)} guardrail-sensitive hunk(s) in this diff were previously approved: " + ", ".join(f"`{f['hash'][:12]}`" for f in approved_rows), ""]
     if not flagged:
         lines += ["No modified hunk matched a guardrail-sensitive pattern (role/permission checks, state guards, spec §3.3 state names/triggers, spec §3.4 rule identifiers, masking/PII, accessibility attributes, label mappings, formulas/thresholds).", ""]
     if stale_pending:
@@ -2042,7 +2042,7 @@ def write_eval_report(out_path: Path, data: dict[str, Any], root: Path, backend_
                   + ", ".join(f"`{i}`" for i in s["optionalNonPassingIds"]), ""]
     g = data.get("guardrail") or {}
     if g:
-        lines += [f"Guardrail review: **{g.get('status')}** (baseline `{g.get('baseline')}`, pending hunks: {len(g.get('pendingHunks') or [])}, state file `{g.get('stateFile')}`)", ""]
+        lines += [f"Guardrail review: **{g.get('status')}** (baseline `{g.get('baseline')}`, pending hunks: {len(g.get('pendingHunks') or [])})", ""]
     lines += ["## Run History & Preserved Per-Iteration Artifacts", ""]
     lines += history_table_lines(history_rows, max_ids=6, with_files=False) + [""]
     cats: dict[str, dict[str, int]] = {}
@@ -2172,7 +2172,6 @@ def archive_iteration_artifacts(
             "modifiedSourceFiles": hr["changedFiles"],
             "artifacts": {
                 "historyDir": hr["historyDir"],
-                "snapshotDir": hr["snapshotDir"],
                 "evalResultsJson": f"{hr['historyDir']}/eval_results.json",
                 "evalReportMd": f"{hr['historyDir']}/eval_report.md",
                 "remediationAuditReportMd": f"{hr['historyDir']}/remediation_and_guardrail_audit_report.md",
@@ -2305,9 +2304,12 @@ def main() -> int:
                     browser_binary = getattr(adapter, "binary", "")
                     dlc.info(f"browser adapter: {browser_name} {browser_binary}")
                     if ui_source and hasattr(adapter, "capture_visual_evidence"):
+                        hist_shots_dir = root / "test" / "history" / f"iter-{iteration}" / "screenshots"
                         screenshots, unwired_from_probe = adapter.capture_visual_evidence(
-                            ui_source, snap_dir / "screenshots", root
+                            ui_source, hist_shots_dir, root
                         )
+                        if hist_shots_dir.is_dir():
+                            shutil.copytree(hist_shots_dir, snap_dir / "screenshots", dirs_exist_ok=True)
                 else:
                     dlc.warn(BROWSER_INSTALL_HINT)
 
@@ -2327,7 +2329,7 @@ def main() -> int:
                     deferred.append(tc)  # needs every rendered browser state → evaluated after the browser TCs
                     continue
                 if not steps or tc.get("needsSteps"):
-                    results.append({**base, "status": "NOT_RUN", "durationMs": 0, "failedStep": None, "message": "steps not authored yet (Stage 4B testing-agent must fill `steps`)", "actual": ""})
+                    results.append({**base, "status": "NOT_RUN", "durationMs": 0, "failedStep": None, "message": "steps not authored yet (Stage 4B test specification must populate `steps`)", "actual": ""})
                     continue
                 if runtime_blocked and runtime in ("browser", "http", "static"):
                     # Every runtime-dependent TC — browser included — is ERROR, never a verdict against stale code.
@@ -2395,6 +2397,17 @@ def main() -> int:
 
             # ---- cross-cutting checks (computed, never hard-coded) ----
             hits, warns, scanned = leakage_scan(forbidden, texts_for_leak)
+            for leak_msg in dlc.scan_deliverable_internal_leaks(root):
+                m_tok = re.search(r"exposes internal harness detail '([^']+)'", leak_msg)
+                tok_val = m_tok.group(1) if m_tok else "internal-harness-detail"
+                src_loc = leak_msg.split(" exposes ", 1)[0]
+                hits.append({
+                    "token": tok_val,
+                    "tokenClass": "internalHarnessLeak",
+                    "source": f"deliverable:{src_loc}",
+                    "severity": "fail",
+                    "context": leak_msg[:220],
+                })
             unwired = [{"selector": c["selector"], "text": c.get("text", ""), "reason": c["reason"], "seenIn": c.get("seenIn", "")} for c in controls_acc.values() if not c.get("hasHandler")]
             for u_tab in unwired_from_probe:
                 if not any(u["selector"] == u_tab["selector"] for u in unwired):
@@ -2424,7 +2437,9 @@ def main() -> int:
                     continue
                 m = re.match(r"^TC-UI-LEAK-(\d+)$", tid)
                 if m:
-                    classes = tc.get("tokenClasses") or LEAK_CLASS_BY_INDEX.get(int(m.group(1)), [])
+                    classes = list(tc.get("tokenClasses") or LEAK_CLASS_BY_INDEX.get(int(m.group(1)), []))
+                    if int(m.group(1)) == 3 and "internalHarnessLeak" not in classes:
+                        classes.append("internalHarnessLeak")
                     my_hits = [h for h in hits if h["tokenClass"] in classes]
                     n_tokens = sum(len(forbidden.get(c) or []) for c in classes)
                     if not classes or n_tokens == 0:

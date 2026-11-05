@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "specSha256": "fc116d310304999067cdf88b108b2b355ea96c08d86b665aa9903047aca378f1",
+  "specSha256": "f24b55aef673007206243087e327f4794cabc93d61dd9f2145ffac1ada99c73b",
   "inputScenario": "SCENARIO_LEGACY_APP",
   "reqIds": [
     "REQ-FUNC-01",

@@ -1,7 +1,7 @@
 # Employee Leave & Exception Request Portal
 
 - **Project Name:** `Employee Leave & Exception Request Portal`
-- **Input Scenario:** `SCENARIO_REQUIREMENTS_DOC` (from `specs/input_inventory.json`; confidence: `HIGH`)
+- **Input Scenario:** `Greenfield Requirements Specification` (from `specs/input_inventory.json`; confidence: `HIGH`)
 - **Domain Slug:** `employee-leave-exception-request-portal`
 - **Include Modernization Enhancements in Spec:** `false`
 - **Target Philosophy:** clean target architecture; the payroll REST interface the document demands is a required integration capability, not legacy carry-over.
@@ -216,7 +216,7 @@ terminal: it is the hand-off state to payroll. There is no rejection state (BRD 
 ## 7. Gate 1 — Context Confirmation Checklist *(autonomous mode — defaults applied and recorded)*
 1. **Regulations / policies:** none declared beyond the internal HR policy and data-quality standard cited in the document; `resources/policies_and_statutes/` is empty.
 2. **Security, privacy & PII fields to mask:** employee identifier and national identifier (NFR-02); enterprise defaults applied — OIDC/RBAC, masking at the presentation boundary, append-only audit log.
-3. **Accessibility standard(s) & design references:** baseline `WCAG 2.1 AA`; design references present: `no` (autonomous mode — proceeding with the default UX guardrails in `_shared/ux_guardrails.md`).
+3. **Accessibility standard(s) & design references:** baseline `WCAG 2.1 AA`; design references present: `no` (autonomous mode — proceeding with the default Enterprise UX Simplicity Guardrails).
 4. **Target stack & coding guidelines:** zero-dependency default — `static-html` frontend / `python-stdlib-http` backend serving UI + API on one port / `sqlite` database → `specs/target_stack.json`.
 5. **ALM platform:** `none` (no `JIRA_URL` / `ADO_ORG_URL` in the environment).
 6. **Business capability grouping & selected group(s):** `selectedCapabilityGroups: ["ALL"]` (`GRP-01`, `GRP-02`, `GRP-03` all taken forward in autonomous mode).

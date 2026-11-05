@@ -1,7 +1,7 @@
 {
   "schemaVersion": "4.0",
-  "architectureSha256": "2565b2ad987841b0d7e0e25bbfe43a8abb157179f060ba596b0595972c51f280",
-  "designSha256": "f8ffbd24220efc498fbd591bdc65847c89f32ed903ca2e6dc979a774d17980f1",
+  "architectureSha256": "907c01c35d1363eee71c4d6a04022f1289ea1a07918ab5936684c8cd96fe1f7d",
+  "designSha256": "e0224a15d16175bed6e8842a14a68f177bbf1be9270ac161a57b95d87c3f170c",
   "openapiVersion": "3.1.0",
   "tables": [
     {

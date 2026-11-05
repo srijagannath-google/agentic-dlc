@@ -1,6 +1,6 @@
 # Employee Leave & Exception Request Portal — Application Specification
 
-- **Input Scenario:** `SCENARIO_REQUIREMENTS_DOC`
+- **Input Scenario:** `Greenfield Requirements Specification`
 - **Domain Slug:** `employee-leave-exception-request-portal`
 - **Accessibility Standard(s):** `WCAG 2.1 AA`
 - **Regulations / Policies in Scope:** none declared (the document cites an internal HR policy §4.1–§4.5 and a data-quality standard; no statute)
@@ -15,7 +15,7 @@
   - `ASSUMPTION-07` — The HR Certifier queue shows every `MANAGER_APPROVED` request that meets BR-02, without a population filter.
   - `ASSUMPTION-08` — Requested hours are entered as a number; start/end dates are used for BR-03 (lead time) and BR-04 (overlap) only.
   - `ASSUMPTION-09` — `pending` in BR-01 counts every request that is not `DRAFT` or `WITHDRAWN` (`SUBMITTED`, `MANAGER_APPROVED`, `APPROVED`, `POSTED`) until the HR system of record reports the hours as taken; the portal never adds approved hours to `taken` itself (accrual engine out of scope, BRD §7). Impact: approved and posted requests reduce the available balance immediately.
-- **Shared rules by reference:** `_shared/ux_guardrails.md`, `_shared/zero_leak.md`, `_shared/workflow_chain_of_custody.md`
+- **Architectural & UX Standards:** Enterprise UX Simplicity Guardrails, Zero Internal Data Leakage Boundary, and Deterministic Workflow Chain of Custody
 
 ---
 
@@ -35,7 +35,7 @@ Capability coverage is complete: all 11 capabilities CAP-01…CAP-11 of the disc
 | REQ-FUNC-07 | The HR Certifier queue lists `MANAGER_APPROVED` requests that meet BR-02 (hours > 40 or type Exception); Certify moves them to `APPROVED`; Return requires a comment (BR-07) and moves them to `DRAFT`. | HR Certifier | CAP-07 | FR-05; §4 step 4; ASSUMPTION-07 |
 | REQ-FUNC-08 | When a request becomes `APPROVED` the system posts it as JSON to the payroll REST endpoint `POST /payroll/leave-postings`; a 2xx answer moves the request to `POSTED` and records the payroll reference; any other outcome keeps it `APPROVED`, records the failure and raises an alert visible in the Payroll Integration view. | Payroll Integration | CAP-08 | FR-07; §4 step 5; §8; ASSUMPTION-05 |
 | REQ-FUNC-09 | Every state change writes an append-only audit record with actor, timestamp (UTC), previous state and new state; the record is visible to internal roles in the request's history. | All | CAP-09 | FR-08; NFR-05 |
-| REQ-FUNC-10 | Any attempt to trigger a transition that §3.3 does not allow from the request's current state, or by a role that does not own it, is refused by the backend with HTTP 409 (state) or 403 (role) and a human-readable message; the state is unchanged and the attempt is audited. | All | CAP-06, CAP-07, CAP-04 | §4; `_shared/workflow_chain_of_custody.md` |
+| REQ-FUNC-10 | Any attempt to trigger a transition that §3.3 does not allow from the request's current state, or by a role that does not own it, is refused by the backend with HTTP 409 (state) or 403 (role) and a human-readable message; the state is unchanged and the attempt is audited. | All | CAP-06, CAP-07, CAP-04 | §3.3, §4 |
 
 ### 1.2 Journeys & Steps
 *(Step counts come from the §3.3 states each role passes through.)*
@@ -185,11 +185,11 @@ Trigger and error codes are likewise mapped: `Submit` → "Submit request", `Man
 ## 4 Pillar 4 — User Experience & Zero Internal Data Leakage (`REQ-UX-NN`)
 | ID | Requirement | Derived from |
 | :-- | :-- | :-- |
-| REQ-UX-01 | The ten UX guardrails of `_shared/ux_guardrails.md` are adopted as defaults with no overrides (§4.1): one primary action per view, role-separated views, ≤ 3 task tabs per role, ≤ 5 visible fields per step (reason inside progressive disclosure), single-column layout 720–840 px, live calculation, actionable errors, 4-level typography with 3 semantic status tokens, zero internal data. | `_shared/ux_guardrails.md` |
+| REQ-UX-01 | The ten Enterprise UX Simplicity Guardrails are adopted as defaults with no overrides (§4.1): one primary action per view, role-separated views, ≤ 3 task tabs per role, ≤ 5 visible fields per step (reason inside progressive disclosure), single-column layout 720–840 px, live calculation, actionable errors, 4-level typography with 3 semantic status tokens, zero internal data. | Enterprise UX Simplicity Guardrails |
 | REQ-UX-02 | Design reference: `resources/design_references/` is empty, so the default clean Material-Design-3-style theme (system font stack, 8 px spacing grid, tonal surfaces) is applied; the applied set is stamped in `<body data-design-references="default-ux-guardrails">`. | Gate 1 (autonomous) |
-| REQ-UX-03 | Zero internal-data leakage per `_shared/zero_leak.md`: visible text never contains database table/column identifiers, raw `UPPER_SNAKE_CASE` state/trigger/error codes, internal keys or UUIDs, API paths, SQL, or engineering notes; every code is mapped to the label table in §3.3 at the ViewModel boundary (§4.2). | `_shared/zero_leak.md` |
+| REQ-UX-03 | Zero internal-data leakage boundary: visible text never contains database table/column identifiers, raw `UPPER_SNAKE_CASE` state/trigger/error codes, internal keys or UUIDs, API paths, SQL, or engineering notes; every code is mapped to the label table in §3.3 at the ViewModel boundary (§4.2). | Zero-Leak ViewModel Boundary |
 | REQ-UX-04 | Role-separated navigation: the Employee view contains no Approve/Return/Certify/Post control; a role switcher (`select[data-testid=role-switcher]`) represents the signed-in identity's group claim in the pretotype, defaulting to the external role Employee. | §3.5; guardrail 2 |
-| REQ-UX-05 | Controls are rendered and enabled from `(currentState, currentRole)` using the §3.3 table as one data structure; a transition control that is not allowed is absent (not merely disabled) and any server refusal shows the VAL-07 message with the status unchanged. | §3.3; `_shared/workflow_chain_of_custody.md` |
+| REQ-UX-05 | Controls are rendered and enabled from `(currentState, currentRole)` using the §3.3 table as one data structure; a transition control that is not allowed is absent (not merely disabled) and any server refusal shows the VAL-07 message with the status unchanged. | §3.3 Deterministic State Table |
 | REQ-UX-06 | Live reactive calculation: available and post-request balance (BR-01), lead-time earliest date (BR-03) and the certification indicator (BR-02) recompute on `input`; validation banners say what failed and the fix (§1.3). | guardrails 7–8 |
 | REQ-UX-07 | No dead controls: every button, select, row action and tab has a handler with a visible DOM effect; empty queues show an explicit "No requests waiting" line instead of an empty table. | guardrail 10; TC-UI-INTERACT |
 

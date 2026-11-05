@@ -1,6 +1,6 @@
 # Business Licensing & Renewal Portal — Application Specification
 
-- **Input Scenario:** `SCENARIO_LEGACY_APP` (legacy desktop-database estate; modernization enhancements included in §1.4)
+- **Input Scenario:** `Legacy Application Modernization` (legacy desktop-database estate; modernization enhancements included in §1.4)
 - **Domain Slug:** `business-licensing-portal`
 - **Accessibility Standard(s):** `WCAG 2.1 AA` (baseline; the shared style guide's tokens are applied as the same criteria)
 - **Regulations / Policies in Scope:** Commercial Business Licensing Policy (CBL-101) — section 4 (surety bond), section 6 (agent exclusivity), section 9a (4 % volume fee), as provided in `resources/policies_and_policies/`
@@ -10,7 +10,7 @@
   - `ASSUMPTION-03` — There is no return-for-correction transition and no in-place renewal; a new application is filed for each calendar year.
   - `ASSUMPTION-04` — Suspension remains an attribute of the buyer or agent; it blocks `Issue` (suspended buyer) and agent assignment (suspended agent) but adds no licence state.
   - `ASSUMPTION-05` — Only the surety-bond amount is validated; the bond expiry date is captured for information.
-- **Shared rules by reference:** `_shared/ux_guardrails.md`, `_shared/zero_leak.md`, `_shared/workflow_chain_of_custody.md`
+- **Architectural & UX Standards:** Enterprise UX Simplicity Guardrails, Zero Internal Data Leakage Boundary, and Deterministic Workflow Chain of Custody
 - **Upstream:** `specs/discovery_architecture_and_inventory.md` (capabilities CAP-01…CAP-08, business rules, evidence). Capability coverage is complete: all 8 discovered capabilities map to at least one `REQ-FUNC` row below (coverage table in `specs/traceability_matrix.md`).
 
 ---
@@ -74,7 +74,7 @@
 | VAL-11 | Issue (`BR-01`, `BR-02`, `BR-06`, suspension) | all guards pass | "The licence cannot be issued: <first failing guard>. Resolve it and try again." |
 | VAL-12 | Quarterly purchase total (`BR-03`) | numeric ≥ 0 | "Enter the quarter's total purchase price in dollars." |
 
-### 1.4 Modernization Enhancements (`REQ-ENH-NN`) *(SCENARIO_LEGACY_APP — chosen from the pain points in discovery §5)*
+### 1.4 Modernization Enhancements (`REQ-ENH-NN`) *(Legacy Application Modernization — chosen from the pain points in discovery §5)*
 | ID | Enhancement | Pain point addressed (discovery §5 ref) | Acceptance signal |
 | :-- | :-- | :-- | :-- |
 | `REQ-ENH-01` | Unified self-service application journey: the record the buyer completes is the same record staff review and issue; no re-keying, no second system. | §5 #1 — two disconnected systems | A buyer-created `DRAFT` appears in the staff queue the moment it is `SUBMITTED`, with identical data |
@@ -190,11 +190,11 @@ Trigger controls are labelled "Submit application", "Issue licence" and "Reject 
 ## 4 Pillar 4 — User Experience & Zero Internal Data Leakage (`REQ-UX-NN`)
 | ID | Requirement | Derived from |
 | :-- | :-- | :-- |
-| `REQ-UX-01` | Role-separated views: the Commercial Buyer portal and the Licensing Staff workspace are separate views selected by a role switcher (the external role is the initial view); staff controls (Issue licence, Reject application, Print, suspend / reinstate, registry search) are never rendered in the buyer view, and transition controls render only for the (state, role) pairs in §3.3. | §3.3, §3.5, `_shared/ux_guardrails.md` #2 |
-| `REQ-UX-02` | The UX guardrails in `_shared/ux_guardrails.md` are adopted as defaults: one primary action per screen, ≤ 3 top-level tabs per role, ≤ 5 visible fields per step (extra fields behind progressive disclosure), single-column layout with a main container between 720 px and 840 px wide, recognition over recall (entity-type and quarter selects, example amounts), live calculation on input for BR-01 and BR-03, actionable error recovery (VAL messages), 4-level typography and 3 semantic status tokens. No guardrail is overridden (§4.1). | `_shared/ux_guardrails.md` |
+| `REQ-UX-01` | Role-separated views: the Commercial Buyer portal and the Licensing Staff workspace are separate views selected by a role switcher (the external role is the initial view); staff controls (Issue licence, Reject application, Print, suspend / reinstate, registry search) are never rendered in the buyer view, and transition controls render only for the (state, role) pairs in §3.3. | §3.3, §3.5, UX Guardrail #2 |
+| `REQ-UX-02` | The Enterprise UX Simplicity Guardrails are adopted as defaults: one primary action per screen, ≤ 3 top-level tabs per role, ≤ 5 visible fields per step (extra fields behind progressive disclosure), single-column layout with a main container between 720 px and 840 px wide, recognition over recall (entity-type and quarter selects, example amounts), live calculation on input for BR-01 and BR-03, actionable error recovery (VAL messages), 4-level typography and 3 semantic status tokens. No guardrail is overridden (§4.1). | Enterprise UX Simplicity Guardrails |
 | `REQ-UX-03` | Design reference: no user-provided design reference exists (`resources/design_references/` is empty), so the default design system is the UX-guardrail defaults with the shared style-guide tokens from `resources/shared_services/ui_style_guide_enterprise.md` (brand navy `#002855`, action blue `#1A73E8`, success green `#1E8E3E`, warning amber `#F9AB00`, error red `#D93025`); the applied set is stamped in `<body data-design-references>`. | Gate 1 default |
-| `REQ-UX-04` | Zero internal data leakage per `_shared/zero_leak.md`: visible text never contains database table or column identifiers, raw state / trigger / error codes, internal keys or hashes, legacy object or file names, engineering notes, SQL or API paths, or unmasked identifiers; all codes pass through the label dictionary in §3.3 and the ViewModel boundary in `REQ-ARCH-05`. | `_shared/zero_leak.md` |
-| `REQ-UX-05` | Every control has defined behaviour and visible effect (no dead buttons): lists and detail views bind to live data; empty lists show an explanatory sentence instead of an empty table; each step has exactly one primary button; success and error banners state the next action. | `_shared/ux_guardrails.md` #1, #8, #10 |
+| `REQ-UX-04` | Zero internal data leakage boundary: visible text never contains database table or column identifiers, raw state / trigger / error codes, internal keys or hashes, legacy object or file names, engineering notes, SQL or API paths, or unmasked identifiers; all codes pass through the label dictionary in §3.3 and the ViewModel boundary in `REQ-ARCH-05`. | Zero-Leak ViewModel Boundary |
+| `REQ-UX-05` | Every control has defined behaviour and visible effect (no dead buttons): lists and detail views bind to live data; empty lists show an explanatory sentence instead of an empty table; each step has exactly one primary button; success and error banners state the next action. | UX Guardrails #1, #8, #10 |
 
 ### 4.1 UX Guardrail Overrides *(none)*
 | Guardrail # | Override | Justification / reference |
@@ -212,7 +212,7 @@ Trigger controls are labelled "Submit application", "Issue licence" and "Reject 
 | agents | Agents | Searchable Registry | Licensing Staff | Search agents |
 
 ### 4.3 Zero-Leakage Obligations
-`_shared/zero_leak.md` applies in full. The presentation boundary is the ViewModel layer described in `REQ-ARCH-05`: it maps the state codes of §3.3 to the visible labels table, maps error codes to the VAL messages, masks the tax identifier (§2.2) and omits internal keys, hashes and audit columns. Domain-specific tokens added to the forbidden list: the legacy object names in `specs/input_inventory.json` and the words "parity" and "legacy" in visible text.
+The Zero Internal Data Leakage boundary applies in full. The presentation boundary is the ViewModel layer described in `REQ-ARCH-05`: it maps the state codes of §3.3 to the visible labels table, maps error codes to the VAL messages, masks the tax identifier (§2.2) and omits internal keys, hashes and audit columns. Domain-specific tokens added to the forbidden list: the legacy object names in `specs/input_inventory.json` and the words "parity" and "legacy" in visible text.
 
 ---
 

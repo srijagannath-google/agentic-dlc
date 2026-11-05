@@ -1,7 +1,7 @@
 # Business Licensing & Renewal Portal
 
 - **Project Name:** `Business Licensing & Renewal Portal`
-- **Input Scenario Mode:** `SCENARIO_LEGACY_APP` (from `specs/input_inventory.json`; confidence: `HIGH` — 7 legacy artefacts weighing 15 vs 1 narrative overview document weighing 3)
+- **Input Scenario Mode:** `Legacy Application Modernization` (from `specs/input_inventory.json`; confidence: `HIGH` — 7 legacy artefacts weighing 15 vs 1 narrative overview document weighing 3)
 - **Domain Slug:** `business-licensing-portal`
 - **Include Modernization Enhancements in Spec:** `true` (legacy only)
 - **Discovery Scope:** **Current State ("As-Is") only** — Future-State ("To-Be") 3NF ERDs, target SQL DDL, future-state architecture flow diagrams, and Legacy-to-Target entity mappings belong strictly in Stage 4A (`design/solution_design.md` and `design/data_migration_and_cutover.md`).
@@ -102,7 +102,7 @@ erDiagram
     }
 ```
 
-### 2.1 Current-State Legacy Object Inventory *(SCENARIO_LEGACY_APP)*
+### 2.1 Current-State Legacy Object Inventory *(Legacy Application Modernization)*
 | # | Legacy Object (table / form / query / report) | Object Type | Current-State Role & Key Fields | Observed Limitations / Risks | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- | :-- | :-- |
 | 1 | Applicant selection form & bound applicant table (`Form_frmBusinessLicenseApplicantSelection`) | Form + Table | Staff search/select applicants by name, SSN, FEIN, city, e-mail; create new licence records; delete applicants (`ApplicantID`, `LastName`, `FirstName`, `SSN`, `FEIN`, `BusinessName`, `Suspended`, `UnderInvestigation`) | Plain-text SSN/FEIN stored and used as search keys; UI event handlers embed SQL queries directly | `Form_frmBusinessLicenseApplicantSelection.txt:31` (list row source), `:93–180` (search variants), `:350–364` (delete check) |
@@ -116,7 +116,7 @@ erDiagram
 
 ---
 
-## 3. Current-State ("As-Is") Workflow & Lifecycle State Machine *(extracted from the legacy forms and the overview document — see `_shared/workflow_chain_of_custody.md`)*
+## 3. Current-State ("As-Is") Workflow & Lifecycle State Machine *(extracted directly from the legacy forms and overview document)*
 
 The lifecycle entity is the **licence application** for one buyer and one calendar year.
 
@@ -180,7 +180,7 @@ Terminal states: `ISSUED`, `REJECTED`. Initial state: `DRAFT` (an application st
 
 ---
 
-## 5. Current-State Pain Points & Technical Debt Inventory *(SCENARIO_LEGACY_APP)*
+## 5. Current-State Pain Points & Technical Debt Inventory *(Legacy Application Modernization)*
 | # | Pain point / gap observed in current state | Business / operational impact | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- |
 | 1 | Two disconnected systems: buyers type into an older web application while staff review and re-key in the desktop database | Duplicate manual data entry, transcription errors, and no single source of truth | `BusinessLicensingAccessDatabaseOverview.docx` (introduction & "New Applications") |
@@ -216,7 +216,7 @@ Terminal states: `ISSUED`, `REJECTED`. Initial state: `DRAFT` (an application st
 ## 7. Gate 1 — Context Confirmation Checklist *(autonomous mode — defaults applied, nothing paused)*
 1. **Regulations / policies:** declared — Enterprise Commercial Buyers Licensing Act, sections 4, 6, 9a (`resources/policies_and_policies/`). No further policies were named by the user.
 2. **Security, privacy & PII fields to mask:** enterprise defaults — OIDC for internal staff, account sign-in for buyers, RBAC per §3.2; mask SSN (`***-**-1234`) and FEIN (`**-***4567`); store hash + last four only; date of birth, phone and e-mail visible to internal staff only; audit log on every transition.
-3. **Accessibility standard(s) & design references:** baseline `WCAG 2.1 AA` (the shared style guide also cites a state accessibility act; it is applied as the same WCAG 2.1 AA criteria plus the guide's tokens). Design references present: `no` — Gate 1 would ask; autonomous mode proceeds with `_shared/ux_guardrails.md` defaults and the colour tokens from `resources/shared_services/ui_style_guide_enterprise.md`.
+3. **Accessibility standard(s) & design references:** baseline `WCAG 2.1 AA` (the shared style guide also cites a state accessibility act; it is applied as the same WCAG 2.1 AA criteria plus the guide's tokens). Design references present: `no` — Gate 1 would ask; autonomous mode proceeds with Enterprise UX Simplicity Guardrail defaults and the colour tokens from `resources/shared_services/ui_style_guide_enterprise.md`.
 4. **Target stack & coding guidelines:** `static-html` frontend + `python-stdlib-http` backend serving UI and API on port 8767 with `/health` + `sqlite` database → `specs/target_stack.json` (default zero-dependency stack; `decidedBy: autonomous-default`).
 5. **ALM platform:** `none` (no `JIRA_URL` / `ADO_ORG_URL` in the environment) — CSV export only.
 6. **Business capability grouping & selected group(s):** `selectedCapabilityGroups: ["ALL"]` (`GRP-01`, `GRP-02`, `GRP-03` all taken forward in autonomous mode).

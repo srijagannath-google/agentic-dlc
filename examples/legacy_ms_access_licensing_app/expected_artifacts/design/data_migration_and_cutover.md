@@ -1,7 +1,7 @@
 # Data Migration & Cutover Plan — Business Licensing & Renewal Portal (`design/data_migration_and_cutover.md`)
 
 - **Strategy:** one-time extract → cleanse → load from the legacy desktop database (and the previous web application's submission store) into the target schema in `design/solution_design.md §2`; **no dual run, no bridge, no compatibility views**. After reconciliation the legacy database is frozen read-only and archived; the previous web application is retired.
-- **Scenario:** `SCENARIO_LEGACY_APP`. Legacy object names below appear **only** in this plan and in the ETL mapping configuration — never in target code, schema or UI (REQ-ARCH-07).
+- **Input Scenario:** `Legacy Application Modernization`. Legacy object names below appear **only** in this plan and in the ETL mapping configuration — never in target code, schema or UI (REQ-ARCH-07).
 - **Executed by:** story US-TECH-07 (Product Backlog) once Release 1 is accepted and the target schema is frozen.
 
 ## 1. Source inventory

@@ -1,4 +1,4 @@
-# GDC Packaging Reference Skeleton (`08-container-and-gdc-packager`)
+# GDC Packaging Reference Skeleton (`deploy/`)
 
 > **Target-Stack Alignment Rule (`specs/target_stack.json`):**
 > `deploy/containers/Dockerfile.backend` and `deploy/containers/Dockerfile.ui` MUST use multi-stage builds matching the confirmed `specs/target_stack.json#{backend.kind, frontend.kind}` (never hardcoding `FROM python:...` when `backend.kind` is `java-spring-boot`, `node-express`, `go`, or `dotnet`). Both images set `ENV APP_ENV=production` so the same `src/` codebase tested locally in Stage 5/6 (`APP_ENV=local`) runs in production cloud/GDC mode (`APP_ENV=production`, `DATABASE_URL`, `AUTH_MODE=oidc-iap`, `OTEL_EXPORTER_OTLP_ENDPOINT`).
@@ -77,7 +77,7 @@ CMD ["bash", "src/run.sh"]
   - `ServiceAccount`
   - `Deployment` (`runAsNonRoot: true`, `runAsUser: 65532`, `readOnlyRootFilesystem: true`, `/health` liveness & readiness probes, OTel env vars)
   - `Service`, `HorizontalPodAutoscaler`, `PodDisruptionBudget`, `NetworkPolicy`
-  - `Job` `db-schema-migration` applying `src/db/schema.sql` (and `Job` `legacy-data-cutover-etl` referencing `design/data_migration_and_cutover.md` when `inputScenario == SCENARIO_LEGACY_APP`)
+  - `Job` `db-schema-migration` applying `src/db/schema.sql` (and `Job` `legacy-data-cutover-etl` referencing `design/data_migration_and_cutover.md` for Legacy Application Modernization projects)
 
 ## 3. `deploy/gdc/overlays/<provider>/kustomization.yaml` (`on-prem-gdc`, `gcp`, `aws`, `azure`)
 ```yaml

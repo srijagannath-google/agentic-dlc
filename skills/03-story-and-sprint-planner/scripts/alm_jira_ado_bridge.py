@@ -1361,6 +1361,13 @@ def audit_backlog(root: Path, stories: list[dict[str, Any]], allow_partial_cover
     if missing_brs:
         warnings.append(f"{len(missing_brs)} business rule(s) not referenced by any story: {', '.join(missing_brs)}.")
 
+    failures.extend(
+        dlc.scan_deliverable_internal_leaks(
+            root,
+            ["backlog/user_stories.md", "backlog/user_stories.json", "backlog/sprint_plan.md"],
+        )
+    )
+
     coverage_pct = 100.0 if not req_ids else round(100.0 * (len(req_ids) - len(missing_reqs)) / len(req_ids), 1)
     return {
         "requirementSources": req_sources,

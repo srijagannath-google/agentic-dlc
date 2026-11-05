@@ -2,7 +2,7 @@
 FROM python:3.11.9-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="leave-request-portal-ui" \
       io.agentic.dlc.abstraction-plane="gdc-fleet" \
-      io.agentic.dlc.spec-sha256="da46761b820842390b60641fc8661b470f0a683d283e5328b79be11ddb66e648" \
+      io.agentic.dlc.spec-sha256="122f76cd2e98b6d8f4a42e43441e084607e19c645bd4447424736bba1ff814ef" \
       io.agentic.dlc.capability-groups="GRP-01,GRP-02,GRP-03"
 RUN groupadd -g 65532 nonroot && useradd -u 65532 -g 65532 -s /sbin/nologin -M nonroot
 WORKDIR /app

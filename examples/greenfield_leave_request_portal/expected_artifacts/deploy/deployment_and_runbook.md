@@ -24,8 +24,8 @@ flowchart TB
 
 ## 2. Progressive Rollout Waves & Capability-Group Ordering
 
-- **Capability Groups Deployed:** `GRP-01,GRP-02,GRP-03` (Spec SHA-256: `da46761b82084239…`)
-- **Greenfield Schema Initialization (`SCENARIO_REQUIREMENTS_DOC`):** Before Wave 1 traffic shift, `Job/{slug}-db-schema-migration` applies `src/db/schema.sql`.
+- **Capability Groups Deployed:** `GRP-01,GRP-02,GRP-03` (Spec SHA-256: `122f76cd2e984239…`)
+- **Greenfield Schema Initialization (Greenfield Requirements Specification):** Before Wave 1 traffic shift, `Job/{slug}-db-schema-migration` applies `src/db/schema.sql`.
 - **Wave 1 (`on-prem-gdc`):** Reconciles via `selector-on-prem-gdc`, verifies `/health` on port `8766` and zero Policy Controller violations.
 - **Wave 2 (`gcp`):** Reconciles via `selector-gcp`, verifies Cloud Service Mesh `MultiClusterService` endpoint discovery.
 - **Wave 3 (`aws` & `azure`):** Reconciles via `selector-aws` and `selector-azure`, completing full multi-cloud active-active readiness.

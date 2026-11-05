@@ -1,8 +1,8 @@
 # Architecture Design Portfolio (`design/architecture_design.md`)
 
-- **Input Scenario:** `<SCENARIO_LEGACY_APP | SCENARIO_REQUIREMENTS_DOC>`
+- **Input Scenario:** `<Legacy Application Modernization | Greenfield Requirements Specification>`
 - **Confirmed Future-State Tech Stack (`specs/target_stack.json`):** frontend `<frontend.kind>` · backend `<backend.kind>` · database `<database.kind>` · deployment `<gdc-fleet>` (`decidedBy: "<user | autonomous-default>"`)
-- **Multi-Perspective Enterprise Architecture Standard:** **Well-Architected Framework (6 Core Pillars + Sustainability)**, **Value-Led Enterprise Architecture**, and **Cloud-Agnostic Multi-Perspective Diagramming** (`_shared/well_architected_and_diagram_standards.md`)
+- **Multi-Perspective Enterprise Architecture Standard:** **Well-Architected Framework (6 Core Pillars + Sustainability)**, **Value-Led Enterprise Architecture**, and **Cloud-Agnostic Multi-Perspective Diagramming**
 
 ---
 

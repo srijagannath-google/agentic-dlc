@@ -35,7 +35,7 @@ Sprint goal: Manager and HR Certifier queues with approve / return / certify, au
 | :-- | :-- | :-: | :-- |
 | — | none | — | The BRD scope (FR-01…FR-08, NFR-01…NFR-05) is fully delivered in Release 1; no deferrable reports or exports were requested. |
 
-## Retired / Not Carried Forward *(SCENARIO_LEGACY_APP only)*
+## Retired / Not Carried Forward *(Legacy Application Modernization only)*
 Not applicable — greenfield requirements document.
 
 ## Totals

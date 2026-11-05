@@ -17,7 +17,7 @@
 | Story | Title | Points | Why deferred |
 | :-- | :-- | :-: | :-- |
 
-## Retired / Not Carried Forward *(SCENARIO_LEGACY_APP only)*
+## Retired / Not Carried Forward *(Legacy Application Modernization only)*
 | Legacy artefact | Decision | Rationale |
 | :-- | :-- | :-- |
 

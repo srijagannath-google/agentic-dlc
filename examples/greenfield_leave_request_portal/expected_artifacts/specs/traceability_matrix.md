@@ -1,6 +1,6 @@
 # Requirements Traceability Matrix — Employee Leave & Exception Request Portal
 
-Scenario `SCENARIO_REQUIREMENTS_DOC`: every requirement traces to a paragraph of the input BRD (v1.0) and to a
+Input Scenario: `Greenfield Requirements Specification` — every requirement traces to a paragraph of the input BRD (v1.0) and to a
 discovery capability; nothing outside the document is specified.
 
 ## 1 Capability coverage (discovery §6 → REQ)
@@ -47,7 +47,7 @@ Coverage: 11 / 11 capabilities (100 %).
 | REQ-A11Y-06 | NFR-03; FR-03 | CAP-03 | — | US-TECH-03 | A11y, Negative |
 | REQ-UX-01 | NFR-03; HR complaints §1 | CAP-11 | — | US-TECH-04 | Interact, A11y |
 | REQ-UX-02 | Gate 1 (autonomous) | CAP-11 | — | US-TECH-04 | Static review |
-| REQ-UX-03 | NFR-02; `_shared/zero_leak.md` | CAP-05, CAP-11 | — | US-TECH-04 | UiLeak |
+| REQ-UX-03 | NFR-02; Zero-Leak Boundary | CAP-05, CAP-11 | — | US-TECH-04 | UiLeak |
 | REQ-UX-04 | §2 roles | CAP-06, CAP-07 | — | US-TECH-01 | State |
 | REQ-UX-05 | §4 workflow | CAP-04, CAP-06, CAP-07 | BR-05 | US-TECH-01 | State |
 | REQ-UX-06 | FR-02; FR-03 | CAP-02, CAP-03 | BR-01, BR-02, BR-03 | US-FUNC-02 | Edge |

@@ -1,17 +1,17 @@
 # Remediation & Guardrail Audit Report — Iteration 1
 
-Generated: 1970-01-01T00:00:00Z  
-Project: `greenfield_leave_request_portal`  
-Compared: `test/.snapshots/iter-0` → `test/.snapshots/iter-1` (baseline missing)  
+Generated: 2026-11-05T18:02:23Z  
+Project: `dlc_sync_greenfield_leave_request_portal_0vpn43yk`  
+Compared: `iter-0` → `iter-1` (baseline missing)  
 Preserved Per-Run Archive: `test/history/iter-1/` · `test/*.iter-01.*`
 
 ## 0. Cumulative Run & Remediation History (All Iterations)
 
-> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/`, `test/.snapshots/iter-<N>/`, and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.
+> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/` and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.
 
 | Iter | Timestamp (UTC) | Verdict | PASS / Total | FAIL | NOT_RUN | ERROR | Failed Test IDs | Remediated Test IDs | Modified Files (`src/`) | Preserved Run Artifacts |
 | --: | :-- | :-- | --: | --: | --: | --: | :-- | :-- | :-- | :-- |
-| **1** | `1970-01-01T00:00:00Z` | **PASS** | 151/151 | 0 | 0 | 0 | — | — | initial snapshot | `test/history/iter-1/` · `test/eval_report.iter-01.md` · `test/remediation_and_guardrail_audit_report.iter-01.md` |
+| **1** | `2026-11-05T18:02:23Z` | **PASS** | 151/151 | 0 | 0 | 0 | — | — | initial snapshot | `test/history/iter-1/` · `test/eval_report.iter-01.md` · `test/remediation_and_guardrail_audit_report.iter-01.md` |
 
 ## 1. What failed
 

@@ -1,4 +1,3 @@
--- ---- block 1 (extracted from design/solution_design.md) ----
 -- Business Licensing & Renewal Portal — normalised schema (SQLite dialect, 3NF)
 -- Status values are the spec §3.3 state codes; relationship values are the owner / agent kinds of BR-05.
 

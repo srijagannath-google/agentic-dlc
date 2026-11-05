@@ -458,6 +458,9 @@ def main() -> int:
         missing_kw = [kw for kw in ("topology", "wave", "observability", "failover", "rollback") if kw not in rb_txt]
         if missing_kw:
             fails.append(f"deploy/deployment_and_runbook.md missing required section(s) covering: {missing_kw}.")
+        leak_rb = dlc.scan_deliverable_internal_leaks(root, ["deploy/deployment_and_runbook.md"])
+        if leak_rb:
+            fails.extend(leak_rb)
 
     # 5. Capability-group rollout waves (+ optional live apply)
     waves = compute_rollout_waves(root, target_envs)

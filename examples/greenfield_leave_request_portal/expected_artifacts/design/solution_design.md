@@ -1,9 +1,9 @@
 # Solution Design (`design/solution_design.md`) — Employee Leave & Exception Request Portal
 
-- **Input Scenario:** `SCENARIO_REQUIREMENTS_DOC`
+- **Input Scenario:** `Greenfield Requirements Specification`
 - **Target stack:** frontend `static-html` · backend `python-stdlib-http` · database `sqlite` (from `specs/target_stack.json`)
 - **Companion Architecture Document:** `design/architecture_design.md` (Google Cloud Well-Architected Logical & Technical Architecture, Sequence Diagram, Layering Table & 6-Pillar Grilling Matrices)
-- **Principles:** clean greenfield target; contract-first (this document is the source of `src/contracts/openapi.yaml` and `src/db/schema.sql`, while `design/architecture_design.md` owns all Logical & Technical Architecture diagrams); the spec §3.3 state table is encoded once as data and enforced in the backend **and** mirrored in the UI; ViewModel boundary per `_shared/zero_leak.md`; the payroll REST interface is a first-class outbound integration component (BRD §8), not legacy carry-over.
+- **Principles:** clean greenfield target; contract-first (this document is the source of `src/contracts/openapi.yaml` and `src/db/schema.sql`, while `design/architecture_design.md` owns all Logical & Technical Architecture diagrams); the spec §3.3 state table is encoded once as data and enforced in the backend **and** mirrored in the UI; Zero-Leak ViewModel/DTO boundary; the payroll REST interface is a first-class outbound integration component (BRD §8), not legacy carry-over.
 
 ## 1. Future-State ("To-Be") Domain Model — Normalised 3NF ERD & SQL DDL Schema
 Entities refine the conceptual entities from discovery into a normalised 3NF target schema. Derived values (`pending`, `available`, `requires_certification` of a request) are computed, never stored. Lookup table `leave_type` carries the certification / lead-time behaviour. Audit rows and payroll attempts are append-only (no UPDATE/DELETE path exists in the API).
@@ -702,7 +702,7 @@ components:
 - **RBAC matrix:** spec §2.1 → `workflow.py: ROLE_TRIGGERS` + queue filters in `repositories.py` (manager queue = direct reports only; certification queue = BR-02 only; payroll view = Payroll Integration only).
 
 ## 6. Frontend Design Tokens & Components
-- Design references applied: none — `_shared/ux_guardrails.md` defaults; `<body data-design-references="default-ux-guardrails">`.
+- Design references applied: none — Enterprise UX Simplicity Guardrail defaults; `<body data-design-references="default-ux-guardrails">`.
 - Tokens: `--color-primary #1a5fb4`, `--color-on-primary #fff`, `--color-surface #f7f8fa`, `--color-text #1b1b1f`, `--color-success #1e7e34`, `--color-warning #8a5a00`, `--color-error #b3261e` (all ≥ 4.5:1 on their surfaces); spacing `--space-1 … --space-5` on an 8 px grid; type scale title 1.5 rem / section 1.25 rem / body 1 rem / caption 0.875 rem; focus ring `3px solid #1a5fb4`.
 - Components: header (h1, role switcher `select`), skip link, one `main` with one view per role (`employee-view`, `manager-view`, `hr-view`, `payroll-view`), balance panel (`aria-live=polite`), request form (4 visible fields + `<details>` for reason), validation summary (`role=alert`), request detail card with status chip + action buttons, history/queue tables (`<th scope=col>`), audit list, status region (`role=status`).
 - `data-testid` convention: kebab-case `<entity>-<field>` for inputs (`leave-type`, `start-date`), `<action>-btn` for controls (`submit-btn`, `approve-btn`), `<entity>-status` for status displays, `<role>-view` for views, `queue-row-<reference>` / `open-<reference>` for rows. The exact set is declared in `test/test_cases.json` (contract-first).
@@ -725,4 +725,4 @@ components:
 | **Target Deployment Plane** | Multi-cloud / hybrid GDC Fleet (`on-prem-gdc`, `gcp`, `aws`, `azure`) managed by `GDC Config Sync`, `Policy Controller`, and `Cloud Service Mesh` |
 
 ## 9. Migration Reference
-Not applicable — `SCENARIO_REQUIREMENTS_DOC` (greenfield); no `design/data_migration_and_cutover.md`.
+Not applicable — Greenfield Requirements Specification; no `design/data_migration_and_cutover.md`.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "evaluatedAtUtc": "1970-01-01T00:00:00Z",
+  "evaluatedAtUtc": "2026-11-05T18:04:08Z",
   "iteration": 1,
   "runtime": {
     "browser": "chrome-headless",
@@ -22,7 +22,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 871,
+      "durationMs": 992,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -32,7 +32,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -111,7 +111,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 837,
+      "durationMs": 780,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -121,7 +121,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -200,7 +200,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 808,
+      "durationMs": 849,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -210,7 +210,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -289,7 +289,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 943,
+      "durationMs": 973,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -299,7 +299,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -386,7 +386,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 915,
+      "durationMs": 868,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -396,7 +396,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -483,7 +483,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 879,
+      "durationMs": 890,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -493,7 +493,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -580,7 +580,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 940,
+      "durationMs": 937,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -590,7 +590,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -741,7 +741,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 823,
+      "durationMs": 847,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -751,7 +751,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -830,7 +830,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 830,
+      "durationMs": 872,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -840,7 +840,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -935,7 +935,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 865,
+      "durationMs": 892,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -945,7 +945,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1048,7 +1048,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 890,
+      "durationMs": 881,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -1058,7 +1058,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1217,7 +1217,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 881,
+      "durationMs": 856,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -1227,7 +1227,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1290,7 +1290,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 952,
+      "durationMs": 896,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -1300,7 +1300,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1395,7 +1395,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 935,
+      "durationMs": 859,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -1405,7 +1405,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1500,7 +1500,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 938,
+      "durationMs": 908,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -1510,7 +1510,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1605,7 +1605,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 863,
+      "durationMs": 851,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -1615,7 +1615,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1718,7 +1718,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 884,
+      "durationMs": 844,
       "failedStep": null,
       "message": "13 step(s) passed",
       "actual": "",
@@ -1728,7 +1728,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1839,7 +1839,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 1084,
+      "durationMs": 833,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -1849,7 +1849,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -1976,7 +1976,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 1071,
+      "durationMs": 904,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -1986,7 +1986,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -2145,7 +2145,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 1061,
+      "durationMs": 1025,
       "failedStep": null,
       "message": "24 step(s) passed",
       "actual": "",
@@ -2155,7 +2155,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -2354,7 +2354,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 1037,
+      "durationMs": 1192,
       "failedStep": null,
       "message": "22 step(s) passed",
       "actual": "",
@@ -2364,7 +2364,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -2547,7 +2547,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 1043,
+      "durationMs": 1026,
       "failedStep": null,
       "message": "22 step(s) passed",
       "actual": "",
@@ -2557,7 +2557,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -2740,7 +2740,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 1028,
+      "durationMs": 936,
       "failedStep": null,
       "message": "21 step(s) passed",
       "actual": "",
@@ -2750,7 +2750,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -2925,7 +2925,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 1238,
+      "durationMs": 1046,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -2935,7 +2935,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3039,7 +3039,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-15 10:00:00 · Commercial Buyer Agent assigned 2026-11-05 16:25:28 · Licensing StaffMarcus Lee Agent removed 2026-11-05 16:25:28 · Licensing StaffMarcus Lee",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-15 10:00:00 · Commercial Buyer Agent assigned 2026-11-05 18:03:10 · Licensing StaffMarcus Lee Agent removed 2026-11-05 18:03:10 · Licensing StaffMarcus Lee",
           "ms": 0
         },
         {
@@ -3047,7 +3047,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-15 10:00:00 · Commercial Buyer Agent assigned 2026-11-05 16:25:28 · Licensing StaffMarcus Lee Agent removed 2026-11-05 16:25:28 · Licensing StaffMarcus Lee",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-15 10:00:00 · Commercial Buyer Agent assigned 2026-11-05 18:03:10 · Licensing StaffMarcus Lee Agent removed 2026-11-05 18:03:10 · Licensing StaffMarcus Lee",
           "ms": 0
         }
       ]
@@ -3062,7 +3062,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-07",
       "status": "PASS",
-      "durationMs": 981,
+      "durationMs": 935,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -3072,7 +3072,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3151,7 +3151,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-08",
       "status": "PASS",
-      "durationMs": 1140,
+      "durationMs": 1044,
       "failedStep": null,
       "message": "28 step(s) passed",
       "actual": "",
@@ -3161,7 +3161,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3392,7 +3392,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 1135,
+      "durationMs": 1059,
       "failedStep": null,
       "message": "21 step(s) passed",
       "actual": "",
@@ -3402,7 +3402,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3577,7 +3577,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 1075,
+      "durationMs": 1054,
       "failedStep": null,
       "message": "21 step(s) passed",
       "actual": "",
@@ -3587,7 +3587,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3762,7 +3762,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 917,
+      "durationMs": 944,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -3772,7 +3772,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3907,7 +3907,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 882,
+      "durationMs": 855,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -3917,7 +3917,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -3988,7 +3988,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 1006,
+      "durationMs": 981,
       "failedStep": null,
       "message": "21 step(s) passed",
       "actual": "",
@@ -3998,7 +3998,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4173,7 +4173,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 852,
+      "durationMs": 841,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -4183,7 +4183,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4262,7 +4262,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 837,
+      "durationMs": 901,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -4272,7 +4272,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4327,7 +4327,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 939,
+      "durationMs": 858,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -4337,7 +4337,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4440,7 +4440,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 1042,
+      "durationMs": 829,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -4450,7 +4450,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4505,7 +4505,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 976,
+      "durationMs": 1040,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -4515,7 +4515,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4610,7 +4610,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 977,
+      "durationMs": 964,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -4620,7 +4620,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4715,7 +4715,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 970,
+      "durationMs": 971,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -4725,7 +4725,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4789,7 +4789,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-12 10:00:00 · Commercial Buyer Licence issued — Licence issued 2026-11-05 16:25:42 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-12 10:00:00 · Commercial Buyer Licence issued — Licence issued 2026-11-05 18:03:23 · Licensing Staff",
           "ms": 0
         },
         {
@@ -4812,7 +4812,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 966,
+      "durationMs": 949,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -4822,7 +4822,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4901,7 +4901,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 961,
+      "durationMs": 946,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -4911,7 +4911,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -4990,7 +4990,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 988,
+      "durationMs": 1040,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -5000,7 +5000,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5072,7 +5072,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 16:25:45 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 18:03:26 · Licensing Staff",
           "ms": 0
         }
       ]
@@ -5087,7 +5087,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 1017,
+      "durationMs": 1029,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -5097,7 +5097,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5161,7 +5161,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 16:25:45 · Licensing Staff Certificate printed 2026-11-05 16:25:46 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 18:03:26 · Licensing Staff Certificate printed 2026-11-05 18:03:27 · Licensing Staff",
           "ms": 0
         }
       ]
@@ -5176,7 +5176,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 947,
+      "durationMs": 1130,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -5186,7 +5186,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5257,7 +5257,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 1022,
+      "durationMs": 953,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -5267,7 +5267,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5331,7 +5331,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-14 10:00:00 · Commercial Buyer Rejected — Rejected 2026-11-05 16:25:48 · Licensing StaffSurety company is not authorised in this state",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-14 10:00:00 · Commercial Buyer Rejected — Rejected 2026-11-05 18:03:29 · Licensing StaffSurety company is not authorised in this state",
           "ms": 0
         },
         {
@@ -5339,7 +5339,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-history]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-14 10:00:00 · Commercial Buyer Rejected — Rejected 2026-11-05 16:25:48 · Licensing StaffSurety company is not authorised in this state",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-14 10:00:00 · Commercial Buyer Rejected — Rejected 2026-11-05 18:03:29 · Licensing StaffSurety company is not authorised in this state",
           "ms": 0
         }
       ]
@@ -5354,7 +5354,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 941,
+      "durationMs": 939,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -5364,7 +5364,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5443,7 +5443,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 927,
+      "durationMs": 858,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -5453,7 +5453,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5540,7 +5540,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 958,
+      "durationMs": 965,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -5550,7 +5550,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5629,7 +5629,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 910,
+      "durationMs": 814,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -5639,7 +5639,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5687,7 +5687,7 @@
           "action": "expectText",
           "selector": "[data-testid=status-timeline]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 16:25:45 · Licensing Staff Certificate printed 2026-11-05 16:25:46 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 18:03:26 · Licensing Staff Certificate printed 2026-11-05 18:03:27 · Licensing Staff",
           "ms": 0
         },
         {
@@ -5695,7 +5695,7 @@
           "action": "expectText",
           "selector": "[data-testid=status-timeline]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 16:25:45 · Licensing Staff Certificate printed 2026-11-05 16:25:46 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 18:03:26 · Licensing Staff Certificate printed 2026-11-05 18:03:27 · Licensing Staff",
           "ms": 0
         },
         {
@@ -5703,7 +5703,7 @@
           "action": "expectText",
           "selector": "[data-testid=status-timeline]",
           "ok": true,
-          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 16:25:45 · Licensing Staff Certificate printed 2026-11-05 16:25:46 · Licensing Staff",
+          "actual": "Application created — Draft — not yet submitted 2026-01-10 09:00:00 · Commercial Buyer Submitted — Submitted — awaiting review 2026-01-05 08:30:00 · Commercial Buyer Licence issued — Licence issued 2026-01-08 14:00:00 · Licensing Staff Agent cards printed 2026-11-05 18:03:26 · Licensing Staff Certificate printed 2026-11-05 18:03:27 · Licensing Staff",
           "ms": 0
         },
         {
@@ -5726,7 +5726,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 940,
+      "durationMs": 846,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -5736,7 +5736,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5807,7 +5807,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 1007,
+      "durationMs": 876,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -5817,7 +5817,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5880,7 +5880,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 910,
+      "durationMs": 951,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -5890,7 +5890,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -5953,7 +5953,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 986,
+      "durationMs": 1142,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -5963,7 +5963,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6042,7 +6042,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 888,
+      "durationMs": 961,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -6052,7 +6052,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6123,7 +6123,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 784,
+      "durationMs": 1117,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -6133,7 +6133,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6188,7 +6188,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 981,
+      "durationMs": 966,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -6198,7 +6198,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6293,7 +6293,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 909,
+      "durationMs": 915,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -6303,7 +6303,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6390,7 +6390,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 983,
+      "durationMs": 1008,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -6400,7 +6400,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6471,7 +6471,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 1111,
+      "durationMs": 1072,
       "failedStep": null,
       "message": "23 step(s) passed",
       "actual": "",
@@ -6481,7 +6481,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6672,7 +6672,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 809,
+      "durationMs": 838,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -6682,7 +6682,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6729,7 +6729,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 798,
+      "durationMs": 804,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -6739,7 +6739,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6786,7 +6786,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 843,
+      "durationMs": 783,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -6796,7 +6796,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6843,7 +6843,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 1003,
+      "durationMs": 974,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -6853,7 +6853,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -6948,7 +6948,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 919,
+      "durationMs": 857,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -6958,7 +6958,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7029,7 +7029,7 @@
       "storyRef": "US-FUNC-10",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 1152,
+      "durationMs": 882,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -7039,7 +7039,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7136,7 +7136,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 5
+      "durationMs": 6
     },
     {
       "id": "TC-NEG-16",
@@ -7193,7 +7193,7 @@
       "storyRef": "US-TECH-01",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 798,
+      "durationMs": 761,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -7203,7 +7203,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7276,7 +7276,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 5
+      "durationMs": 7
     },
     {
       "id": "TC-NEG-18",
@@ -7306,7 +7306,7 @@
       "failedStep": null,
       "message": "5 http step(s) passed",
       "actual": "",
-      "durationMs": 12
+      "durationMs": 14
     },
     {
       "id": "TC-NEG-19",
@@ -7321,7 +7321,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 1
     },
     {
       "id": "TC-NEG-20",
@@ -7363,7 +7363,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 828,
+      "durationMs": 825,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -7373,7 +7373,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7420,7 +7420,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 820,
+      "durationMs": 843,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -7430,7 +7430,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7485,7 +7485,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 900,
+      "durationMs": 883,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -7495,7 +7495,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7598,7 +7598,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 838,
+      "durationMs": 899,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -7608,7 +7608,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7671,7 +7671,7 @@
       "storyRef": "US-TECH-05",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 1012,
+      "durationMs": 933,
       "failedStep": null,
       "message": "22 step(s) passed",
       "actual": "",
@@ -7681,7 +7681,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7864,7 +7864,7 @@
       "storyRef": "US-TECH-05",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 811,
+      "durationMs": 798,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -7874,7 +7874,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7913,7 +7913,7 @@
       "storyRef": "US-TECH-05",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 874,
+      "durationMs": 857,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -7923,7 +7923,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -7988,7 +7988,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 5
     },
     {
       "id": "TC-POS-42",
@@ -8018,7 +8018,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "TC-NEG-22",
@@ -8048,7 +8048,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "TC-POS-46",
@@ -8078,7 +8078,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "TC-NEG-24",
@@ -8105,7 +8105,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 938,
+      "durationMs": 991,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8115,7 +8115,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8186,7 +8186,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 1016,
+      "durationMs": 963,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8196,7 +8196,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8267,7 +8267,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 897,
+      "durationMs": 884,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8277,7 +8277,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8348,7 +8348,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 848,
+      "durationMs": 878,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8358,7 +8358,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8429,7 +8429,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 980,
+      "durationMs": 886,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8439,7 +8439,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8510,7 +8510,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 968,
+      "durationMs": 927,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8520,7 +8520,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8591,7 +8591,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 819,
+      "durationMs": 891,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8601,7 +8601,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8672,7 +8672,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 993,
+      "durationMs": 995,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8682,7 +8682,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8753,7 +8753,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 994,
+      "durationMs": 982,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -8763,7 +8763,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8834,7 +8834,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 1013,
+      "durationMs": 872,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -8844,7 +8844,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -8923,7 +8923,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 910,
+      "durationMs": 855,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -8933,7 +8933,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -9012,7 +9012,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 921,
+      "durationMs": 934,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -9022,7 +9022,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -9101,7 +9101,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 1051,
+      "durationMs": 1082,
       "failedStep": null,
       "message": "22 step(s) passed",
       "actual": "",
@@ -9111,7 +9111,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded http://127.0.0.1:39809/",
+          "actual": "harness already loaded http://127.0.0.1:33585/",
           "ms": 0
         },
         {
@@ -9297,7 +9297,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "TC-API-02",
@@ -9342,7 +9342,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "TC-API-05",
@@ -9372,7 +9372,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "TC-API-07",
@@ -9402,7 +9402,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 5
+      "durationMs": 3
     },
     {
       "id": "TC-API-09",
@@ -9417,7 +9417,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 4
     },
     {
       "id": "TC-API-10",
@@ -9447,7 +9447,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 4
+      "durationMs": 3
     },
     {
       "id": "TC-API-12",
@@ -9462,7 +9462,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "TC-API-13",
@@ -9492,7 +9492,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "TC-API-15",
@@ -9522,7 +9522,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 2
     },
     {
       "id": "TC-API-17",
@@ -9582,7 +9582,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 1
     },
     {
       "id": "TC-UI-INTERACT-01",
@@ -10415,7 +10415,7 @@
       "expected": "No UUIDs, raw numeric primary keys labelled as ids, legacy object/file names, 'parity'/'TODO' notes, SQL or API paths are visible.",
       "runtime": "static",
       "optional": false,
-      "durationMs": 19,
+      "durationMs": 22,
       "failedStep": null,
       "storyRef": null,
       "acRef": null,
@@ -10739,37 +10739,37 @@
   "screenshots": [
     {
       "label": "Initial landing view (1440x900)",
-      "path": "test/.snapshots/iter-1/screenshots/landing-initial.png",
+      "path": "test/history/iter-1/screenshots/landing-initial.png",
       "kind": "landing"
     },
     {
       "label": "Tab 1: [data-testid=tab-new-application] -> #panel-new-application",
-      "path": "test/.snapshots/iter-1/screenshots/tab-01-tab-new-application.png",
+      "path": "test/history/iter-1/screenshots/tab-01-tab-new-application.png",
       "kind": "tab"
     },
     {
       "label": "Tab 2: [data-testid=tab-my-applications] -> #panel-my-applications",
-      "path": "test/.snapshots/iter-1/screenshots/tab-02-tab-my-applications.png",
+      "path": "test/history/iter-1/screenshots/tab-02-tab-my-applications.png",
       "kind": "tab"
     },
     {
       "label": "Tab 3: [data-testid=tab-fee-calculator] -> #panel-fee-calculator",
-      "path": "test/.snapshots/iter-1/screenshots/tab-03-tab-fee-calculator.png",
+      "path": "test/history/iter-1/screenshots/tab-03-tab-fee-calculator.png",
       "kind": "tab"
     },
     {
       "label": "Tab 4: [data-testid=tab-review-queue] -> #panel-review-queue",
-      "path": "test/.snapshots/iter-1/screenshots/tab-04-tab-review-queue.png",
+      "path": "test/history/iter-1/screenshots/tab-04-tab-review-queue.png",
       "kind": "tab"
     },
     {
       "label": "Tab 5: [data-testid=tab-buyers] -> #panel-buyers",
-      "path": "test/.snapshots/iter-1/screenshots/tab-05-tab-buyers.png",
+      "path": "test/history/iter-1/screenshots/tab-05-tab-buyers.png",
       "kind": "tab"
     },
     {
       "label": "Tab 6: [data-testid=tab-agents] -> #panel-agents",
-      "path": "test/.snapshots/iter-1/screenshots/tab-06-tab-agents.png",
+      "path": "test/history/iter-1/screenshots/tab-06-tab-agents.png",
       "kind": "tab"
     }
   ],

@@ -1,6 +1,6 @@
 # Test Plan (`test/test_plan.md`) — Employee Leave & Exception Request Portal
 
-- **Executable twin:** `test/test_cases.json` (derived by `derive_test_cases.py`, steps completed by `testing-agent`, validated by `validate_test_cases.py`)
+- **Executable twin:** `test/test_cases.json` (contract-first executable test suite with deterministic browser, HTTP, and static steps)
 - **Derived from:** `backlog/user_stories.json` (sha `275986796af8…`), `specs/application_spec.md` (sha `553172354ef6…`), `src/db/schema.sql`, `src/contracts/openapi.yaml`, `specs/input_inventory.json`
 - **Environment:** `python3 src/backend/server.py` (demo mode: fixed clock 2031-03-02, seeded identities and fixtures) · healthcheck `http://127.0.0.1:8766/health` · uiEntry `http://127.0.0.1:8766/` · browser chain `playwright → chrome-headless → NOT_RUN`
 

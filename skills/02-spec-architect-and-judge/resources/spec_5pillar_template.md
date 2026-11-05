@@ -1,11 +1,11 @@
 # <Project Name> — Application Specification
 
-- **Input Scenario:** `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC`
+- **Input Scenario:** `Legacy Application Modernization` | `Greenfield Requirements Specification`
 - **Domain Slug:** `<domainSlug>`
 - **Accessibility Standard(s):** `WCAG 2.1 AA` *(plus any the user named in `specs/target_stack.json`)*
 - **Regulations / Policies in Scope:** `<names | none declared>`
 - **Assumptions:** `ASSUMPTION-01 …` *(autonomous-mode answers to open workflow questions; empty if all were confirmed)*
-- **Shared rules by reference:** `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `_shared/zero_leak.md`, `_shared/workflow_chain_of_custody.md`
+- **Architectural & UX Standards:** Enterprise UX Simplicity Guardrails, Material 3 / Cloud Console Design System, Zero Internal Data Leakage Boundary, and Deterministic Workflow Chain of Custody
 
 ---
 
@@ -22,7 +22,7 @@
 | ID | Field / Action | Rule | User-readable message (what failed + the fix) |
 | :-- | :-- | :-- | :-- |
 
-### 1.4 Modernization Enhancements (`REQ-ENH-NN`) *(SCENARIO_LEGACY_APP only — delete this subsection otherwise)*
+### 1.4 Modernization Enhancements (`REQ-ENH-NN`) *(Legacy Application Modernization only — delete this subsection otherwise)*
 | ID | Enhancement | Pain point addressed (discovery §5 ref) | Acceptance signal |
 | :-- | :-- | :-- | :-- |
 
@@ -75,16 +75,16 @@ stateDiagram-v2
 | ID | Requirement | Derived from |
 | :-- | :-- | :-- |
 
-### 4.1 UX Guardrail Overrides *(only deviations from `_shared/ux_guardrails.md`, each justified by a design reference or Gate 1 instruction)*
+### 4.1 UX Guardrail Overrides *(only deviations from standard Enterprise UX Simplicity Guardrails, each justified by a design reference or Gate 1 instruction)*
 | Guardrail # | Override | Justification / reference |
 | :-- | :-- | :-- |
 
-### 4.2 View & Component Topology *(parsed by scripts — every top-level tab/route must be mutually exclusive; specify the Surface Mode `Operate` | `Read` | `Persuade` | `Express` and Google Cloud UI Design layout archetype; if `resources/design_references/reference_ui_manifest.json` exists, every reference view must be accounted for)*
+### 4.2 View & Component Topology *(every top-level tab/route must be mutually exclusive; specify the Surface Mode `Operate` | `Read` | `Persuade` | `Express` and layout archetype; if `resources/design_references/reference_ui_manifest.json` exists, every reference view must be accounted for)*
 | View ID | Navigation Tab / Route | UI Pattern (Wizard / Queue / Console / Registry) | Bound Role(s) | Primary CTA & Lifecycle Trigger |
 | :-- | :-- | :-- | :-- | :-- |
 
 ### 4.3 Zero-Leakage Obligations
-*(Cite `_shared/zero_leak.md`; name the ViewModel/label-mapping boundary; list any domain-specific tokens to add to the forbidden list.)*
+*(State the Zero Internal Data Leakage commitment; name the ViewModel/DTO label-mapping boundary; list any domain-specific tokens prohibited from appearing in visible UI text.)*
 
 ---
 

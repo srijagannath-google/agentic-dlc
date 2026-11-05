@@ -50,10 +50,10 @@ Coverage: 8 of 8 capabilities (100 %). No capability was dropped or merged.
 | REQ-A11Y-05 | WCAG 4.1.3 | — | US-TECH-04 | A11y |
 | REQ-A11Y-06 | WCAG 3.3.x | — | US-TECH-04 | A11y, Negative |
 | REQ-UX-01 | §3.3, §3.5 | — | US-TECH-01 | State |
-| REQ-UX-02 | `_shared/ux_guardrails.md` | BR-01, BR-03 | US-TECH-05 | Interact, Edge |
+| REQ-UX-02 | Enterprise UX Simplicity Guardrails | BR-01, BR-03 | US-TECH-05 | Interact, Edge |
 | REQ-UX-03 | Gate 1 default design system | — | US-TECH-04 | A11y |
-| REQ-UX-04 | `_shared/zero_leak.md` | — | US-TECH-02 | UiLeak |
-| REQ-UX-05 | `_shared/ux_guardrails.md` #1, #8, #10 | — | US-TECH-05 | Interact |
+| REQ-UX-04 | Zero-Leak Boundary | — | US-TECH-02 | UiLeak |
+| REQ-UX-05 | UX Guardrails #1, #8, #10 | — | US-TECH-05 | Interact |
 | REQ-ARCH-01 | target_stack.json | — | US-TECH-06 | Api |
 | REQ-ARCH-02 | layering | BR-01, BR-02, BR-03, BR-04, BR-05, BR-06, BR-07, BR-08 | US-TECH-06 | Api |
 | REQ-ARCH-03 | 3NF schema | BR-04, BR-05 | US-TECH-06 | Api |

@@ -1,8 +1,8 @@
 # Architecture Portfolio Index (`design/architecture_design.md`)
 
-- **Project:** Business Licensing & Renewal Portal — Legacy MS Access Modernization (`SCENARIO_LEGACY_APP`)
+- **Project:** Business Licensing & Renewal Portal — Legacy MS Access Modernization (Legacy Application Modernization)
 - **Confirmed Future-State Tech Stack (`specs/target_stack.json`):** frontend `static-html` (Semantic HTML5 + Vanilla ES2022) · backend `python-stdlib-http` (Python 3.11 HTTP/REST server) · database `sqlite` (SQLite 3.x / Managed PostgreSQL HA) · deployment `gdc-fleet` (`on-prem-gdc`, `gcp`, `aws`, `azure`; `decidedBy: "autonomous-default"`)
-- **Architecture & Diagramming Standard:** **Well-Architected Framework (6 Core Pillars + Sustainability)** & **Multi-Perspective Cloud-Agnostic Architecture Suite** (`_shared/well_architected_and_diagram_standards.md`)
+- **Architecture & Diagramming Standard:** **Well-Architected Framework (6 Core Pillars + Sustainability)** & **Multi-Perspective Cloud-Agnostic Architecture Suite**
 
 ---
 

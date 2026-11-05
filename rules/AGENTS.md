@@ -12,7 +12,10 @@ systems from requirements documents** (`SCENARIO_REQUIREMENTS_DOC`) as equal, fi
 
 `<PLUGIN>` below means the installed plugin directory (normally `~/.gemini/config/plugins/agentic-dlc`).
 Before any stage, read `<PLUGIN>/docs/ARCHITECTURE.md` (binding artefact contracts) and the `_shared/*.md`
-files a skill names. Never paste their text into project files; reference them.
+files a skill names. Apply their standards directly — **never** paste plugin boilerplate or expose internal
+harness workings (`*.py` script names, `00..09/scripts/*`, `_shared/*.md`, `skills/*`, `schemas/*.json`,
+`resources/reference_*`, subagent slugs, `<details>`/`diagram-dsl` scaffolding, or `SCENARIO_*` enum constants)
+inside generated project deliverables (`specs/`, `backlog/`, `design/`, `test/`, `src/`, `deploy/`).
 
 ---
 

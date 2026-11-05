@@ -1,7 +1,7 @@
 # <Project Name — business/domain name only, no technology stack>
 
-- **Project Name:** `<same business/domain name — parsed by validate_discovery_blueprint.py>`
-- **Input Scenario:** `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC` (from `specs/input_inventory.json`; confidence: `HIGH|LOW`)
+- **Project Name:** `<same business/domain name as H1>`
+- **Input Scenario:** `Legacy Application Modernization` | `Greenfield Requirements Specification` (confidence: `HIGH|LOW`)
 - **Domain Slug:** `<domainSlug>`
 - **Include Modernization Enhancements in Spec:** `true` (legacy only) | `false`
 - **Discovery Scope:** **Current State ("As-Is") only** — Future-State ("To-Be") 3NF ERDs, target SQL DDL, future-state architecture flow diagrams, and Legacy-to-Target entity mappings belong strictly in Stage 4A (`design/solution_design.md` and `design/data_migration_and_cutover.md`).
@@ -26,13 +26,13 @@ erDiagram
     CURRENT_PARENT_ENTITY ||--o{ CURRENT_CHILD_ENTITY : "has"
 ```
 
-### 2.1 Current-State Legacy Object Inventory *(SCENARIO_LEGACY_APP only — omit otherwise)*
+### 2.1 Current-State Legacy Object Inventory *(Legacy Application Modernization only — omit otherwise)*
 | # | Legacy Object (table / form / query / report / module) | Object Type | Current-State Role & Key Fields | Observed Limitations / Risks | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- | :-- | :-- |
 
 ---
 
-## 3. Current-State ("As-Is") Workflow & Lifecycle State Machine *(extracted, never invented — see `_shared/workflow_chain_of_custody.md`)*
+## 3. Current-State ("As-Is") Workflow & Lifecycle State Machine *(extracted from source evidence, never invented)*
 
 ```mermaid
 stateDiagram-v2
@@ -63,7 +63,7 @@ stateDiagram-v2
 
 ---
 
-## 5. Current-State Pain Points & Technical Debt Inventory *(SCENARIO_LEGACY_APP only — omit otherwise)*
+## 5. Current-State Pain Points & Technical Debt Inventory *(Legacy Application Modernization only — omit otherwise)*
 | # | Pain point / gap observed in current state | Business / operational impact | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- |
 

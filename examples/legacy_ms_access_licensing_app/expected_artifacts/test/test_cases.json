@@ -3,7 +3,7 @@
   "derivedAtUtc": "1970-01-01T00:00:00Z",
   "derivedFrom": {
     "userStoriesSha256": "58dca2fdf3bece0472e3dfc873b04824ba6ad8e2e828f86f5f529995ae2e8197",
-    "specSha256": "23ea0f354ea86c56efa08c5ef308e4bee0ef246369e4893977356c76bf0a4813",
+    "specSha256": "f24b55aef673007206243087e327f4794cabc93d61dd9f2145ffac1ada99c73b",
     "contractsIndexSha256": "323229efd367467fdf912fca1eda20ce166198eb9a0eb5acfe164aa43a4691b7",
     "inputInventoryFingerprint": "fb77502f26ec7d862f66566c12e690e7fa422225dd81f82cc91cabb2aa92f55b"
   },

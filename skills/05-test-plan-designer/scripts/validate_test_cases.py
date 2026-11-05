@@ -196,6 +196,8 @@ def main() -> int:
                      f"expectStatus/expectJsonPath) — a test that cannot fail verifies nothing: "
                      + ", ".join(no_assertion[:40]) + (" …" if len(no_assertion) > 40 else ""))
 
+    fails.extend(dlc.scan_deliverable_internal_leaks(root, ["test/test_plan.md", args.file]))
+
     contract = {"schemaVersion": dlc.SCHEMA_VERSION, "sourceSha256": dlc.sha256_file(path),
                 "testIds": sorted(testids), "selectors": [f"[data-testid={t}]" for t in sorted(testids)]}
     dlc.write_json(root / "test" / ".testid_contract.json", contract)

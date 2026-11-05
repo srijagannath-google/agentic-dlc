@@ -2,7 +2,7 @@
 FROM python:3.11.9-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="business-licensing-portal-ui" \
       io.agentic.dlc.abstraction-plane="gdc-fleet" \
-      io.agentic.dlc.spec-sha256="23ea0f354ea86c56efa08c5ef308e4bee0ef246369e4893977356c76bf0a4813" \
+      io.agentic.dlc.spec-sha256="f24b55aef673007206243087e327f4794cabc93d61dd9f2145ffac1ada99c73b" \
       io.agentic.dlc.capability-groups="GRP-01,GRP-02,GRP-03"
 RUN groupadd -g 65532 nonroot && useradd -u 65532 -g 65532 -s /sbin/nologin -M nonroot
 WORKDIR /app

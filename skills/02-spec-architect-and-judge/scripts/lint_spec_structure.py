@@ -95,11 +95,11 @@ def main() -> int:
     # Header block
     if not re.search(r"^#\s+\S", spec, re.MULTILINE):
         fails.append("Missing top-level '# <Project Name>' heading.")
-    hdr_scn = re.search(r"Input Scenario[^\n]*?(SCENARIO_[A-Z_]+)", spec)
-    if not hdr_scn:
-        fails.append("Header block must state 'Input Scenario: SCENARIO_…'.")
-    elif hdr_scn.group(1) != scenario:
-        fails.append(f"Spec header says {hdr_scn.group(1)} but input_inventory.json says {scenario}.")
+    parsed_scn = dlc.parse_scenario_label(spec)
+    if not parsed_scn:
+        fails.append(f"Header block must state 'Input Scenario: {dlc.scenario_display_label(scenario)}'.")
+    elif parsed_scn != scenario:
+        fails.append(f"Spec header scenario ({dlc.scenario_display_label(parsed_scn)}) does not match input_inventory.json ({scenario}).")
     if not re.search(r"Domain Slug", spec):
         fails.append("Header block must state 'Domain Slug: <kebab-case>'.")
 
@@ -206,6 +206,9 @@ def main() -> int:
                 # A label captured from a real [role=tab] is a hard navigation contract (FAIL); labels collected from
                 # anchors / headings are advisory (WARN) because crawlers over-collect nav links.
                 (fails if view_from_role_tab(rv) else warns).append(msg)
+
+    # Zero internal harness workings leak check
+    fails.extend(dlc.scan_deliverable_internal_leaks(root, ["specs/application_spec.md", "specs/traceability_matrix.md"]))
 
     # Index for downstream scripts
     uses_codes = any(UPPER_CODE_RE.match(s) for s in sm.states)

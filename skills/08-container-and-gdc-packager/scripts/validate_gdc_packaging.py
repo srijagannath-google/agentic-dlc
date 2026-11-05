@@ -424,6 +424,14 @@ def main() -> int:
         "status": "PASS" if (strict_mtls and authz_count > 0 and mcs_ok) else "FAIL",
     }
 
+    if (root / "deploy").is_dir():
+        deploy_files = [
+            str(p.relative_to(root))
+            for p in sorted((root / "deploy").rglob("*"))
+            if p.is_file() and not any(pt.startswith(".") for pt in p.relative_to(root).parts)
+        ]
+        fails.extend(dlc.scan_deliverable_internal_leaks(root, deploy_files))
+
     index = {
         "schemaVersion": dlc.SCHEMA_VERSION,
         "abstractionPlane": "gdc-fleet",

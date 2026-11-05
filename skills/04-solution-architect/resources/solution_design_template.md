@@ -1,9 +1,9 @@
 # Solution Design (`design/solution_design.md`)
 
-- **Input Scenario:** `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC`
+- **Input Scenario:** `Legacy Application Modernization` | `Greenfield Requirements Specification`
 - **Target stack:** frontend `<kind>` · backend `<kind>` · database `<kind>` · deployment `<target>` (from `specs/target_stack.json`)
 - **Companion Architecture Document:** Well-Architected Logical Solution Architecture, Technical & GDC Multi-Zone Deployment Architecture, End-to-End Sequence Diagram, Architectural Layering, and 6-Pillar + Sustainability / Anti-Pattern Grilling Matrices are maintained in the standalone [`design/architecture_design.md`](architecture_design.md).
-- **Principles:** Future-State ("To-Be") clean target design (no legacy internals carried over; current-state discovery lives in `specs/discovery_architecture_and_inventory.md`); contract-first (`src/db/schema.sql` and `src/contracts/openapi.yaml` are extracted directly from this document); one state table enforced in UI **and** backend; Zero-Leak ViewModel boundary (`_shared/zero_leak.md`).
+- **Principles:** Future-State ("To-Be") clean target design (no legacy internals carried over; current-state discovery lives in `specs/discovery_architecture_and_inventory.md`); contract-first (`src/db/schema.sql` and `src/contracts/openapi.yaml` are materialized directly from this document); one state table enforced in UI **and** backend; Zero-Leak ViewModel/DTO boundary.
 
 ---
 
@@ -15,12 +15,12 @@ erDiagram
     parent_entity ||--o{ child_entity : "has"
 ```
 
-### 1.1 Legacy → Target 3NF Entity Mapping *(SCENARIO_LEGACY_APP only — omit otherwise)*
+### 1.1 Legacy → Target 3NF Entity Mapping *(Legacy Application Modernization only — omit otherwise)*
 | # | Legacy Object (from Discovery §2.1) | Target 3NF Entity | Transformation (normalisation, retired columns, merged/split) | Evidence (file:object/line) |
 | :-: | :-- | :-- | :-- | :-- |
 
 ### 1.2 Target 3NF SQL DDL Schema
-*(Exactly one block tagged `sql ddl` — extracted to `src/db/schema.sql` by `extract_contracts.py`.)*
+*(Single authoritative `sql ddl` schema materialized to `src/db/schema.sql`.)*
 ```sql ddl
 -- tables in business snake_case; status columns constrained to spec §3.3 states; audit columns; indexes
 ```
@@ -58,7 +58,7 @@ components:
 ---
 
 ## 5. Frontend Design Tokens, Surface Mode & Google Cloud UI Design Components
-- Design references applied: `<paths in resources/design_references/ | none — _shared/google_cloud_ui_design.md & _shared/ux_guardrails.md defaults>`
+- Design references applied: `<paths in resources/design_references/ | none — Enterprise Material 3 / Cloud Console UI Design & UX Simplicity Guardrails>`
 - Surface Mode (`Operate` | `Read` | `Persuade` | `Express`) & Reference Layout Archetype (`Admin/FinOps Dashboard`, `Master-Detail Split-Screen Operations Queue`, `Full-Viewport GIS Map & Telemetry Stage`, `50/50 Split-View Document & Compliance Auditor`, `Enterprise Solution Landing Page`, or `2-Zone Gemini Enterprise Agent & HITL Workspace`).
 - Google Material 3 / Cloud Console `--g-*` CSS token table (`:root` Light + `.dark` Dark: `--g-bg`, `--g-surface`, `--g-ink`, `--g-border`, `--g-blue`, `--g-green`, `--g-amber`, `--g-amber-text`, `--g-red`, `--g-purple`), `defaultTheme="system"` with `System | Light | Dark` toggle, Unified Surface (`divide-x`/`divide-y` + `<dl>`) structure, ShadCN UI / Radix component mappings, `tabular-nums` alignment, 4-state coverage (`Skeleton`, `Empty`, `Error`, `Populated`), and `data-testid` naming convention.
 
@@ -86,5 +86,5 @@ components:
 
 ---
 
-## 8. Migration Reference *(SCENARIO_LEGACY_APP only)*
+## 8. Migration Reference *(Legacy Application Modernization only)*
 See `design/data_migration_and_cutover.md` — legacy→target column mapping, cleansing, reconciliation, cutover and rollback.

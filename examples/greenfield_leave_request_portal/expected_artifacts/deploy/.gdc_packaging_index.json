@@ -10,11 +10,12 @@
   "containers": [
     {
       "file": "deploy/containers/Dockerfile.backend",
-      "sha256": "b648f5e5122dc3a30244da05714e2097621440498f76b62dabfab23c90c2a032",
+      "sha256": "db2639396f3ad54ec93b7572e1c634a56572a16cd70efbdc5fc3a03b6840fd78",
       "baseImages": [
         "python:3.11.9-slim-bookworm",
         "python:3.11.9-slim-bookworm"
       ],
+      "stageCount": 2,
       "unpinnedImages": [],
       "user": "65532:65532",
       "nonRoot": true,
@@ -24,10 +25,11 @@
     },
     {
       "file": "deploy/containers/Dockerfile.ui",
-      "sha256": "8ff479c60ec6ef41846709762a84ec96becd3bcc4b60563ab0745d40248cd448",
+      "sha256": "2ad5dc68a385c21c5406f93fc829d505f3cf3ee48552b9324d71d2a721b60fcd",
       "baseImages": [
         "python:3.11.9-slim-bookworm"
       ],
+      "stageCount": 1,
       "unpinnedImages": [],
       "user": "65532:65532",
       "nonRoot": true,
@@ -75,6 +77,7 @@
     "multiClusterService": true,
     "status": "PASS"
   },
+  "degradedModeMarkerPresent": false,
   "passed": true,
   "failures": [],
   "warnings": []
