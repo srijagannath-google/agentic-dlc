@@ -66,10 +66,25 @@ python3 $B --project-root "<PROJECT_ROOT>" --action audit              # coverag
 python3 $B --project-root "<PROJECT_ROOT>" --action test-connection    # when almPlatform != none
 python3 $B --project-root "<PROJECT_ROOT>" --action sync-stories       # --platform defaults from target_stack.json#almPlatform
 ```
-Actions: `test-connection | audit | sync-stories | sync-sprints [--approved] | set-approval --set-approval <STATUS> | export-csv`;
-`--platform jira|ado|both|none` (default from `specs/target_stack.json#almPlatform`). Exit codes: `0` ok,
-`1` gate/audit failure (fix the backlog — `--allow-partial-coverage` only downgrades REQ gaps to warnings and must
-be justified to the user), `2` live sync had errors (read the state file, report verbatim, do not proceed).
+Actions (`--platform jira|ado|both|none`, default from `specs/target_stack.json#almPlatform`; all local artefacts are written to `backlog/`):
+
+| `--action` | Purpose | Exit codes |
+| :-- | :-- | :-- |
+| `audit` | Gate 3 coverage / sizing / tiering audit; refreshes `sprint_plan.json` + story traceability; stamps `gate_3_backlog = AWAITING_HUMAN_REVIEW` when it passes and the plan is still pending | `0` pass · `1` audit failed |
+| `select-groups --select-groups GRP-01,GRP-02\|ALL [--sprint-capacity-points N]` | Record `selectedCapabilityGroups`, re-pack stories into `Sprint 1..N` / `Product Backlog`, update `user_stories.{json,md}` (incl. `**Sprint:**` lines) | `0` ok · `1` backlog missing/invalid |
+| `test-connection` | Verify Jira / ADO credentials, project and board | `0` connected with no errors · `1` not connected, offline, or errors |
+| `sync-stories` | Idempotent upsert of stories (+ sprints, defects) to stage the board before Gate 3; offline/no-creds → local export only; stamps `gate_3_backlog = AWAITING_HUMAN_REVIEW` | `0` ok · `1` audit failed · `2` live sync had errors |
+| `set-approval --set-approval <STATUS>` | Write `SPRINT_ALIGNMENT_APPROVAL` (`PENDING_HUMAN_APPROVAL` \| `APPROVED_BY_USER` \| `PRE_APPROVED_BY_USER`) and mirror it into `specs/gate_approvals.json#gate_3_backlog` (refuses `APPROVED_BY_USER` < 8 s after staging) | `0` ok · `1` audit failed (non-pending statuses) / self-approval refused |
+| `sync-sprints --approved` | After Gate 3 (requires `gate_3_backlog` approved in the ledger): same as `sync-stories` and marks the plan approved (`--approved` is honoured only here) | `0` ok · `1` audit failed / `--approved` missing / gate not approved · `2` live sync had errors |
+| `transition-stories --target-status <S> [--scope all\|active-sprints] [--story-ids …] [--only-from-todo]` | Explicit story status transition locally and on the board | `0` ok · `1` bad arguments · `2` live transition errors |
+| `sync-status-from-eval` | Stage 6: derive story statuses from `test/eval_results.json` (Done only on directly linked passing tests), create/resolve `BUG-*` defects, post fix comments | `0` ok · `1` eval results missing · `2` live sync errors |
+| `sync-deployment-status` | Stage 8: record `traceability.gdcDeployment` from `deploy/deployment_eval_report.json` and post/refresh one deployment comment per story | `0` ok · `1` deployment report missing · `2` live comment errors |
+| `export-csv` | Write `backlog/jira_import.csv` (stories + defects) | `0` ok · `1` audit failed |
+
+`audit`, `select-groups`, `sync-stories`, `sync-sprints`, `set-approval` and `export-csv` all require `gate_2_spec` to be approved in
+`specs/gate_approvals.json` (autonomous mode excepted). Exit `1` means a gate/audit failure (fix the backlog — `--allow-partial-coverage`
+only downgrades REQ gaps to warnings and must be justified to the user); exit `2` means the live sync had errors (read the state file,
+report verbatim, do not proceed).
 `sync-stories` upserts stories idempotently (match on the story id in the summary), creates future sprint
 containers for `Sprint 1..N`, places Product Backlog items in the backlog drawer and removes empty orphan
 sprints — so the user can inspect the alignment on the board **before** approving. Confirm in

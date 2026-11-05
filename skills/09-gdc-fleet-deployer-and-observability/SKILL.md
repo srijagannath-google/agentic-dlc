@@ -45,7 +45,7 @@ Use `resources/deployment_runbook_template.md` covering: GDC Fleet Topology, Cap
 ```bash
 python3 <PLUGIN>/skills/09-gdc-fleet-deployer-and-observability/scripts/run_gdc_fleet_deploy_and_verify.py --project-root "<PROJECT_ROOT>"
 ```
-Verifies all Config Sync, OTel, SLO, Dashboard, and Runbook contracts, executes live GDC Fleet or local runtime smoke probes against `/health`, writes `deploy/deployment_eval_report.{md,json}`, and syncs deployment traceability to Jira/ADO via `alm_jira_ado_bridge.py --action sync-deployment-status`.
+By default, validates all Config Sync, OTel, SLO, Dashboard, and Runbook contracts, runs a **local** `/health` smoke probe, and writes `deploy/deployment_eval_report.{md,json}` with `executionMode: "manifest-validation"` and waves marked `MANIFEST_VALIDATED`. Pass `--live` (with `kubectl` configured for each target environment) to execute `kubectl apply -k deploy/gdc/overlays/<env>` and record `DEPLOYED` / `gdc-live-fleet`. Syncs deployment traceability to Jira/ADO via `alm_jira_ado_bridge.py --action sync-deployment-status`.
 
 ## Do not
 - Configure cloud-specific monitoring agents that only work on a single cloud provider — always route through OpenTelemetry and the GDC Fleet observability pipeline.

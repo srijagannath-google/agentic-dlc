@@ -11,7 +11,7 @@
     "requirementsDocCount": 1,
     "legacyWeight": 15,
     "requirementsWeight": 3,
-    "decisionRule": "majority-by-weight over categorised files under resources/inputs (schema/source=3, query/form/report=2, requirements_doc=3); LOW confidence when zero files, margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
+    "decisionRule": "majority-by-weight over categorised files under resources/inputs (schema/source/db-container/data-export=3, query/form/report=2, requirements_doc=3); narrative .md/.docx/.pdf files count as requirements_doc only when they carry requirement keywords or are the only/largest document; LOW confidence when zero files, margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
   },
   "scenarioConfidence": "HIGH",
   "includeModernizationEnhancementsInSpec": true,
@@ -20,11 +20,6 @@
   "userProvidedDesignReferences": [],
   "legacyObjectNames": [
     "CreatedOn",
-    "Form_frmBusinessLicenseApplicantSelection",
-    "Form_frmBusinessLicenseApplication",
-    "Form_frmBusinessLicenseNewApplicationDetail",
-    "Form_frmBusinessLicenseNewApplications",
-    "Report_rptBusinessLicenseAgentCardLabels",
     "TBFile",
     "TBFileContent",
     "TBFileExtension",
@@ -65,7 +60,6 @@
     "frmBusinessLicenseApplicantSelection",
     "frmBusinessLicenseApplication",
     "frmBusinessLicenseNewApplicationDetail",
-    "qryBusinessLicenseFiles",
     "qryClearAgentCurrentLicense",
     "qryEditLicense",
     "qryUpdateAgentCardPrintedSingle",
@@ -82,6 +76,15 @@
     "tblRemoveAgent",
     "txtAgentID"
   ],
+  "legacyFileStems": [
+    "Form_frmBusinessLicenseApplicantSelection",
+    "Form_frmBusinessLicenseApplication",
+    "Form_frmBusinessLicenseNewApplicationDetail",
+    "Form_frmBusinessLicenseNewApplications",
+    "Report_rptBusinessLicenseAgentCardLabels",
+    "qryBusinessLicenseFiles",
+    "tblBusinessLicenseFiles"
+  ],
   "inputFingerprintSha256": "fb77502f26ec7d862f66566c12e690e7fa422225dd81f82cc91cabb2aa92f55b",
   "totalFilesScanned": 11,
   "files": [
@@ -93,7 +96,7 @@
       "sha256": "0f5fe93a9afcef6425a6d10cb7d56845ce218d683631a504558968ae0b81ab47",
       "category": "requirements_doc",
       "scenarioWeight": 3,
-      "categoryReason": ".docx document (default for narrative documents)"
+      "categoryReason": ".docx narrative document promoted: only/largest document in resources/inputs (no requirements keywords found)"
     },
     {
       "relativePath": "resources/inputs/Form_frmBusinessLicenseApplicantSelection.txt",

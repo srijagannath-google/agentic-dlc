@@ -36,7 +36,7 @@ Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITE
 - `## 4 Pillar 4 — UX & Zero Leakage` (`REQ-UX-NN`): the UX & Google Cloud UI Design guardrails by reference (`_shared/ux_guardrails.md` and `_shared/google_cloud_ui_design.md`, including Surface Mode declaration `Operate` | `Read` | `Persuade` | `Express`, Reference Layout Archetype from `skills/google-cloud-ui-design/references/*.md`, `--g-*` Light/Dark CSS tokens, Unified Surfaces without card soup, Guardrail #3 View & Tab Mutual Exclusivity, and Guardrail #11 Default Persona & Lifecycle Reachability),
   overrides from design references (`### 4.1`), the **mandatory parsed `### 4.2 View & Component Topology` table**
   (`| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |`, aligned
-  with `resources/design_references/reference_ui_manifest.json` when present), and the zero-leakage rule (`### 4.3`).
+  with `specs/design_reference/reference_ui_manifest.json` when present), and the zero-leakage rule (`### 4.3`).
 - `## 5 Pillar 5 — Architecture` (`REQ-ARCH-NN`): clean architectural quality attributes (layered separation of concerns, contract-first OpenAPI 3.1 APIs, normalised 3NF relational domain model, ViewModel/DTO boundary with zero internal data leakage, `data-testid` contract, and OpenTelemetry observability — no legacy carry-over). If `specs/target_stack.json#decidedBy == "pending-stage-4a"`, keep Pillar 5 technology-agnostic so the human can select the concrete Future-State frontend, backend, and database technology when entering Stage 4A (`04-solution-architect`).
 - Every REQ id unique; every REQ in `specs/traceability_matrix.md` (REQ → capability → story → test category).
 

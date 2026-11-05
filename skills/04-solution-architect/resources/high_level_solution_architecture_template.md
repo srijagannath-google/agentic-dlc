@@ -1,14 +1,14 @@
 # High-Level Solution Architecture (`design/high_level_solution_architecture.md`)
 
 - **Perspective:** **High-Level Solution Architecture ("North Star" Pace-Layered View — System of Engagement, System of Intelligence & AI, and Systems of Record)**
-- **Visual Archetype:** Executive Layered Architecture (`resources/reference_high_level_solution_architecture.png` + AI-Era Agentic Layer + Salesforce Illuminate Alignment; `diagrams/high_level_solution_architecture.svg`)
+- **Visual Archetype:** Executive Layered Architecture (`resources/reference_high_level_solution_architecture.png` + AI-Era Agentic Layer + Value-Led Enterprise Architecture; `diagrams/high_level_solution_architecture.svg`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Future State High-Level Solution Architecture Diagram
 
-*(Modeled on `resources/reference_high_level_solution_architecture.png` and the Illuminate digital strategy framework, unifying **Business Personas**, the **Engagement Layer (System of Engagement)**, the **System of Intelligence & AI (AI & Agentic Orchestration Layer, Core Domain Intelligence, Data Ingestion & Harmonization, and Built-in Governance/Trust Sidebar)**, and **Transactional Systems (Systems of Record)**.)*
+*(Modeled on `resources/reference_high_level_solution_architecture.png` and the enterprise pace-layered digital strategy framework, unifying **Business Personas**, the **Engagement Layer (System of Engagement)**, the **System of Intelligence & AI (AI & Agentic Orchestration Layer, Core Domain Intelligence, Data Ingestion & Harmonization, and Built-in Governance/Trust Sidebar)**, and **Transactional Systems (Systems of Record)**.)*
 
 ![High-Level Solution Architecture](diagrams/high_level_solution_architecture.svg)
 

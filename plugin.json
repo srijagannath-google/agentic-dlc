@@ -1,6 +1,6 @@
 {
   "name": "agentic-dlc",
-  "version": "4.3.0",
+  "version": "4.3.1",
   "displayName": "Enterprise Agentic DLC Harness (LLM authors, scripts verify)",
   "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin with strict machine-enforced human gate stops (Stage 0 Setup & ADO/Jira Project Selection through Stage 8 GDC Fleet Deployment) for legacy-application modernization (SCENARIO_LEGACY_APP) and greenfield requirements documents (SCENARIO_REQUIREMENTS_DOC). The LLM (7 subagents, 11 skills) authors discovery, 5-Pillar spec, stories, 7-perspective architecture suite & solution design, tests, a runnable target-stack application, and cloud-agnostic OCI containers + Google Distributed Cloud (GDC) Fleet multi-cloud/on-prem KRM manifests, Config Sync GitOps bundles, and OpenTelemetry observability from the user's inputs; scripts only scan, derive, lint, execute and gate.",
   "author": "Enterprise Agentic Architecture Team",

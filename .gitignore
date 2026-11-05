@@ -4,6 +4,15 @@ __pycache__/
 .DS_Store
 .pytest_cache/
 .mypy_cache/
-test/.snapshots/
-test/.build_logs/
+**/test/.snapshots/
+**/test/.build_logs/
+**/.chrome-smoke-profile/
+# Runtime SQLite databases created by the generated backend (schema lives in src/db/schema.sql)
+**/src/backend/data/*.db
+**/src/backend/data/*.db-journal
+**/src/backend/data/*.db-wal
+**/src/backend/data/*.db-shm
 .env
+# Optional local denylist for scripts/lint_domain_neutrality.py (DLC_EXTRA_FORBIDDEN_FILE) — never committed
+*.denylist
+.dlc_denylist

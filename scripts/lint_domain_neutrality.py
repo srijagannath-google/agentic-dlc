@@ -1,44 +1,76 @@
 #!/usr/bin/env python3
-"""Domain-neutrality and PII/customer-sanitization linter for the agentic-dlc plugin.
+"""Domain-neutrality, vendor-neutrality, and credential/path sanitization linter for agentic-dlc.
 
-1. Fails (exit 1) if any business-domain literal from worked examples leaks into the generic parts of the
-   plugin (rules/, agents/, skills/, scripts/, _shared/, schemas/, docs/, README.md, plugin.json, bootstrap.*).
-2. Fails (exit 1) if any customer/organization/employee/host-path token (including inside examples/, .docx
-   XML metadata/documents, or SQLite .db tables) appears anywhere in the repository.
+1. Fails (exit 1) if any business-domain literal from worked examples or vendor-specific methodology branding
+   leaks into the generic parts of the plugin (`rules/`, `agents/`, `skills/`, `scripts/`, `_shared/`,
+   `schemas/`, `docs/`, `README.md`, `plugin.json`, `bootstrap.*`, `push-to-github.sh`).
+2. Fails (exit 1) if any credential pattern, workstation home path, corporate email domain, or committed
+   runtime SQLite database (`.db` / `.sqlite`) appears anywhere in the repository (including `examples/` and
+   `.docx` XML metadata).
+3. Supports an optional external denylist via `DLC_EXTRA_FORBIDDEN_FILE` (one regex per line, `#` comments
+   ignored) so teams can enforce organization-specific sanitization without committing sensitive tokens into
+   source control.
 
 Usage:  python3 scripts/lint_domain_neutrality.py [--plugin-root DIR] [--allow-file PATH ...]
 """
 from __future__ import annotations
 
 import argparse
+import os
 import re
-import sqlite3
 import sys
 import zipfile
 from pathlib import Path
 
-# 1. Domain literals forbidden outside examples/
+# 1. Worked-example domain literals and vendor-marketing phrases forbidden outside examples/
 FORBIDDEN_CORE = [
-    r"timber", r"\bidnr\b", r"\bilcs\b", r"surety", r"harvest", r"\bplss\b", r"pocket card", r"agent card",
-    r"conservation police", r"township", r"\brange/section\b", r"prairie oak", r"\$125\b", r"\$250\b",
-    r"\$15\.00", r"\$8,?500\b", r"\$3,?500\b", r"\$10,000\b", r"\$1,000\b", r"\$85,000", r"ctas", r"ictasledger",
-    r"80-byte", r"\biitaa\b", r"illinois", r"5-tab", r"five-tab", r"triage queue", r"licensing supervisor",
-    r"frmtimber", r"tbltimber", r"rpttimber", r"qrytimber", r"command163",
-    r"#002855", r"applicant-workspace-card", r"view-portal", r"state\.harvestfees", r"buyer profile",
-    r"agent roster", r"attestation & fees", r"first-time buyer", r"under-bonded", r"\bfein\b", r"\bbond\b",
-    r"\bssn\b",
+    r"business-licensing-portal",
+    r"leave-request-portal",
+    r"frmbusinesslicense",
+    r"tblbusinesslicense",
+    r"rptbusinesslicense",
+    r"qrybusinesslicense",
+    r"command163",
+    r"#002855",
+    r"applicant-workspace-card",
+    r"view-portal",
+    r"agent roster",
+    r"attestation & fees",
+    r"first-time buyer",
+    r"under-bonded",
+    r"\bfein\b",
+    r"\bbond\b",
+    r"\bssn\b",  # PII examples should be described generically ("national/tax identifier")
 ]
 
-# 2. Organization, customer, employee, and host-path tokens forbidden EVERYWHERE (including examples/)
+# 2. Credential, workstation-path, and non-RFC-2606 email patterns forbidden EVERYWHERE
 FORBIDDEN_REPO_WIDE = [
-    r"\bdoit\b", r"doit-", r"\.doit\.", r"\billinois\b", r"\bidnr\b", r"\bidoa\b", r"\biita\b", r"\biitaa\b",
-    r"\bilcs\b", r"\bsled\b", r"timber", r"caregiver", r"larison", r"deborah", r"corpagent", r"srijagannath",
-    r"sangamon", r"shawnee", r"peoria", r"carbondale", r"public_sector", r"acolver", r"slujan", r"bradburns",
+    r"\b[A-Za-z0-9._%+-]+@(?!localhost\b)(?![A-Za-z0-9.-]*\.(?:example|test|invalid|localhost|example\.(?:com|org|net|gov)|iam\.gserviceaccount\.com)\b)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+    r"/Users/[A-Za-z0-9._-]+/",
+    r"/home/(?!nonroot\b|appuser\b|runner\b|ubuntu\b|user\b)[A-Za-z0-9._-]+/",
+    r"\bgh[pousr]_[A-Za-z0-9]{20,}\b",
+    r"\bATATT3x[A-Za-z0-9_-]{16,}",
+    r"Authorization:\s*Basic\s+[A-Za-z0-9+/=]{20,}",
 ]
 
 GENERIC_DIRS = ["rules", "agents", "skills", "scripts", "_shared", "schemas", "docs"]
 GENERIC_FILES = ["README.md", "plugin.json", "bootstrap.sh", "bootstrap.ps1", "push-to-github.sh"]
 TEXT_EXT = {".md", ".py", ".json", ".txt", ".yaml", ".yml", ".sh", ".ps1", ".csv", ".html", ".css", ".js", ".sql", ".xsd"}
+
+
+def _load_extra_patterns() -> list[str]:
+    extra_file = os.environ.get("DLC_EXTRA_FORBIDDEN_FILE", "").strip()
+    if not extra_file:
+        return []
+    p = Path(extra_file).expanduser()
+    if not p.is_file():
+        raise SystemExit(f"DLC_EXTRA_FORBIDDEN_FILE={extra_file} does not exist.")
+    out: list[str] = []
+    for raw in p.read_text(encoding="utf-8").splitlines():
+        s = raw.strip()
+        if s and not s.startswith("#"):
+            out.append(s)
+    return out
 
 
 def main() -> int:
@@ -47,9 +79,12 @@ def main() -> int:
     ap.add_argument("--allow-file", action="append", default=[], help="Relative paths to skip")
     args = ap.parse_args()
     root = Path(args.plugin_root).resolve()
+
+    extra_repo = _load_extra_patterns()
     core_pattern = re.compile("|".join(FORBIDDEN_CORE), re.IGNORECASE)
-    repo_pattern = re.compile("|".join(FORBIDDEN_REPO_WIDE), re.IGNORECASE)
-    allow = {str(Path(a)) for a in args.allow_file}
+    repo_pattern = re.compile("|".join(FORBIDDEN_REPO_WIDE + extra_repo), re.IGNORECASE)
+    # Compare POSIX-style relative paths so the allowlist works identically on Windows, macOS and Linux.
+    allow = {Path(a).as_posix() for a in args.allow_file}
     allow.add("scripts/lint_domain_neutrality.py")
 
     core_files: list[Path] = []
@@ -61,7 +96,7 @@ def main() -> int:
 
     hits = 0
     for f in sorted(set(core_files)):
-        rel = str(f.relative_to(root))
+        rel = f.relative_to(root).as_posix()
         if rel in allow:
             continue
         for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
@@ -71,16 +106,24 @@ def main() -> int:
 
     all_files = [
         f for f in sorted(root.rglob("*"))
-        if f.is_file() and ".git" not in f.parts and "__pycache__" not in f.parts
+        if f.is_file()
+        and ".git" not in f.parts
+        and "__pycache__" not in f.parts
+        and not f.name.endswith(".denylist")
+        and f.name != ".dlc_denylist"
     ]
     for f in all_files:
-        rel = str(f.relative_to(root))
+        rel = f.relative_to(root).as_posix()
         if rel in allow:
             continue
         for m in repo_pattern.finditer(rel):
             hits += 1
             print(f"[FILENAME] {rel}: '{m.group(0)}'")
         suf = f.suffix.lower()
+        if suf in (".db", ".sqlite", ".sqlite3"):
+            hits += 1
+            print(f"[BINARY-DB] {rel}: runtime SQLite database files must not be committed (seed from schema.sql at startup)")
+            continue
         if suf in TEXT_EXT or suf == ".svg":
             for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
                 for m in repo_pattern.finditer(line):
@@ -94,21 +137,6 @@ def main() -> int:
                         for m in repo_pattern.finditer(ztxt):
                             hits += 1
                             print(f"[DOCX] {rel}#{zname}: '{m.group(0)}'")
-        elif suf in (".db", ".sqlite"):
-            con = sqlite3.connect(str(f))
-            cur = con.cursor()
-            tables = [r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
-            for t in tables:
-                for m in repo_pattern.finditer(t):
-                    hits += 1
-                    print(f"[SQLITE-TABLE] {rel}#{t}: '{m.group(0)}'")
-                rows = cur.execute(f"SELECT * FROM {t}").fetchall()
-                for row in rows:
-                    blob = " ".join(str(c) for c in row if c is not None)
-                    for m in repo_pattern.finditer(blob):
-                        hits += 1
-                        print(f"[SQLITE-ROW] {rel}#{t}: '{m.group(0)}' | {blob[:100]}")
-            con.close()
 
     if hits:
         print(f"\nDomain-neutrality & sanitization lint FAILED: {hits} hit(s).")

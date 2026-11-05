@@ -18,18 +18,27 @@ Before running it snapshots `src/` → `test/.snapshots/iter-N/`; afterwards it 
 `test/remediation_and_guardrail_audit_report.md` (real `difflib.unified_diff` between iterations,
 guardrail-sensitive hunks flagged for Gate 4). Nothing in here prints a static PASS.
 
+Gate 4 state is persisted in `test/.guardrail_state.json` (pending / approved hunk hashes + the approved baseline
+iteration) so a flag cannot be cleared by simply re-running with an unchanged tree; `--approve-guardrail-flags`
+moves the pending hashes to the approved set. The chrome-headless harness is served over http://127.0.0.1 by a
+tiny in-process reverse proxy (same origin as the app), so Chrome runs without `--disable-web-security` /
+`--allow-file-access-from-files`.
+
 Usage:
   python3 run_closed_loop_eval.py --project-root <PROJECT_ROOT> [--iteration N] [--browser auto|playwright|chrome|none]
-                                  [--chrome-binary PATH] [--skip-backend] [--deterministic]
+                                  [--chrome-binary PATH] [--skip-backend] [--deterministic] [--alm-sync]
+                                  [--approve-guardrail-flags] [--selftest-guardrail-patterns]
 Exit codes: 0 verdict PASS and guardrail status CLEAR (or approved) · 1 verdict FAIL · 3 verdict PASS but
 GUARDRAIL_REVIEW_STATUS is FLAGGED_REQUIRES_HUMAN_APPROVAL (Gate 4 — re-run with --approve-guardrail-flags after review).
 """
 from __future__ import annotations
 
 import argparse
-import concurrent.futures
+import base64
 import difflib
+import hashlib
 import html as html_mod
+import http.server
 import json
 import os
 import re
@@ -38,6 +47,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -73,9 +83,9 @@ HEURISTIC_PATTERNS = {
     "sql-fragment": re.compile(r"\b(SELECT\s+.+\s+FROM|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|JOIN\s+\w+\s+ON)\b", re.I),
     "stack-trace": re.compile(r"(Traceback \(most recent call last\)|\bat\s+\w+(\.\w+)+\(|Exception in thread|TypeError:|ReferenceError:|NullPointerException)"),
     "engineering-note": re.compile(r"\b(TODO|FIXME|XXX|HACK|parity)\b", re.I),
+    "raw-model-sku": re.compile(r"\b(gemini-[0-9]+\.[0-9]+-(?:flash|pro|ultra)|gpt-4[o0-9-]*|claude-3[-a-z0-9]*)\b", re.I),
     "api-path": re.compile(r"(^|\s)/api/[\w/\-{}]+"),
     "long-hex-hash": re.compile(r"\b[0-9a-f]{32,}\b"),
-    "raw-model-sku": re.compile(r"\b(gemini-[0-9]+\.[0-9]+-(?:flash|pro|ultra)|gpt-4[o0-9-]*|claude-3[-a-z0-9]*)\b", re.I),
 }
 # Default mapping of TC-UI-LEAK-NN → forbiddenUiTokens classes (a TC may override with "tokenClasses": [...]).
 LEAK_CLASS_BY_INDEX = {
@@ -88,16 +98,44 @@ LEAK_REGEX_CLASSES = {"piiPatterns", "engineeringNotePatterns"}  # these classes
 LEAK_SKIP_CLASSES = {"schemaIdentifiersIgnored", "enumCodesWarnOnly"}  # never FAIL-scanned (see LEAK_WARN_CLASSES)
 LEAK_WARN_CLASSES = ["enumCodesWarnOnly"]  # literal tokens reported as warnings only
 DEFERRED_ACTIONS = {"expectAllControlsWired", "expectA11yBaseline", "expectNoVisibleTextMatching"}  # need every rendered state
+MIN_STATIC_CORPUS_CHARS = 40  # below this, a static-only visible-text corpus (SPA shell) cannot support a leak verdict
 
 # Guardrail-sensitive patterns for the audit report (§3). State names / triggers / rule identifiers are
 # added at runtime from the spec — nothing domain-specific lives here.
+# Stems are matched case-insensitively with a LEFT boundary only (no `\b` on the right) so plurals/suffixes match, and
+# additionally in camelCase position (a Capitalised stem right after a lowercase letter/digit/underscore) so
+# `allowedRoles`, `userRole`, `hasRole(`, `canApprove(`, `@PreAuthorize`, `hasPermission(`, `checkRole(` and
+# `ALLOWED_TRANSITIONS` are all caught (`--selftest-guardrail-patterns` asserts exactly that list, see GUARDRAIL_SELFTEST).
+def stem_regex(stems: list[str], extra: list[str] | None = None) -> re.Pattern[str]:
+    alt = "|".join(stems)
+    camel = "|".join(s[:1].upper() + s[1:] for s in stems)
+    parts = [rf"(?<![A-Za-z])(?i:{alt})", rf"(?<=[a-z0-9_])(?:{camel})"] + list(extra or [])
+    return re.compile("|".join(parts))
+
+
 GUARDRAIL_PATTERNS: dict[str, re.Pattern[str]] = {
-    "role/permission check": re.compile(r"\b(role|roles|permission|permissions|allowed|allow|deny|canTransition|isInternal|isExternal|authori[sz]e[d]?|rbac|currentRole|actorRole)\b", re.I),
-    "state guard": re.compile(r"\b(transition|transitions|guard|guards|fromState|toState|currentState|nextState|allowedFrom|prerequisite)\b", re.I),
-    "masking / PII": re.compile(r"\b(mask|masked|masking|redact|redacted|pii|sensitive)\b", re.I),
-    "accessibility": re.compile(r"(aria-[\w-]+|\brole=|<label\b|\btabindex\b|\balt=|\blang=|\bfor=)", re.I),
+    "role/permission check": stem_regex(["role", "permission", "allowed", "allow", "deny", "denied", "authori[sz]", "preauthori[sz]", "rbac", "canapprove", "cantransition",
+                                         "isinternal", "isexternal", "actorrole", "currentrole", "privilege", "forbidden", "unauthori[sz]"],
+                                        [r"@PreAuthorize", r"@Secured", r"@RolesAllowed", r"hasAnyAuthority", r"hasAuthority"]),
+    "state guard": stem_regex(["transition", "guard", "fromstate", "tostate", "currentstate", "nextstate", "allowedfrom", "prerequisite", "statemachine"]),
+    "masking / PII": stem_regex(["mask", "redact", "pii", "sensitive", "anonymi[sz]", "obfuscat"]),
+    "accessibility": re.compile(r"(aria-|\brole=|<label\b|tabindex|\balt=|\blang=|\bfor=|accesskey)", re.I),
     "leakage label mapping": re.compile(r"(label\s*map|_LABELS\b|labelFor|toLabel|displayName|statusLabel|humanLabel|enumLabel|LABELS\s*[=:])", re.I),
+    "business formula / threshold": stem_regex(["formula", "rate", "threshold", "accrual", "balance", "penalt", "surcharge", "percent", "rounding"], [r"\bround\("]),
 }
+# Every identifier here must be matched by at least one GUARDRAIL_PATTERNS entry (checked by --selftest-guardrail-patterns).
+GUARDRAIL_SELFTEST = ["allowedRoles", "userRole", "hasRole(", "canApprove(", "@PreAuthorize", "hasPermission(", "checkRole(",
+                      "ALLOWED_TRANSITIONS", "aria-label", "maskSsn", "redactEmail", "ROLE_PERMISSIONS", "isTransitionAllowed",
+                      "guardFor(", "nextState", "APPROVAL_THRESHOLD", "accrualRate", "<label for=", "tabindex=\"0\"",
+                      "STATUS_LABELS", "authorizeTransition", "can_transition("]
+DIFF_CONTEXT_LINES = 6  # unified-diff context so a one-line change inside a guard function is classified with its surroundings
+GUARDRAIL_STATE_FILE = "test/.guardrail_state.json"
+BACKEND_PIDFILE = "test/.build_logs/backend.pid"  # process-group id of the backend started by validate_build.py / this script
+
+
+def selftest_guardrail_patterns() -> list[str]:
+    """Return the identifiers in GUARDRAIL_SELFTEST that no guardrail pattern matches (empty list == OK)."""
+    return [ident for ident in GUARDRAIL_SELFTEST if not any(rx.search(ident) for rx in GUARDRAIL_PATTERNS.values())]
 
 
 # ======================================================================================
@@ -124,8 +162,9 @@ def existing_iterations(root: Path) -> list[int]:
 
 def preserve_existing_top_level_eval_artifacts(root: Path) -> None:
     """Before starting a new run, ensure any pre-existing top-level evaluation or remediation files
-    are safely archived under test/history/iter-M/, test/.snapshots/iter-M/, and test/*.iter-MM.*
-    so prior run results and remediation records are never overwritten or lost.
+    are safely archived under test/history/iter-M/, test/.snapshots/iter-M/ (only if that snapshot already
+    exists — a baseline is never fabricated from the current tree) and test/*.iter-MM.* so prior run results
+    and remediation records are never overwritten or lost.
     """
     prev_json_p = root / "test" / "eval_results.json"
     if not prev_json_p.is_file():
@@ -138,10 +177,6 @@ def preserve_existing_top_level_eval_artifacts(root: Path) -> None:
     hist_dir = root / "test" / "history" / f"iter-{prev_it}"
     snap_dir = root / "test" / ".snapshots" / f"iter-{prev_it}"
     hist_dir.mkdir(parents=True, exist_ok=True)
-    if not snap_dir.exists():
-        snapshot_src(root, prev_it)
-    else:
-        snap_dir.mkdir(parents=True, exist_ok=True)
     artifacts = [
         (root / "test" / "eval_results.json", "eval_results.json", f"eval_results.iter-{prev_it:02d}.json"),
         (root / "test" / "eval_report.md", "eval_report.md", f"eval_report.iter-{prev_it:02d}.md"),
@@ -152,7 +187,10 @@ def preserve_existing_top_level_eval_artifacts(root: Path) -> None:
     for src_p, base_name, numbered_name in artifacts:
         if not src_p.is_file():
             continue
-        for target_p in (hist_dir / base_name, snap_dir / base_name, root / "test" / numbered_name):
+        targets = [hist_dir / base_name, root / "test" / numbered_name]
+        if snap_dir.is_dir():
+            targets.insert(1, snap_dir / base_name)
+        for target_p in targets:
             if not target_p.exists():
                 target_p.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src_p, target_p)
@@ -182,14 +220,23 @@ def resolve_iteration(root: Path, requested: int | None) -> int:
     return requested
 
 
-def snapshot_src(root: Path, iteration: int) -> Path:
+def snapshot_src(root: Path, iteration: int) -> tuple[Path, Path | None]:
+    """Snapshot src/ → test/.snapshots/iter-N. An existing iter-N is never overwritten silently: it is moved to
+    iter-N.prev (returned as the second element) so the audit report can diff against it."""
     dest = root / "test" / ".snapshots" / f"iter-{iteration}"
+    displaced: Path | None = None
+    if dest.exists():
+        displaced = dest.with_name(f"iter-{iteration}.prev")
+        if displaced.exists():
+            shutil.rmtree(displaced)
+        dest.rename(displaced)
+        dlc.warn(f"snapshot iter-{iteration} already existed — moved to {displaced.name}; this run is diffed against it")
     src = root / "src"
     if src.exists():
         shutil.copytree(src, dest, ignore=SNAPSHOT_IGNORE, dirs_exist_ok=True)
     else:
         dest.mkdir(parents=True, exist_ok=True)
-    return dest
+    return dest, displaced
 
 
 def load_iteration_eval(root: Path, iteration: int) -> dict[str, Any] | None:
@@ -206,6 +253,146 @@ def load_iteration_eval(root: Path, iteration: int) -> dict[str, Any] | None:
             except Exception:
                 pass
     return None
+
+
+# ---- process-group helpers (prefer dlc_common's if present; local fallback otherwise) ----
+def start_process_group(cmd: str, cwd: Path, env: dict[str, str], log_path: Path) -> subprocess.Popen:
+    fn = getattr(dlc, "start_process_group", None)
+    if fn is not None:
+        try:
+            return fn(cmd, cwd, env, log_path)
+        except TypeError:
+            pass  # signature mismatch — use the local implementation
+    log = open(log_path, "wb")
+    kwargs: dict[str, Any] = {}
+    if os.name != "nt":
+        kwargs["start_new_session"] = True
+    else:
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    return subprocess.Popen(cmd, shell=True, cwd=str(cwd), stdout=log, stderr=subprocess.STDOUT, env=env, **kwargs)
+
+
+def stop_process_group(proc: subprocess.Popen, timeout: float = 5) -> None:
+    fn = getattr(dlc, "stop_process_group", None)
+    if fn is not None:
+        try:
+            fn(proc, timeout=timeout)
+            return
+        except TypeError:
+            pass
+    try:
+        if os.name != "nt":
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        else:
+            proc.terminate()
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            if os.name != "nt":
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            else:
+                proc.kill()
+            proc.wait(timeout=timeout)
+    except ProcessLookupError:
+        pass
+    except Exception as e:  # pragma: no cover
+        dlc.warn(f"could not stop process group cleanly: {e}")
+
+
+def _pgid_alive(pgid: int) -> bool:
+    try:
+        os.killpg(pgid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except Exception:
+        return False
+
+
+def reap_pidfile(pidfile: Path) -> bool:
+    """If a previous run (this script or validate_build.py) left its backend process group recorded in `pidfile`
+    and that group is still alive, stop it (TERM → KILL). Never touches any process we did not record ourselves."""
+    if not pidfile.exists() or os.name == "nt":
+        return False
+    try:
+        pgid = int(dlc.read_text(pidfile).strip() or "0")
+    except (ValueError, OSError):
+        pgid = 0
+    reaped = False
+    if pgid > 1 and pgid != os.getpid() and _pgid_alive(pgid):
+        dlc.warn(f"stale backend process group {pgid} recorded in {pidfile.name} is still alive — stopping it")
+        try:
+            os.killpg(pgid, signal.SIGTERM)
+            deadline = time.time() + 5
+            while time.time() < deadline and _pgid_alive(pgid):
+                time.sleep(0.2)
+            if _pgid_alive(pgid):
+                os.killpg(pgid, signal.SIGKILL)
+                time.sleep(0.3)
+            reaped = True
+        except Exception as e:
+            dlc.warn(f"could not stop stale process group {pgid}: {e}")
+    pidfile.unlink(missing_ok=True)
+    return reaped
+
+
+def chrome_sandbox_flags() -> list[str]:
+    """`--no-sandbox` only where the sandbox cannot work: running as root, or when the user opts in explicitly."""
+    try:
+        is_root = os.geteuid() == 0  # type: ignore[attr-defined]
+    except AttributeError:
+        is_root = False
+    return ["--no-sandbox"] if (is_root or os.environ.get("DLC_CHROME_NO_SANDBOX") == "1") else []
+
+
+def run_chrome(cmd: list[str], timeout_s: float) -> tuple[int, str, str]:
+    """Run a one-shot headless Chrome in its own session; on timeout kill the whole process group."""
+    kwargs: dict[str, Any] = {"start_new_session": True} if os.name != "nt" else {}
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, **kwargs)
+    try:
+        out, err = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        try:
+            if os.name != "nt":
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            else:
+                proc.kill()
+        except Exception:
+            pass
+        proc.communicate()
+        raise
+    return proc.returncode, out or "", err or ""
+
+
+def run_alm_bridge(root: Path, stack: dict[str, Any], action_args: list[str], deterministic: bool, skip: bool, force: bool) -> bool:
+    """Call 03/scripts/alm_jira_ado_bridge.py unless (a) --skip-alm-sync, (b) target_stack.almPlatform is `none`/missing,
+    or (c) --deterministic (golden runs) — (b) and (c) can be overridden with --alm-sync. Returns True when the bridge ran."""
+    if skip:
+        return False
+    helper = getattr(dlc, "run_alm_bridge", None)
+    if helper is not None:
+        try:
+            return bool(helper(root, action_args, deterministic=deterministic, force=force))
+        except TypeError:
+            pass
+    platform = str(stack.get("almPlatform") or "none").strip().lower()
+    if not force:
+        if platform in ("", "none"):
+            dlc.info("ALM sync skipped: target_stack.almPlatform is 'none' (pass --alm-sync to update backlog/ anyway)")
+            return False
+        if deterministic:
+            dlc.info("ALM sync skipped under --deterministic (pass --alm-sync to force)")
+            return False
+    bridge = Path(__file__).resolve().parents[2] / "03-story-and-sprint-planner" / "scripts" / "alm_jira_ado_bridge.py"
+    if not bridge.is_file() or not (root / "backlog" / "user_stories.json").is_file():
+        return False
+    cmd = [sys.executable, str(bridge), "--project-root", str(root), *action_args] + (["--deterministic"] if deterministic else [])
+    cp = subprocess.run(cmd, cwd=str(root))
+    if cp.returncode not in (0, 2):
+        dlc.warn(f"ALM bridge ({' '.join(action_args)}) returned {cp.returncode}")
+    return True
 
 
 def status_counts(results: list[dict[str, Any]]) -> dict[str, int]:
@@ -260,7 +447,9 @@ class Backend:
         self.proc: subprocess.Popen | None = None
         self.started = False
         self.error = ""
+        self.stale_port = False  # True when a server this run did not start owns the port → every runtime-dependent TC is ERROR
         self.log_dir = log_dir
+        self.pidfile = root / BACKEND_PIDFILE
         self.base_url = ""
         if self.healthcheck:
             u = urllib.parse.urlsplit(self.healthcheck)
@@ -273,38 +462,27 @@ class Backend:
                 dlc.info(f"backend already answering at {self.healthcheck} (not started by this run)")
             return self
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        if self.healthcheck and self._healthy(timeout=1):
-            # Reap any stale backend process left over from a previous /tmp/dlc-* run before checking again.
-            my_pids = {os.getpid(), os.getppid()}
-            for proc_dir in Path("/proc").glob("[0-9]*"):
-                try:
-                    pid = int(proc_dir.name)
-                    if pid in my_pids:
-                        continue
-                    cwd = os.readlink(proc_dir / "cwd") if (proc_dir / "cwd").exists() else ""
-                    if cwd.startswith("/tmp/dlc-"):
-                        os.kill(pid, signal.SIGKILL)
-                except Exception:
-                    pass
+        # Reap only the backend a previous validate_build.py / eval run recorded in the pidfile (never a /proc-wide sweep).
+        if reap_pidfile(self.pidfile):
             time.sleep(0.3)
         if self.healthcheck and self._healthy(timeout=1):
             dlc.warn(f"{self.healthcheck} already answers BEFORE the start command ran — a stale server (previous run?) owns the port; "
                      "the new process would fail to bind and results would come from stale code. Stop it first or pass --skip-backend.")
             self.error = "port already in use by a process this run did not start"
+            self.stale_port = True
             return self
-        log = open(self.log_dir / "backend.log", "wb")
         env = dict(os.environ)
         if self.healthcheck:
             port = urllib.parse.urlsplit(self.healthcheck).port
             if port:
                 env.setdefault("PORT", str(port))
         dlc.info(f"starting backend: {self.start_cmd}")
-        kwargs: dict[str, Any] = {}
-        if os.name != "nt":
-            kwargs["preexec_fn"] = os.setsid
-        else:
-            kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        self.proc = subprocess.Popen(self.start_cmd, shell=True, cwd=str(self.root), stdout=log, stderr=subprocess.STDOUT, env=env, **kwargs)
+        self.proc = start_process_group(self.start_cmd, self.root, env, self.log_dir / "backend.log")
+        try:
+            pgid = os.getpgid(self.proc.pid) if os.name != "nt" else self.proc.pid
+            dlc.write_text(self.pidfile, str(pgid))
+        except Exception:
+            pass
         if not self.healthcheck:
             time.sleep(2)
             self.started = self.proc.poll() is None
@@ -338,22 +516,8 @@ class Backend:
     def __exit__(self, *exc: Any) -> None:
         if self.proc is None:
             return
-        try:
-            if os.name != "nt":
-                os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
-            else:
-                self.proc.terminate()
-            try:
-                self.proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                if os.name != "nt":
-                    os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
-                else:
-                    self.proc.kill()
-        except ProcessLookupError:
-            pass
-        except Exception as e:  # pragma: no cover
-            dlc.warn(f"could not stop backend cleanly: {e}")
+        stop_process_group(self.proc, timeout=5)
+        self.pidfile.unlink(missing_ok=True)
 
     def log_tail(self, n: int = 30) -> str:
         p = self.log_dir / "backend.log"
@@ -385,11 +549,144 @@ class UiEntry:
         self.error = f"uiEntry file not found: {self.path}"
         return ""
 
-    def base_href(self) -> str:
+    def entry_path(self) -> str:
+        """URL path of the entry document as the app sees it (used for <base href> / history.replaceState in the harness)."""
         if self.is_url:
-            return self.raw if self.raw.endswith("/") else self.raw.rsplit("/", 1)[0] + "/"
+            return urllib.parse.urlsplit(self.raw).path or "/"
         assert self.path is not None
-        return self.path.parent.resolve().as_uri() + "/"
+        return "/" + self.path.name
+
+
+# ======================================================================================
+# Harness server — serves the chrome-headless harness over http://127.0.0.1 on the app's own origin
+# ======================================================================================
+class HarnessServer:
+    """Tiny stdlib ThreadingHTTPServer on an ephemeral localhost port.
+
+    * uiEntry is an http URL  → every request except `/__dlc_harness/<token>` is reverse-proxied to the backend origin,
+      so the injected harness page, the app's assets and its `fetch('/api/…')` calls all share ONE origin
+      (no CORS, no `--disable-web-security`, no `file://` tricks).
+    * uiEntry is a file         → files are served from the entry document's directory instead.
+    """
+
+    HARNESS_PREFIX = "/__dlc_harness/"
+
+    def __init__(self, ui: UiEntry):
+        self.ui = ui
+        self.upstream: str | None = None
+        self.static_dir: Path | None = None
+        if ui.is_url:
+            u = urllib.parse.urlsplit(ui.raw)
+            self.upstream = f"{u.scheme}://{u.netloc}"
+        else:
+            assert ui.path is not None
+            self.static_dir = ui.path.parent.resolve()
+        self.entry_path = ui.entry_path()
+        self.docs: dict[str, str] = {}
+        self.lock = threading.Lock()
+        self._seq = 0
+        outer = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, *a: Any) -> None:  # silence per-request logging
+                pass
+
+            def _send(self, status: int, body: bytes, ctype: str) -> None:
+                self.send_response(status)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(body)
+
+            def _handle(self) -> None:
+                m = re.match(r"^" + re.escape(HarnessServer.HARNESS_PREFIX) + r"([A-Za-z0-9_-]+)(?:[/?#].*)?$", self.path)
+                if m:
+                    with outer.lock:
+                        doc = outer.docs.get(m.group(1))
+                    if doc is None:
+                        self._send(404, b"unknown harness token", "text/plain; charset=utf-8")
+                    else:
+                        self._send(200, doc.encode("utf-8"), "text/html; charset=utf-8")
+                    return
+                if outer.upstream:
+                    self._proxy()
+                else:
+                    self._static()
+
+            do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = do_HEAD = do_OPTIONS = _handle
+
+            def _proxy(self) -> None:
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length) if length else None
+                if body is None and self.command in ("POST", "PUT", "PATCH"):
+                    body = b""
+                headers = {k: v for k, v in self.headers.items()
+                           if k.lower() not in ("host", "connection", "content-length", "accept-encoding", "keep-alive")}
+                req = urllib.request.Request(outer.upstream + self.path, data=body, method=self.command, headers=headers)  # type: ignore[operator]
+                try:
+                    with urllib.request.urlopen(req, timeout=20) as resp:
+                        status, hdrs, data = resp.status, list(resp.getheaders()), resp.read()
+                except urllib.error.HTTPError as e:
+                    status, hdrs, data = e.code, list(e.headers.items()), e.read()
+                except Exception as e:
+                    self._send(502, f"harness proxy could not reach {outer.upstream}: {e}".encode("utf-8"), "text/plain; charset=utf-8")
+                    return
+                self.send_response(status)
+                for k, v in hdrs:
+                    if k.lower() in ("transfer-encoding", "connection", "content-length", "content-encoding", "keep-alive"):
+                        continue
+                    self.send_header(k, v)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(data)
+
+            def _static(self) -> None:
+                import mimetypes
+                assert outer.static_dir is not None
+                rel = urllib.parse.unquote(urllib.parse.urlsplit(self.path).path).lstrip("/")
+                if not rel or rel.endswith("/"):
+                    rel = (rel + outer.entry_path.lstrip("/")) if rel else outer.entry_path.lstrip("/")
+                p = (outer.static_dir / rel).resolve()
+                if not str(p).startswith(str(outer.static_dir)) or not p.is_file():
+                    self._send(404, b"not found", "text/plain; charset=utf-8")
+                    return
+                ctype = mimetypes.guess_type(str(p))[0] or "application/octet-stream"
+                if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
+                    ctype += "; charset=utf-8"
+                self._send(200, p.read_bytes(), ctype)
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd.daemon_threads = True  # type: ignore[attr-defined]
+        self.origin = f"http://127.0.0.1:{self.httpd.server_address[1]}"
+        self.thread = threading.Thread(target=self.httpd.serve_forever, kwargs={"poll_interval": 0.2}, daemon=True)
+        self.thread.start()
+
+    def base_href(self) -> str:
+        d = self.entry_path.rsplit("/", 1)[0] + "/"
+        return self.origin + d
+
+    def register(self, doc: str) -> tuple[str, str]:
+        with self.lock:
+            self._seq += 1
+            token = f"h{self._seq}-{hashlib.sha1(doc.encode('utf-8')).hexdigest()[:10]}"
+            self.docs[token] = doc
+        return token, f"{self.origin}{self.HARNESS_PREFIX}{token}"
+
+    def unregister(self, token: str) -> None:
+        with self.lock:
+            self.docs.pop(token, None)
+
+    def close(self) -> None:
+        try:
+            self.httpd.shutdown()
+            self.httpd.server_close()
+        except Exception:
+            pass
 
 
 # ======================================================================================
@@ -398,19 +695,32 @@ class UiEntry:
 class ChromeAdapter:
     name = "chrome-headless"
 
-    def __init__(self, binary: str, ui: UiEntry, tmp: Path, timeout_s: int = 60):
+    def __init__(self, binary: str, ui: UiEntry, tmp: Path, timeout_s: int = 90):
         self.binary = binary
         self.ui = ui
         self.tmp = tmp
         self.timeout_s = timeout_s
         self.driver = dlc.read_text(DRIVER_JS)
-        self.profile = tmp / "chrome-profile"
-        self.profile.mkdir(parents=True, exist_ok=True)
+        self.server = HarnessServer(ui)
+        self.force_no_sandbox = False  # set when Chrome itself reports it cannot set up its sandbox here
+        self.screenshot_dir: Path | None = None
+
+    def close(self) -> None:
+        self.server.close()
+
+    def _chrome_flags(self, prof: Path) -> list[str]:
+        flags = [self.binary, "--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
+                 "--disable-extensions", "--no-first-run", "--no-default-browser-check", "--password-store=basic",
+                 "--use-mock-keychain", f"--user-data-dir={prof}"]
+        flags += chrome_sandbox_flags() or (["--no-sandbox"] if self.force_no_sandbox else [])
+        return flags
 
     def build_harness(self, app_html: str, steps: list[dict[str, Any]], settle_ms: int) -> str:
         prelude = f"<script data-dlc=\"prelude\">\n{self.driver}\nwindow.__dlcInstallPrelude();\n</script>"
-        base = f'<base href="{html_mod.escape(self.ui.base_href())}">' if not re.search(r"<base\b", app_html, re.I) else ""
-        head_inject = base + prelude
+        base = f'<base href="{html_mod.escape(self.server.base_href())}">' if not re.search(r"<base\b", app_html, re.I) else ""
+        # The harness lives at /__dlc_harness/<token>; present the app with its real entry path (same origin, so allowed).
+        path_fix = f"<script data-dlc=\"path\">try{{history.replaceState(null,'',{json.dumps(self.server.entry_path)});}}catch(e){{}}</script>"
+        head_inject = base + path_fix + prelude
         if re.search(r"<head[^>]*>", app_html, re.I):
             doc = re.sub(r"(<head[^>]*>)", lambda m: m.group(1) + head_inject, app_html, count=1, flags=re.I)
         elif re.search(r"<html[^>]*>", app_html, re.I):
@@ -418,11 +728,15 @@ class ChromeAdapter:
         else:
             doc = head_inject + app_html
         steps_json = json.dumps(steps).replace("</", "<\\/")
+        # Results are emitted base64(utf-8 JSON) so --dump-dom serialisation (entity encoding, `</`) can never corrupt them.
         runner = f"""<script data-dlc="runner">
 (function(){{
   function emit(obj){{
     var s=document.createElement('script'); s.type='application/json'; s.id='__dlc_results';
-    s.textContent=JSON.stringify(obj).replace(/</g,'\\\\u003c'); document.documentElement.appendChild(s);
+    var json=JSON.stringify(obj);
+    try {{ s.textContent='b64:'+btoa(unescape(encodeURIComponent(json))); }}
+    catch(e) {{ s.textContent=json.replace(/</g,'\\\\u003c'); }}
+    document.documentElement.appendChild(s);
   }}
   function go(){{
     window.__dlcRun({steps_json}, {{settleMs:{settle_ms}}}).then(emit).catch(function(e){{
@@ -438,59 +752,79 @@ class ChromeAdapter:
             doc += runner
         return doc
 
-    def run(self, tc: dict[str, Any], app_html: str) -> dict[str, Any]:
-        steps = tc.get("steps") or []
-        settle = int(tc.get("settleMs", 150))
+    @staticmethod
+    def _decode_results(payload: str) -> dict[str, Any]:
+        payload = payload.strip()
+        if payload.startswith("b64:"):
+            return json.loads(base64.b64decode(payload[4:]).decode("utf-8"))
+        # legacy path: only unescape when the dump actually entity-encoded the JSON
+        if "&quot;" in payload or "&lt;" in payload or "&amp;" in payload:
+            payload = html_mod.unescape(payload)
+        return json.loads(payload)
+
+    def _run_harness(self, app_html: str, steps: list[dict[str, Any]], settle: int, safe_id: str) -> tuple[dict[str, Any], str, str]:
+        """Serve the harness for `steps`, run Chrome once (--dump-dom) and parse the results.
+        Returns (result, harness_url, token) — the caller must `self.server.unregister(token)` when done with the URL."""
         wait_total = sum(int(s.get("ms", 0)) for s in steps if s.get("action") == "wait")
         budget = min(60000, 4000 + settle + wait_total + 400 * len(steps))
         harness = self.build_harness(app_html, steps, settle)
-        safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", tc.get("id", "tc"))
-        hp = self.tmp / f"harness-{safe_id}.html"
-        hp.write_text(harness, encoding="utf-8")
-        prof = self.tmp / f"prof-{safe_id}"
-        prof.mkdir(parents=True, exist_ok=True)
-        cmd = [self.binary, "--headless=new", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars",
-               "--disable-web-security", "--allow-file-access-from-files", "--disable-extensions", "--no-first-run",
-               "--no-default-browser-check", "--password-store=basic", "--use-mock-keychain",
-               f"--user-data-dir={prof}", f"--virtual-time-budget={budget}", "--run-all-compositor-stages-before-draw",
-               "--dump-dom", hp.resolve().as_uri()]
+        token, url = self.server.register(harness)
+        self._last_budget = budget
         t0 = now_ms()
+        attempt = 0
+        while True:
+            attempt += 1
+            prof = self.tmp / f"prof-{safe_id}-{attempt}"
+            prof.mkdir(parents=True, exist_ok=True)
+            cmd = self._chrome_flags(prof) + [f"--virtual-time-budget={budget}", "--run-all-compositor-stages-before-draw", "--dump-dom", url]
+            timeout_s = max(float(self.timeout_s), budget / 1000.0 + 15)  # wall-clock must exceed the virtual-time budget
+            try:
+                rc, out, err = run_chrome(cmd, timeout_s)
+            except subprocess.TimeoutExpired:
+                return {"status": "ERROR", "message": f"chrome timed out after {timeout_s:.0f}s (virtual-time budget {budget}ms)", "actual": "", "durationMs": now_ms() - t0}, url, token
+            except OSError as e:
+                return {"status": "ERROR", "message": f"could not launch chrome: {e}", "actual": "", "durationMs": now_ms() - t0}, url, token
+            finally:
+                shutil.rmtree(prof, ignore_errors=True)
+            m = re.search(r'<script type="application/json" id="__dlc_results">(.*?)</script>', out, re.S)
+            if m:
+                break
+            low = (err or "").lower()
+            if attempt == 1 and not self.force_no_sandbox and not chrome_sandbox_flags() and ("sandbox" in low or "zygote" in low):
+                dlc.warn("chrome could not start its sandbox in this environment — retrying with --no-sandbox (set DLC_CHROME_NO_SANDBOX=1 to skip this probe)")
+                self.force_no_sandbox = True
+                continue
+            tail = (err or "").strip().splitlines()[-5:]
+            return {"status": "ERROR", "message": f"harness produced no results (page JS may have thrown before load, or chrome failed, rc={rc})",
+                    "actual": " | ".join(tail)[:500], "durationMs": now_ms() - t0}, url, token
         try:
-            cp = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout_s)
-        except subprocess.TimeoutExpired:
-            shutil.rmtree(prof, ignore_errors=True)
-            return {"status": "ERROR", "message": f"chrome timed out after {self.timeout_s}s", "actual": "", "durationMs": now_ms() - t0}
-        except OSError as e:
-            shutil.rmtree(prof, ignore_errors=True)
-            return {"status": "ERROR", "message": f"could not launch chrome: {e}", "actual": "", "durationMs": now_ms() - t0}
-        shutil.rmtree(prof, ignore_errors=True)
-        m = re.search(r'<script type="application/json" id="__dlc_results">(.*?)</script>', cp.stdout, re.S)
-        if not m:
-            tail = (cp.stderr or "").strip().splitlines()[-5:]
-            return {"status": "ERROR", "message": "harness produced no results (page JS may have thrown before load, or chrome failed)",
-                    "actual": " | ".join(tail)[:500], "durationMs": now_ms() - t0}
-        try:
-            res = json.loads(html_mod.unescape(m.group(1)))
-        except json.JSONDecodeError as e:
-            return {"status": "ERROR", "message": f"could not parse harness results: {e}", "actual": m.group(1)[:300], "durationMs": now_ms() - t0}
+            res = self._decode_results(m.group(1))
+        except (json.JSONDecodeError, ValueError, UnicodeDecodeError) as e:
+            return {"status": "ERROR", "message": f"could not parse harness results: {e}", "actual": m.group(1)[:300], "durationMs": now_ms() - t0}, url, token
         res["durationMs"] = now_ms() - t0
-        if res.get("status") in ("FAIL", "ERROR") and getattr(self, "screenshot_dir", None):
-            shot_path = self.screenshot_dir / f"fail-{safe_id}.png"
-            if self._take_screenshot(hp.resolve().as_uri(), shot_path, budget):
-                res["screenshot"] = str(shot_path)
+        return res, url, token
+
+    def run(self, tc: dict[str, Any], app_html: str) -> dict[str, Any]:
+        steps = tc.get("steps") or []
+        settle = int(tc.get("settleMs", 150))
+        safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", tc.get("id", "tc"))
+        res, url, token = self._run_harness(app_html, steps, settle, safe_id)
+        try:
+            if res.get("status") in ("FAIL", "ERROR") and self.screenshot_dir:
+                shot_path = self.screenshot_dir / f"fail-{safe_id}.png"
+                if self._take_screenshot(url, shot_path, getattr(self, "_last_budget", 800)):
+                    res["screenshot"] = str(shot_path)
+        finally:
+            self.server.unregister(token)
         return res
 
-    def _take_screenshot(self, uri: str, out_png: Path, budget: int = 800) -> bool:
+    def _take_screenshot(self, url: str, out_png: Path, budget: int = 800) -> bool:
         out_png.parent.mkdir(parents=True, exist_ok=True)
         prof = self.tmp / f"prof-shot-{out_png.stem}"
         prof.mkdir(parents=True, exist_ok=True)
-        cmd = [self.binary, "--headless=new", "--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars",
-               "--disable-web-security", "--allow-file-access-from-files", "--disable-extensions", "--no-first-run",
-               "--no-default-browser-check", "--password-store=basic", "--use-mock-keychain",
-               f"--user-data-dir={prof}", "--window-size=1440,900", f"--virtual-time-budget={min(budget, 1200)}",
-               f"--screenshot={out_png}", uri]
+        cmd = self._chrome_flags(prof) + ["--window-size=1440,900", f"--virtual-time-budget={min(budget, 1200)}", f"--screenshot={out_png}", url]
         try:
-            subprocess.run(cmd, capture_output=True, text=True, timeout=6)
+            run_chrome(cmd, 10)
             return out_png.exists() and out_png.stat().st_size > 0
         except Exception:
             return False
@@ -498,20 +832,25 @@ class ChromeAdapter:
             shutil.rmtree(prof, ignore_errors=True)
 
     def capture_visual_evidence(self, app_html: str, screenshot_dir: Path, root: Path) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
-        """Capture initial landing screenshot + per-tab screenshots and verify tab-switch layout changes."""
+        """Capture initial landing screenshot + per-tab screenshots; each tab is clicked through the in-page driver, whose
+        click step verifies the controlled panel gets a non-zero bounding box and sibling panels hide (unwired tabs are reported)."""
         self.screenshot_dir = screenshot_dir
         screenshot_dir.mkdir(parents=True, exist_ok=True)
         shots: list[dict[str, str]] = []
         unwired_tabs: list[dict[str, str]] = []
+
+        def rel_of(p: Path) -> str:
+            return str(p.relative_to(root)) if p.is_relative_to(root) else str(p)
+
         # 1. Initial landing view
-        init_harness = self.build_harness(app_html, [{"action": "goto", "target": "ui"}], 150)
-        hp_init = self.tmp / "shot-landing.html"
-        hp_init.write_text(init_harness, encoding="utf-8")
-        init_png = screenshot_dir / "landing-initial.png"
-        if self._take_screenshot(hp_init.resolve().as_uri(), init_png):
-            rel = str(init_png.relative_to(root)) if init_png.is_relative_to(root) else str(init_png)
-            shots.append({"label": "Initial landing view (1440x900)", "path": rel, "kind": "landing"})
-        # 2. Discover top-level [role="tab"] selectors from HTML source and capture each tab view
+        token, url = self.server.register(self.build_harness(app_html, [{"action": "goto", "target": "ui"}], 150))
+        try:
+            init_png = screenshot_dir / "landing-initial.png"
+            if self._take_screenshot(url, init_png):
+                shots.append({"label": "Initial landing view (1440x900)", "path": rel_of(init_png), "kind": "landing"})
+        finally:
+            self.server.unregister(token)
+        # 2. Discover top-level [role="tab"] selectors from HTML source, click each through the driver and capture the view
         tab_matches = re.findall(r'<[^>]*\brole\s*=\s*["\']tab["\'][^>]*>', app_html, re.I)
         for idx, tag_html in enumerate(tab_matches[:8]):
             m_tid = re.search(r'\bdata-testid\s*=\s*["\']([^"\']+)["\']', tag_html, re.I)
@@ -521,13 +860,20 @@ class ChromeAdapter:
             if not sel:
                 continue
             slug = re.sub(r"[^a-z0-9]+", "-", (m_tid.group(1) if m_tid else m_id.group(1)).lower()).strip("-")
-            tab_harness = self.build_harness(app_html, [{"action": "goto", "target": "ui"}, {"action": "click", "selector": sel}], 150)
-            hp_tab = self.tmp / f"shot-tab-{idx + 1:02d}.html"
-            hp_tab.write_text(tab_harness, encoding="utf-8")
-            tab_png = screenshot_dir / f"tab-{idx + 1:02d}-{slug}.png"
-            if self._take_screenshot(hp_tab.resolve().as_uri(), tab_png):
-                rel = str(tab_png.relative_to(root)) if tab_png.is_relative_to(root) else str(tab_png)
-                shots.append({"label": f"Tab {idx + 1}: {sel}" + (f" -> #{m_ctrl.group(1)}" if m_ctrl else ""), "path": rel, "kind": "tab"})
+            res, url, token = self._run_harness(app_html, [{"action": "goto", "target": "ui"}, {"action": "click", "selector": sel}], 150, f"tab-{idx + 1:02d}")
+            try:
+                actual = str(res.get("actual") or res.get("message") or "")
+                if res.get("status") == "FAIL" and res.get("failedStep") == 1:
+                    role_gated = bool(re.search(r"not visible|zero bounding box|not found|hidden", actual, re.I)) and "panel" not in actual.lower()
+                    if not role_gated:  # a tab hidden for the default persona is role-gated, not dead (the Playwright probe skips those too)
+                        unwired_tabs.append({"selector": sel, "text": slug, "reason": actual[:200] or "tab click failed"})
+                elif res.get("status") == "ERROR":
+                    dlc.warn(f"tab probe {sel}: {res.get('message', '')}")
+                tab_png = screenshot_dir / f"tab-{idx + 1:02d}-{slug}.png"
+                if self._take_screenshot(url, tab_png):
+                    shots.append({"label": f"Tab {idx + 1}: {sel}" + (f" -> #{m_ctrl.group(1)}" if m_ctrl else ""), "path": rel_of(tab_png), "kind": "tab"})
+            finally:
+                self.server.unregister(token)
         return shots, unwired_tabs
 
 
@@ -1026,6 +1372,9 @@ def run_http_steps(tc: dict[str, Any], base_url: str) -> dict[str, Any]:
             allowed = exp if isinstance(exp, list) else [exp]
             if status not in [int(x) for x in allowed]:
                 return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {method} {path} expected status {exp}", "actual": f"status={status} body={text[:300]}", "durationMs": now_ms() - t0}
+        elif not (200 <= status < 300):
+            # No explicit expectation → a request that does not succeed (2xx) is a failure, never a silent pass.
+            return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {method} {path} returned {status} (no expectStatus given, 2xx expected by default)", "actual": f"status={status} body={text[:300]}", "durationMs": now_ms() - t0}
         try:
             last_json = json.loads(text) if text.strip() else None
         except json.JSONDecodeError:
@@ -1135,6 +1484,7 @@ def run_static_steps(tc: dict[str, Any], ui_source: str, texts: dict[str, str] |
     t0 = now_ms()
     texts = texts or {"static:uiEntry source": dlc.html_visible_text(ui_source)}
     ctx = ctx or {}
+    static_corpus_len = len((texts.get("static:uiEntry source") or "").strip())
     for i, step in enumerate(tc.get("steps") or []):
         action = step.get("action")
         if action == "expectNoVisibleTextMatching":
@@ -1142,6 +1492,10 @@ def run_static_steps(tc: dict[str, Any], ui_source: str, texts: dict[str, str] |
                 rx = re.compile(step.get("pattern", ""), re.M)
             except re.error as e:
                 return {"status": "ERROR", "failedStep": i, "message": f"Step {i}: invalid regex /{step.get('pattern')}/: {e}", "actual": "", "durationMs": now_ms() - t0}
+            if not ctx.get("browserStatesReached") and static_corpus_len < MIN_STATIC_CORPUS_CHARS:
+                # An SPA shell with (almost) no static text proves nothing about what the rendered UI shows.
+                return {"status": "NOT_RUN", "failedStep": i, "message": f"Step {i}: no browser state reached and the static visible text is only {static_corpus_len} chars — "
+                        "a negative text match over an empty corpus is not evidence; " + BROWSER_INSTALL_HINT, "actual": "", "durationMs": now_ms() - t0}
             for label, text in texts.items():
                 m = rx.search(text)
                 if m:
@@ -1252,6 +1606,7 @@ def list_files(d: Path) -> dict[str, Path]:
     if not d.exists():
         return out
     for p in d.rglob("*"):
+        # evaluator outputs (results/reports) and screenshots/ are copied next to the snapshot — they are not application source
         if (
             p.is_file()
             and p.name not in SNAPSHOT_META_FILES
@@ -1311,19 +1666,41 @@ DOC_SUFFIXES = {".md", ".txt", ".rst"}  # documentation under src/ is never a gu
 
 
 def classify_hunk(hunk: list[str], pats: dict[str, re.Pattern[str]]) -> list[str]:
+    """Classify a unified-diff hunk. The WHOLE hunk (changed + context lines) is inspected: a one-line change
+    inside `if (!allowedRoles.includes(role))` is guardrail-sensitive even when the changed line itself is bland."""
     cats: list[str] = []
-    changed = [ln[1:] for ln in hunk if ln.startswith(("+", "-")) and not ln.startswith(("+++", "---"))]
+    body = [ln[1:] if ln[:1] in "+- " else ln for ln in hunk if not ln.startswith(("@@", "+++", "---"))]
     for name, rx in pats.items():
-        if any(rx.search(ln) for ln in changed):
+        if any(rx.search(ln) for ln in body):
             cats.append(name)
     return cats
 
 
-def compute_snapshot_file_changes(snaps_dir: Path, from_it: int, to_it: int) -> tuple[list[str], list[tuple[str, str, list[list[str]]]]]:
-    """Return (changed_rel_paths, [(rel, tag, hunks)]) between iter-{from_it} and iter-{to_it}."""
-    prev_d = snaps_dir / f"iter-{from_it}"
-    cur_d = snaps_dir / f"iter-{to_it}"
-    if from_it < 1 or not prev_d.exists() or not cur_d.exists():
+def hunk_hash(rel: str, hunk: list[str]) -> str:
+    """Stable identity of a flagged hunk: file + changed lines (header line numbers excluded so unrelated edits above
+    the hunk do not change its identity)."""
+    changed = [ln for ln in hunk if ln.startswith(("+", "-")) and not ln.startswith(("+++", "---"))]
+    return hashlib.sha256((rel + "\n" + "\n".join(changed)).encode("utf-8")).hexdigest()
+
+
+def load_guardrail_state(root: Path) -> dict[str, Any]:
+    p = root / GUARDRAIL_STATE_FILE
+    state: dict[str, Any] = {"schemaVersion": dlc.SCHEMA_VERSION, "pendingHunks": [], "approvedHunks": [], "flaggedAtIteration": None, "baselineIteration": None, "baselineSnapshot": None}
+    if p.exists():
+        try:
+            data = dlc.read_json(p)
+            if isinstance(data, dict):
+                state.update({k: data.get(k, state[k]) for k in state})
+        except Exception as e:
+            dlc.warn(f"{GUARDRAIL_STATE_FILE} is unreadable ({e}) — treating as no recorded state")
+    state["pendingHunks"] = [str(h) for h in (state.get("pendingHunks") or [])]
+    state["approvedHunks"] = [str(h) for h in (state.get("approvedHunks") or [])]
+    return state
+
+
+def compute_snapshot_file_changes(prev_d: Path, cur_d: Path, from_label: str, to_label: str) -> tuple[list[str], list[tuple[str, str, list[list[str]]]]]:
+    """Return (changed_rel_paths, [(rel, tag, hunks)]) between two snapshot directories (context DIFF_CONTEXT_LINES)."""
+    if not prev_d.exists() or not cur_d.exists():
         return [], []
     prev_files, cur_files = list_files(prev_d), list_files(cur_d)
     changed_paths: list[str] = []
@@ -1339,11 +1716,17 @@ def compute_snapshot_file_changes(snaps_dir: Path, from_it: int, to_it: int) -> 
         if a == b:
             continue
         tag = "modified" if rel in prev_files and rel in cur_files else ("new" if rel in cur_files else "deleted")
-        diff = list(difflib.unified_diff(a, b, fromfile=f"iter-{from_it}/{rel}", tofile=f"iter-{to_it}/{rel}", lineterm="", n=2))
+        diff = list(difflib.unified_diff(a, b, fromfile=f"{from_label}/{rel}", tofile=f"{to_label}/{rel}", lineterm="", n=DIFF_CONTEXT_LINES))
         hunks = split_hunks(diff)
         changed_paths.append(rel)
         detailed.append((rel, tag, hunks))
     return changed_paths, detailed
+
+
+def compute_iteration_changes(snaps_dir: Path, from_it: int, to_it: int) -> tuple[list[str], list[tuple[str, str, list[list[str]]]]]:
+    if from_it < 1:
+        return [], []
+    return compute_snapshot_file_changes(snaps_dir / f"iter-{from_it}", snaps_dir / f"iter-{to_it}", f"iter-{from_it}", f"iter-{to_it}")
 
 
 def build_cumulative_history_rows(root: Path, current_it: int, current_results: list[dict[str, Any]], current_ts: str) -> list[dict[str, Any]]:
@@ -1378,7 +1761,7 @@ def build_cumulative_history_rows(root: Path, current_it: int, current_results: 
         failed_ids = sorted(str(r.get("id")) for r in failed_entries if r.get("id"))
         passed_ids = {str(r.get("id")) for r in res_list if isinstance(r, dict) and r.get("status") == "PASS" and r.get("id")}
         remediated_ids = sorted(prev_failed_ids & passed_ids)
-        changed_files, detailed_diffs = compute_snapshot_file_changes(snaps, it - 1, it) if it > 1 else ([], [])
+        changed_files, detailed_diffs = compute_iteration_changes(snaps, it - 1, it) if it > 1 else ([], [])
         rows.append({
             "iteration": it,
             "evaluatedAtUtc": ts,
@@ -1403,54 +1786,91 @@ def build_cumulative_history_rows(root: Path, current_it: int, current_results: 
     return rows
 
 
-def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]], out_path: Path, spec_md: str, deterministic: bool) -> str:
-    snaps = root / "test" / ".snapshots"
-    cur_dir = snaps / f"iter-{iteration}"
-    prev_dir = snaps / f"iter-{iteration - 1}"
-    now_ts = dlc.utc_now_iso(deterministic)
-    history_rows = build_cumulative_history_rows(root, iteration, results, now_ts)
-    lines = [
-        f"# Remediation & Guardrail Audit Report — Iteration {iteration}",
-        "",
-        f"Generated: {now_ts}  ",
-        f"Project: `{root.name}`  ",
-        f"Compared: `test/.snapshots/iter-{iteration - 1}` → `test/.snapshots/iter-{iteration}`  ",
-        f"Preserved Per-Run Archive: `test/history/iter-{iteration}/` · `test/*.iter-{iteration:02d}.*`",
-        "",
-        "## 0. Cumulative Run & Remediation History (All Iterations)",
-        "",
-        "> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/`, `test/.snapshots/iter-<N>/`, and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.",
-        "",
-        "| Iter | Timestamp (UTC) | Verdict | PASS / Total | FAIL | NOT_RUN | ERROR | Failed Test IDs | Remediated Test IDs | Modified Files (`src/`) | Preserved Run Artifacts |",
-        "| --: | :-- | :-- | --: | --: | --: | --: | :-- | :-- | :-- | :-- |",
-    ]
+def history_table_lines(history_rows: list[dict[str, Any]], max_ids: int = 8, with_files: bool = True) -> list[str]:
+    hdr = "| Iter | Timestamp (UTC) | Verdict | PASS / Total | FAIL | NOT_RUN | ERROR | Failed Test IDs | Remediated Test IDs |" + (" Modified Files (`src/`) |" if with_files else "") + " Preserved Run Artifacts |"
+    sep = "| --: | :-- | :-- | --: | --: | --: | --: | :-- | :-- |" + (" :-- |" if with_files else "") + " :-- |"
+    out = [hdr, sep]
+
+    def trunc(items: list[str], n: int, empty: str = "—") -> str:
+        if not items:
+            return empty
+        return ", ".join(f"`{t}`" for t in items[:n]) + (f" (+{len(items) - n} more)" if len(items) > n else "")
+
     for hr in history_rows:
         it_num = hr["iteration"]
-        f_str = ", ".join(f"`{t}`" for t in hr["failedIds"][:8]) + (f" (+{len(hr['failedIds']) - 8} more)" if len(hr["failedIds"]) > 8 else "") if hr["failedIds"] else "—"
-        r_str = ", ".join(f"`{t}`" for t in hr["remediatedIds"][:8]) + (f" (+{len(hr['remediatedIds']) - 8} more)" if len(hr["remediatedIds"]) > 8 else "") if hr["remediatedIds"] else "—"
-        m_str = ", ".join(f"`{f}`" for f in hr["changedFiles"][:5]) + (f" (+{len(hr['changedFiles']) - 5} more)" if len(hr["changedFiles"]) > 5 else "") if hr["changedFiles"] else ("initial snapshot" if it_num == 1 else "—")
-        art_str = f"`{hr['historyDir']}/` · `{hr['evalReportFile']}` · `{hr['auditReportFile']}`"
-        lines.append(
-            f"| **{it_num}** | `{hr['evaluatedAtUtc']}` | **{hr['verdict']}** | {hr['pass']}/{hr['total']} | {hr['fail']} | {hr['notRun']} | {hr['error']} | {f_str} | {r_str} | {m_str} | {art_str} |"
-        )
-    lines.append("")
+        cells = [f"**{it_num}**", f"`{hr['evaluatedAtUtc']}`", f"**{hr['verdict']}**", f"{hr['pass']}/{hr['total']}", str(hr["fail"]), str(hr["notRun"]), str(hr["error"]),
+                 trunc(hr["failedIds"], max_ids), trunc(hr["remediatedIds"], max_ids)]
+        if with_files:
+            cells.append(trunc(hr["changedFiles"], 5, "initial snapshot" if it_num == 1 else "—"))
+        cells.append(f"`{hr['historyDir']}/` · `{hr['evalReportFile']}` · `{hr['auditReportFile']}`")
+        out.append("| " + " | ".join(cells) + " |")
+    return out
 
-    status = "CLEAR"
+
+def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]], out_path: Path, spec_md: str, deterministic: bool,
+                       displaced: Path | None = None, approve: bool = False, had_prior_results: bool = False) -> dict[str, Any]:
+    """Write test/remediation_and_guardrail_audit_report.md and update test/.guardrail_state.json.
+
+    Returns {"status": CLEAR | FLAGGED_REQUIRES_HUMAN_APPROVAL | UNKNOWN_BASELINE, "pending": [...], "approvedNow": [...], "baseline": "iter-N"}.
+    The diff baseline is the last APPROVED iteration recorded in the state file while a flag is pending (so an
+    unchanged re-run cannot clear it), the displaced `iter-N.prev` when --iteration N re-used an existing number,
+    otherwise iter-(N-1)."""
+    snaps = root / "test" / ".snapshots"
+    cur_dir = snaps / f"iter-{iteration}"
+    state = load_guardrail_state(root)
+    prev_pending = list(state["pendingHunks"])
+    approved: set[str] = set(state["approvedHunks"])
+    baseline_label = f"iter-{iteration - 1}"
+    prev_dir = snaps / baseline_label
+    recorded = str(state.get("baselineSnapshot") or (f"iter-{state['baselineIteration']}" if state.get("baselineIteration") else ""))
+    if prev_pending and recorded and (snaps / recorded).exists() and recorded != f"iter-{iteration}":
+        baseline_label = recorded
+        prev_dir = snaps / baseline_label
+    elif displaced is not None and displaced.exists():
+        baseline_label = displaced.name
+        prev_dir = displaced
+    elif prev_pending and recorded:
+        dlc.warn(f"guardrail state refers to baseline {recorded} which no longer exists — diffing against {baseline_label}")
+    has_baseline = prev_dir.exists()
+    now_ts = dlc.utc_now_iso(deterministic)
+    history_rows = build_cumulative_history_rows(root, iteration, results, now_ts)
+    lines = [f"# Remediation & Guardrail Audit Report — Iteration {iteration}", "",
+             f"Generated: {now_ts}  ", f"Project: `{root.name}`  ",
+             f"Compared: `test/.snapshots/{baseline_label}` → `test/.snapshots/iter-{iteration}`" + ("" if has_baseline else " (baseline missing)") + "  ",
+             f"Preserved Per-Run Archive: `test/history/iter-{iteration}/` · `test/*.iter-{iteration:02d}.*`", "",
+             "## 0. Cumulative Run & Remediation History (All Iterations)", "",
+             "> Every evaluation run and remediation iteration is permanently archived under `test/history/iter-<N>/`, `test/.snapshots/iter-<N>/`, and `test/*.iter-<NN>.*` so earlier failure runs and remediation diffs are never overwritten.", ""]
+    lines += history_table_lines(history_rows) + [""]
     # §1 what failed
     lines += ["## 1. What failed", ""]
-    prev_doc = load_iteration_eval(root, iteration - 1) if iteration > 1 else None
+    prev_results_p = prev_dir / "eval_results.json"
     prev_fail: dict[str, dict[str, Any]] = {}
+    prev_results_note = ""
+    prev_doc: dict[str, Any] | None = None
+    if prev_results_p.exists():
+        try:
+            prev_doc = dlc.read_json(prev_results_p)
+        except Exception as e:
+            prev_results_note = f"> ⚠ `{baseline_label}/eval_results.json` could not be read ({e}) — the previous failure set is unknown, not zero."
+            dlc.warn(prev_results_note.lstrip("> ⚠ "))
+    elif has_baseline:
+        m_base = re.match(r"iter-(\d+)$", baseline_label)
+        prev_doc = load_iteration_eval(root, int(m_base.group(1))) if m_base else None  # archived copy under test/history or test/*.iter-NN.json
+        if prev_doc is None:
+            prev_results_note = f"> ⚠ `{baseline_label}/eval_results.json` is missing — the previous failure set is unknown, not zero."
     if isinstance(prev_doc, dict):
         prev_fail = {r["id"]: r for r in (prev_doc.get("results") or []) if isinstance(r, dict) and r.get("id") and r.get("status") in ("FAIL", "ERROR", "NOT_RUN")}
     cur_fail = {r["id"]: r for r in results if r.get("status") in ("FAIL", "ERROR", "NOT_RUN")}
-    if iteration == 1 or not prev_dir.exists():
+    if not has_baseline:
         lines += [f"This is iteration {iteration} and no previous snapshot exists — there is no prior failure set to compare against.", ""]
     else:
-        lines += [f"Previous iteration ({iteration - 1}) had **{len(prev_fail)}** non-passing test(s); this iteration has **{len(cur_fail)}**.", ""]
+        if prev_results_note:
+            lines += [prev_results_note, ""]
+        lines += [f"Baseline ({baseline_label}) had **{len(prev_fail) if not prev_results_note else '?'}** non-passing test(s); this iteration has **{len(cur_fail)}**.", ""]
         if prev_fail or cur_fail:
             lines += ["| Test ID | Previous status | Current status | Current message |", "| :-- | :-- | :-- | :-- |"]
             for tid in sorted(set(prev_fail) | set(cur_fail)):
-                p = prev_fail.get(tid, {}).get("status", "PASS")
+                p = prev_fail.get(tid, {}).get("status", "PASS" if not prev_results_note else "?")
                 c = next((r for r in results if r["id"] == tid), None)
                 cs = c["status"] if c else "—"
                 msg = (c or {}).get("message", "") if c else ""
@@ -1466,15 +1886,15 @@ def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]]
     # §2 what was modified
     lines += ["## 2. What was modified (real unified diff between snapshots)", ""]
     flagged: list[dict[str, Any]] = []
-    pats = build_guardrail_patterns(spec_md)
-    if iteration == 1 or not prev_dir.exists():
-        lines += ["Iteration 1 — nothing to diff against. All files under `src/` are new in this iteration:", ""]
+    if not has_baseline:
+        lines += [f"No baseline snapshot — nothing to diff against. All files under `src/` are new in iteration {iteration}:", ""]
         for rel in sorted(list_files(cur_dir)):
             lines.append(f"- `{rel}` (new)")
         lines.append("")
     else:
-        _, detailed_changes = compute_snapshot_file_changes(snaps, iteration - 1, iteration)
+        pats = build_guardrail_patterns(spec_md)
         total_hunks = 0
+        _, detailed_changes = compute_snapshot_file_changes(prev_dir, cur_dir, baseline_label, f"iter-{iteration}")
         for rel, tag, hunks in detailed_changes:
             if tag == "binary-modified":
                 lines += [f"### `{rel}` — binary file changed (not diffed; data files are not guardrail-classified)", ""]
@@ -1483,26 +1903,55 @@ def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]]
             for hi, h in enumerate(hunks, 1):
                 total_hunks += 1
                 cats = [] if Path(rel).suffix.lower() in DOC_SUFFIXES else classify_hunk(h, pats)
+                hh = hunk_hash(rel, h)
                 if cats:
-                    flagged.append({"file": rel, "hunk": hi, "header": h[0] if h else "", "categories": cats,
+                    flagged.append({"file": rel, "hunk": hi, "header": h[0] if h else "", "categories": cats, "hash": hh,
                                     "changed": [ln for ln in h if ln.startswith(("+", "-"))][:6]})
                 shown = h if len(h) <= 60 else h[:60] + [f"… ({len(h) - 60} more lines truncated)"]
-                lines += [f"<details><summary>Hunk {hi}{' — ⚠ ' + ', '.join(cats) if cats else ''}</summary>", "", "```diff", *shown, "```", "</details>", ""]
+                mark = (" — ⚠ " + ", ".join(cats) + (" (approved)" if hh in approved else "")) if cats else ""
+                lines += [f"<details><summary>Hunk {hi}{mark} `{hh[:12]}`</summary>", "", "```diff", *shown, "```", "</details>", ""]
         if total_hunks == 0:
-            lines += ["No file under `src/` changed between the two iterations.", ""]
-    # §3 guardrail classification
+            lines += [f"No file under `src/` changed between `{baseline_label}` and `iter-{iteration}`.", ""]
+    # §3 guardrail classification — persisted across runs
     lines += ["## 3. Automated guardrail & guideline compliance check", ""]
-    if flagged:
+    current_flagged = {f["hash"]: f for f in flagged}
+    pending = [h for h in current_flagged if h not in approved]
+    stale_pending = [h for h in prev_pending if h not in current_flagged and h not in approved]
+    approved_now: list[str] = []
+    if approve and pending:
+        approved_now = list(pending)
+        approved.update(pending)
+        pending = []
+    if pending:
         status = "FLAGGED_REQUIRES_HUMAN_APPROVAL"
-        lines += [f"**{len(flagged)}** hunk(s) touch guardrail-sensitive regions and need explicit human approval before the iteration is accepted:", "",
-                  "| File | Hunk | Guardrail region(s) | Changed lines (first 6) |", "| :-- | :-- | :-- | :-- |"]
-        for f in flagged:
-            ch = "<br>".join(html_mod.escape(x, quote=False)[:110] for x in f["changed"])
-            lines.append(f"| `{f['file']}` | {f['hunk']} `{f['header'][:30]}` | {', '.join(f['categories'])} | {ch} |")
-        lines += ["", "Review each hunk: confirm it does not relax a role check, a workflow prerequisite, a business-rule formula, PII masking, an accessibility attribute or an enum→label mapping. Record the decision in this file.", ""]
+    elif had_prior_results and not has_baseline:
+        status = "UNKNOWN_BASELINE"
     else:
-        lines += ["No modified hunk matched a guardrail-sensitive pattern (role/permission checks, state guards, spec §3.3 state names/triggers, spec §3.4 rule identifiers, masking/PII, accessibility attributes, label mappings).", ""]
+        status = "CLEAR"
+    unapproved_rows = [f for f in flagged if f["hash"] not in approved]
+    approved_rows = [f for f in flagged if f["hash"] in approved]
+    if unapproved_rows:
+        lines += [f"**{len(unapproved_rows)}** hunk(s) touch guardrail-sensitive regions and need explicit human approval before the iteration is accepted:", "",
+                  "| File | Hunk | Hash | Guardrail region(s) | Changed lines (first 6) |", "| :-- | :-- | :-- | :-- | :-- |"]
+        for f in unapproved_rows:
+            ch = "<br>".join(html_mod.escape(x, quote=False)[:110] for x in f["changed"])
+            lines.append(f"| `{f['file']}` | {f['hunk']} `{f['header'][:30]}` | `{f['hash'][:12]}` | {', '.join(f['categories'])} | {ch} |")
+        lines += ["", "Review each hunk: confirm it does not relax a role check, a workflow prerequisite, a business-rule formula, PII masking, an accessibility attribute or an enum→label mapping. Record the decision in this file, then re-run with `--approve-guardrail-flags`.", ""]
+    if approved_rows:
+        lines += [f"{len(approved_rows)} guardrail-sensitive hunk(s) in this diff were previously approved (hashes recorded in `{GUARDRAIL_STATE_FILE}`): " + ", ".join(f"`{f['hash'][:12]}`" for f in approved_rows), ""]
+    if not flagged:
+        lines += ["No modified hunk matched a guardrail-sensitive pattern (role/permission checks, state guards, spec §3.3 state names/triggers, spec §3.4 rule identifiers, masking/PII, accessibility attributes, label mappings, formulas/thresholds).", ""]
+    if stale_pending:
+        lines += [f"{len(stale_pending)} previously pending hunk(s) no longer appear in the diff against the approved baseline (reverted) and were dropped from the pending set.", ""]
+    if status == "UNKNOWN_BASELINE":
+        lines += ["> ⚠ `test/eval_results.json` existed before this run but no snapshot did: the change history is unknown, so this report cannot assert CLEAR. "
+                  "The next iteration will be diffed against this snapshot.", ""]
     lines += [f"`GUARDRAIL_REVIEW_STATUS: {status}`", ""]
+    if approve:
+        if approved_now:
+            lines += [f"`GUARDRAIL_HUMAN_DECISION: APPROVED_BY_USER` — {len(approved_now)} hunk(s) approved via --approve-guardrail-flags at iteration {iteration}: " + ", ".join(f"`{h[:12]}`" for h in approved_now), ""]
+        else:
+            lines += ["`GUARDRAIL_HUMAN_DECISION: APPROVED_BY_USER` (recorded via --approve-guardrail-flags; nothing was pending)", ""]
 
     # §4 preserved failure & remediation details from all prior iterations
     prior_rows = [hr for hr in history_rows if hr["iteration"] < iteration and (hr["failedEntries"] or hr["detailedDiffs"])]
@@ -1549,9 +1998,21 @@ def write_audit_report(root: Path, iteration: int, results: list[dict[str, Any]]
                     for hi, h in enumerate(hunks, 1):
                         shown = h if len(h) <= 40 else h[:40] + [f"… ({len(h) - 40} more lines truncated)"]
                         lines += [f"<details><summary>Iter {it_k} · {rel} · Hunk {hi}</summary>", "", "```diff", *shown, "```", "</details>", ""]
-
     dlc.write_text(out_path, "\n".join(lines))
-    return status
+    # persist state: baseline advances only when nothing is pending
+    new_state = {
+        "schemaVersion": dlc.SCHEMA_VERSION,
+        "pendingHunks": pending,
+        "approvedHunks": sorted(approved),
+        "flaggedAtIteration": iteration if pending else None,
+        "baselineSnapshot": baseline_label if pending else f"iter-{iteration}",
+        "baselineIteration": (int(m.group(1)) if (m := re.match(r"iter-(\d+)$", baseline_label if pending else f"iter-{iteration}")) else None),
+        "lastIteration": iteration,
+        "lastStatus": status,
+        "updatedAtUtc": dlc.utc_now_iso(deterministic),
+    }
+    dlc.write_json(root / GUARDRAIL_STATE_FILE, new_state)
+    return {"status": status, "pending": pending, "approvedNow": approved_now, "baseline": baseline_label, "flaggedTotal": len(flagged)}
 
 
 # ======================================================================================
@@ -1573,22 +2034,17 @@ def write_eval_report(out_path: Path, data: dict[str, Any], root: Path, backend_
              "| Total | PASS | FAIL | NOT_RUN | ERROR | Optional skipped |", "| --: | --: | --: | --: | --: | --: |",
              f"| {s['total']} | {s['pass']} | {s['fail']} | {s['notRun']} | {s['error']} | {s.get('optionalNonPassing', 0)} |", ""]
     if s["verdict"] != "PASS":
-        lines += ["> NOT_RUN never counts as a pass. The verdict is PASS only when zero FAIL/ERROR/NOT_RUN remain among non-optional tests.", ""]
-    lines += [
-        "## Run History & Preserved Per-Iteration Artifacts",
-        "",
-        "| Iter | Timestamp (UTC) | Verdict | PASS / Total | FAIL | NOT_RUN | ERROR | Failed Tests | Remediated Tests | Preserved Files |",
-        "| --: | :-- | :-- | --: | --: | --: | --: | :-- | :-- | :-- |",
-    ]
-    for hr in history_rows:
-        f_str = ", ".join(f"`{t}`" for t in hr["failedIds"][:6]) + (f" (+{len(hr['failedIds']) - 6})" if len(hr["failedIds"]) > 6 else "") if hr["failedIds"] else "—"
-        r_str = ", ".join(f"`{t}`" for t in hr["remediatedIds"][:6]) + (f" (+{len(hr['remediatedIds']) - 6})" if len(hr["remediatedIds"]) > 6 else "") if hr["remediatedIds"] else "—"
-        lines.append(
-            f"| **{hr['iteration']}** | `{hr['evaluatedAtUtc']}` | **{hr['verdict']}** | {hr['pass']}/{hr['total']} | "
-            f"{hr['fail']} | {hr['notRun']} | {hr['error']} | {f_str} | {r_str} | "
-            f"`{hr['historyDir']}/` · `{hr['evalReportFile']}` · `{hr['auditReportFile']}` |"
-        )
-    lines.append("")
+        lines += ["> NOT_RUN never counts as a pass. The verdict is PASS only when zero FAIL/ERROR/NOT_RUN remain among non-optional tests, with zero leakage hits and zero unwired controls.", ""]
+        if s.get("verdictBlockers"):
+            lines += ["Verdict blockers: " + "; ".join(s["verdictBlockers"]), ""]
+    if s.get("optionalNonPassingIds"):
+        lines += [f"> ⚠ **{len(s['optionalNonPassingIds'])} optional test(s) are not passing** (authored `optional: true`; they do not block the verdict but must be reviewed, never ignored): "
+                  + ", ".join(f"`{i}`" for i in s["optionalNonPassingIds"]), ""]
+    g = data.get("guardrail") or {}
+    if g:
+        lines += [f"Guardrail review: **{g.get('status')}** (baseline `{g.get('baseline')}`, pending hunks: {len(g.get('pendingHunks') or [])}, state file `{g.get('stateFile')}`)", ""]
+    lines += ["## Run History & Preserved Per-Iteration Artifacts", ""]
+    lines += history_table_lines(history_rows, max_ids=6, with_files=False) + [""]
     cats: dict[str, dict[str, int]] = {}
     for r in results:
         c = cats.setdefault(r.get("category", "?"), {"total": 0, "PASS": 0, "FAIL": 0, "NOT_RUN": 0, "ERROR": 0})
@@ -1660,6 +2116,9 @@ def write_eval_report(out_path: Path, data: dict[str, Any], root: Path, backend_
     dlc.write_text(out_path, "\n".join(lines))
 
 
+# ======================================================================================
+# Main
+# ======================================================================================
 def archive_iteration_artifacts(
     root: Path,
     iteration: int,
@@ -1699,9 +2158,8 @@ def archive_iteration_artifacts(
     history_rows = build_cumulative_history_rows(root, iteration, data.get("results") or [], str(data.get("evaluatedAtUtc") or ""))
     index_entries: list[dict[str, Any]] = []
     for hr in history_rows:
-        it_k = hr["iteration"]
         index_entries.append({
-            "iteration": it_k,
+            "iteration": hr["iteration"],
             "evaluatedAtUtc": hr["evaluatedAtUtc"],
             "verdict": hr["verdict"],
             "total": hr["total"],
@@ -1742,43 +2200,40 @@ def archive_iteration_artifacts(
         "",
         "> Every evaluation and remediation run is archived in its own immutable `test/history/iter-<N>/` directory (and `test/*.iter-<NN>.*` files) so failed runs, test diagnostics, and code remediation diffs are never overwritten.",
         "",
-        "| Iter | Timestamp (UTC) | Verdict | PASS / Total | FAIL | NOT_RUN | ERROR | Failed Test IDs | Remediated Test IDs | Modified Files (`src/`) | Preserved Run Results & Remediation Files |",
-        "| --: | :-- | :-- | --: | --: | --: | --: | :-- | :-- | :-- | :-- |",
     ]
-    for e in index_entries:
-        f_str = ", ".join(f"`{t}`" for t in e["failedTestIds"][:8]) if e["failedTestIds"] else "—"
-        r_str = ", ".join(f"`{t}`" for t in e["remediatedTestIds"][:8]) if e["remediatedTestIds"] else "—"
-        m_str = ", ".join(f"`{f}`" for f in e["modifiedSourceFiles"][:5]) if e["modifiedSourceFiles"] else ("initial snapshot" if e["iteration"] == 1 else "—")
-        art = e["artifacts"]
-        md_lines.append(
-            f"| **{e['iteration']}** | `{e['evaluatedAtUtc']}` | **{e['verdict']}** | {e['pass']}/{e['total']} | "
-            f"{e['fail']} | {e['notRun']} | {e['error']} | {f_str} | {r_str} | {m_str} | "
-            f"`{art['evalResultsJson']}` · `{art['evalReportMd']}` · `{art['remediationAuditReportMd']}` |"
-        )
-    md_lines.append("")
+    md_lines += history_table_lines(history_rows) + [""]
     dlc.write_text(hist_root / "README.md", "\n".join(md_lines))
     return saved
 
 
-# ======================================================================================
-# Main
-# ======================================================================================
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
-    ap.add_argument("--iteration", type=int, default=None, help="Iteration number (default: next under test/.snapshots)")
+    ap.add_argument("--iteration", type=int, default=None, help="Iteration number (default: next under test/.snapshots; an existing iter-N is moved to iter-N.prev, never overwritten)")
     ap.add_argument("--test-cases", default="test/test_cases.json")
     ap.add_argument("--browser", choices=["auto", "playwright", "chrome", "none"], default="auto")
     ap.add_argument("--chrome-binary", default=None)
     ap.add_argument("--skip-backend", action="store_true", help="Do not start commands.start (assume it is running or not needed)")
-    ap.add_argument("--deterministic", action="store_true", help="Stable timestamps for golden comparisons")
+    ap.add_argument("--deterministic", action="store_true", help="Stable timestamps for golden comparisons (also skips ALM sync unless --alm-sync)")
     ap.add_argument("--json-out", default="test/eval_results.json")
     ap.add_argument("--report", default="test/eval_report.md")
     ap.add_argument("--audit-report", default="test/remediation_and_guardrail_audit_report.md")
-    ap.add_argument("--chrome-timeout", type=int, default=60)
-    ap.add_argument("--approve-guardrail-flags", action="store_true", help="Human has reviewed flagged hunks; record approval instead of exiting 3")
+    ap.add_argument("--chrome-timeout", type=int, default=90, help="Wall-clock seconds per headless-Chrome run (always ≥ virtual-time budget + 15s)")
+    ap.add_argument("--approve-guardrail-flags", action="store_true", help="Human has reviewed the pending flagged hunks; move them to the approved set in test/.guardrail_state.json")
     ap.add_argument("--skip-alm-sync", action="store_true", help="Skip automatic synchronization of user story statuses from evaluation results")
+    ap.add_argument("--alm-sync", action="store_true", help="Force the ALM bridge call even when almPlatform is 'none' or --deterministic is set")
+    ap.add_argument("--selftest-guardrail-patterns", action="store_true", help="Assert the guardrail classifier matches its reference identifiers and exit")
     args = ap.parse_args()
+
+    if args.selftest_guardrail_patterns:
+        missed = selftest_guardrail_patterns()
+        for ident in GUARDRAIL_SELFTEST:
+            print(f"  {'✗' if ident in missed else '✓'} {ident}")
+        if missed:
+            print(f"GUARDRAIL PATTERN SELFTEST: FAIL — {len(missed)} identifier(s) not matched: {missed}")
+            return 1
+        print(f"GUARDRAIL PATTERN SELFTEST: PASS ({len(GUARDRAIL_SELFTEST)} identifiers)")
+        return 0
 
     root = dlc.resolve_project_root(args.project_root)
     dlc.require_gate_approved(root, "gate_5_build", "Stage 6 (07-test-runner-and-healer / run_closed_loop_eval.py)", deterministic=args.deterministic)
@@ -1792,13 +2247,19 @@ def main() -> int:
         raise dlc.GateFailure(f"{tc_path} has no testCases — Stage 4B must derive them.")
     forbidden = suite.get("forbiddenUiTokens") or {}
 
+    snap_root = root / "test" / ".snapshots"
+    # Must be computed BEFORE resolve_iteration() archives the previous top-level results (it never fabricates a snapshot).
+    had_prior_results = dlc.project_path(root, args.json_out).exists() and not any(snap_root.glob("iter-*"))
+    if had_prior_results:
+        dlc.warn(f"{args.json_out} exists but test/.snapshots/ has no iteration — the change history is unknown (audit report will say UNKNOWN_BASELINE, not CLEAR)")
     iteration = resolve_iteration(root, args.iteration)
-    snap_dir = snapshot_src(root, iteration)
+    snap_dir, displaced = snapshot_src(root, iteration)
     dlc.info(f"iteration {iteration}: snapshot of src/ → {snap_dir.relative_to(root)}")
 
     stack = dlc.load_target_stack(root)
     commands = stack.get("commands") or {}
     backend_kind = (stack.get("backend") or {}).get("kind", "none")
+    fe_kind = str((stack.get("frontend") or {}).get("kind") or "").strip()
     ui = UiEntry(root, commands.get("uiEntry") or "src/ui/index.html")
     spec_md = dlc.read_text(root / "specs" / "application_spec.md") if (root / "specs" / "application_spec.md").exists() else ""
     if not spec_md:
@@ -1807,28 +2268,35 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     texts_for_leak: dict[str, str] = {}
     controls_acc: dict[str, dict[str, Any]] = {}
-    a11y_acc: dict[str, dict[str, str]] = {}
+    a11y_acc: dict[str, dict[str, str]] = {}  # findings from rendered DOM states
+    a11y_static: dict[str, dict[str, str]] = {}  # findings from the static uiEntry source (only authoritative for static-html / no browser)
     ux_acc: dict[str, Any] = {}
     browser_name = "none"
     browser_binary = ""
     backend_started = False
     backend_error = ""
-    browser_states_reached = 0
+    browser_states_reached = 0  # browser TCs that produced an observed DOM state (PASS/FAIL with a control audit)
+    screenshots: list[dict[str, str]] = []
+    unwired: list[dict[str, Any]] = []
+    a11y_findings: list[dict[str, str]] = []
+    hits: list[dict[str, Any]] = []
+    warns: list[dict[str, Any]] = []
+    scanned = 0
 
     tmp = Path(tempfile.mkdtemp(prefix="dlc-eval-"))
     adapter = None
     try:
         with Backend(root, commands, args.skip_backend or backend_kind == "none", root / "test" / ".build_logs") as be:
             backend_started, backend_error = be.started, be.error
-            ui_source = ui.source()
+            runtime_blocked = be.stale_port  # a server this run did not start owns the port → nothing observed is trustworthy
+            ui_source = ui.source() if not runtime_blocked else ""
             if ui_source:
                 texts_for_leak["static:uiEntry source"] = dlc.html_visible_text(ui_source)
                 for f in a11y_lint(ui_source):
-                    a11y_acc.setdefault(f"{f['rule']}|{f['message']}", f)
+                    a11y_static.setdefault(f"{f['rule']}|{f['message']}", f)
             browser_tcs = [t for t in test_cases if t.get("runtime") == "browser"]
-            screenshots: list[dict[str, str]] = []
             unwired_from_probe: list[dict[str, str]] = []
-            if browser_tcs and args.browser != "none":
+            if browser_tcs and args.browser != "none" and not runtime_blocked:
                 adapter, browser_name = pick_browser(args.browser, args.chrome_binary, ui, tmp)
                 if adapter is not None:
                     adapter_timeout = getattr(adapter, "timeout_s", None)
@@ -1845,6 +2313,7 @@ def main() -> int:
 
             special = re.compile(r"^TC-(UI-LEAK|UI-INTERACT|A11Y|UX-SIMPLE)-\d+$")
             deferred: list[dict[str, Any]] = []
+            stale_msg = f"backend port is owned by a server this run did not start ({be.error}); results would reflect stale code — stop it or pass --skip-backend"
             for tc in test_cases:
                 tid = tc.get("id", "?")
                 runtime = tc.get("runtime") or ("browser" if tc.get("steps") else "static")
@@ -1860,6 +2329,10 @@ def main() -> int:
                 if not steps or tc.get("needsSteps"):
                     results.append({**base, "status": "NOT_RUN", "durationMs": 0, "failedStep": None, "message": "steps not authored yet (Stage 4B testing-agent must fill `steps`)", "actual": ""})
                     continue
+                if runtime_blocked and runtime in ("browser", "http", "static"):
+                    # Every runtime-dependent TC — browser included — is ERROR, never a verdict against stale code.
+                    results.append({**base, "status": "ERROR", "durationMs": 0, "failedStep": None, "message": stale_msg, "actual": ""})
+                    continue
                 if runtime == "browser":
                     if adapter is None:
                         results.append({**base, "status": "NOT_RUN", "durationMs": 0, "failedStep": None, "message": BROWSER_INSTALL_HINT if args.browser != "none" else "browser runtime disabled (--browser none)", "actual": ""})
@@ -1868,7 +2341,8 @@ def main() -> int:
                         results.append({**base, "status": "ERROR", "durationMs": 0, "failedStep": None, "message": ui.error or "UI entry unavailable", "actual": ""})
                         continue
                     res = adapter.run(tc, ui_source)
-                    browser_states_reached += 1
+                    if res.get("status") in ("PASS", "FAIL") and res.get("controls") is not None:
+                        browser_states_reached += 1  # only an observed DOM (with a control audit) counts as a reached state
                     for key in ("visibleTextAllStates",):
                         if res.get(key):
                             texts_for_leak[f"browser:{tid}"] = res[key]
@@ -1925,14 +2399,23 @@ def main() -> int:
             for u_tab in unwired_from_probe:
                 if not any(u["selector"] == u_tab["selector"] for u in unwired):
                     unwired.append({**u_tab, "seenIn": "interactivityProbe"})
-            a11y_findings = list(a11y_acc.values())
+            # Static a11y lint of an SPA shell is misleading (e.g. single-h1 before the app renders): it is authoritative only
+            # when no DOM state was observed, or when the frontend really is static HTML.
+            use_static_a11y = (browser_states_reached == 0) or (fe_kind == "static-html")
+            a11y_findings = list(a11y_acc.values()) + (list(a11y_static.values()) if use_static_a11y else [])
+            seen_keys: set[str] = set()
+            a11y_findings = [f for f in a11y_findings if not (f"{f['rule']}|{f['message']}" in seen_keys or seen_keys.add(f"{f['rule']}|{f['message']}"))]  # type: ignore[func-returns-value]
             no_browser_note = "" if browser_states_reached else " (no browser state reached — static source only)"
+            static_corpus_len = len((texts_for_leak.get("static:uiEntry source") or "").strip())
             static_ctx = {"browserStatesReached": browser_states_reached, "unwired": unwired, "a11yFindings": a11y_findings}
             for tc in deferred:
                 tid = tc["id"]
                 base = {"id": tid, "category": tc.get("category", ""), "title": tc.get("title", ""), "expected": tc.get("expected", ""),
                         "runtime": "static", "optional": bool(tc.get("optional", False)), "durationMs": 0, "failedStep": None,
                         "storyRef": tc.get("storyRef"), "acRef": tc.get("acRef"), "corpora": sorted(texts_for_leak)}
+                if runtime_blocked:
+                    results.append({**base, "status": "ERROR", "message": stale_msg, "actual": ""})
+                    continue
                 if tc.get("steps"):
                     if not ui_source:
                         results.append({**base, "status": "ERROR", "message": ui.error or "UI entry unavailable", "actual": ""})
@@ -1945,12 +2428,16 @@ def main() -> int:
                     my_hits = [h for h in hits if h["tokenClass"] in classes]
                     n_tokens = sum(len(forbidden.get(c) or []) for c in classes)
                     if not classes or n_tokens == 0:
-                        st, msg = "PASS", f"no tokens declared for classes {classes or '(none mapped)'} in forbiddenUiTokens — nothing to leak{no_browser_note}"
-                        if tc.get("requireTokens"):
-                            st, msg = "NOT_RUN", f"forbiddenUiTokens has no entries for {classes}; Stage 4B must derive them"
+                        # requireTokens defaults to true: a leak class with nothing to scan for is unproven, not passed.
+                        if tc.get("requireTokens", True):
+                            st, msg = "NOT_RUN", f"forbiddenUiTokens has no entries for {classes or '(none mapped)'}; Stage 4B must derive them (set requireTokens=false only if the class is genuinely empty by design)"
+                        else:
+                            st, msg = "PASS", f"no tokens declared for classes {classes or '(none mapped)'} in forbiddenUiTokens — requireTokens=false, nothing to leak{no_browser_note}"
                     elif my_hits:
                         uniq = sorted({h["token"] for h in my_hits})
                         st, msg = "FAIL", f"{len(uniq)} forbidden token(s) visible in {len({h['source'] for h in my_hits})} source(s): " + ", ".join(uniq[:8])
+                    elif not browser_states_reached and static_corpus_len < MIN_STATIC_CORPUS_CHARS:
+                        st, msg = "NOT_RUN", f"no browser state reached and the static visible text is only {static_corpus_len} chars — absence of tokens in an empty corpus is not evidence; " + BROWSER_INSTALL_HINT
                     else:
                         st, msg = "PASS", f"{n_tokens} token(s) of {', '.join(classes)} absent from all rendered visible text{no_browser_note}"
                     results.append({**base, "status": st, "message": msg, "actual": "; ".join(h["context"][:100] for h in my_hits[:3])})
@@ -1959,17 +2446,21 @@ def main() -> int:
                         results.append({**base, "status": "NOT_RUN", "message": "requires a browser runtime to observe listeners; " + BROWSER_INSTALL_HINT, "actual": ""})
                     elif unwired:
                         results.append({**base, "status": "FAIL", "message": f"{len(unwired)} control(s) without any handler: " + ", ".join(u['selector'] for u in unwired[:6]), "actual": "; ".join(f"{u['selector']} ({u['text']})" for u in unwired[:6])})
+                    elif not controls_acc:
+                        results.append({**base, "status": "NOT_RUN", "message": f"{browser_states_reached} browser state(s) reached but no interactive control was observed — nothing to audit", "actual": ""})
                     else:
                         results.append({**base, "status": "PASS", "message": f"all {len(controls_acc)} observed controls are wired", "actual": ""})
                 elif tid.startswith("TC-A11Y"):
                     if a11y_findings:
                         results.append({**base, "status": "FAIL", "message": f"{len(a11y_findings)} accessibility finding(s): " + "; ".join(f"{f['rule']}" for f in a11y_findings[:5]), "actual": "; ".join(f["message"] for f in a11y_findings[:4])})
                     else:
-                        results.append({**base, "status": "PASS", "message": f"labels, alt text, single h1, lang, tabindex and accessible names verified{no_browser_note}", "actual": ""})
+                        src_note = no_browser_note if use_static_a11y else " (rendered DOM states only — static shell lint not used for a non-static frontend)"
+                        results.append({**base, "status": "PASS", "message": f"labels, alt text, single h1, lang, tabindex and accessible names verified{src_note}", "actual": ""})
                 elif tid.startswith("TC-UX-SIMPLE"):
                     n = int(re.search(r"(\d+)$", tid).group(1))
                     if not ux_acc:
-                        results.append({**base, "status": "NOT_RUN", "optional": True, "message": "UX guardrail metrics require a browser runtime (reported as WARN-equivalent; marked optional)", "actual": ""})
+                        # `optional` stays exactly as authored — the runner never relaxes a test to make a verdict pass.
+                        results.append({**base, "status": "NOT_RUN", "message": "UX guardrail metrics require a browser runtime; " + BROWSER_INSTALL_HINT, "actual": ""})
                         continue
                     limit = {1: ("primaryVisible", 1, "visible primary buttons per screen"), 2: ("tabsVisible", 3, "visible tabs / nav items"), 3: ("inputsVisibleMaxPerContainer", 5, "visible inputs outside <details> per step")}.get(n)
                     if not limit:
@@ -1990,7 +2481,18 @@ def main() -> int:
     opt_bad = [r for r in results if r["status"] in ("FAIL", "ERROR", "NOT_RUN") and r.get("optional")]
     total = len(results)
     active_total = sum(1 for r in results if not r.get("deferredByGroupSelection"))
-    verdict = "PASS" if active_total and not non_opt_bad else "FAIL"
+    verdict_blockers: list[str] = []
+    if not active_total:
+        verdict_blockers.append("no active test case")
+    if non_opt_bad:
+        verdict_blockers.append(f"{len(non_opt_bad)} non-optional test(s) not passing")
+    # Leakage hits and dead controls fail the verdict on their own — whether or not a TC-UI-LEAK-* / TC-UI-INTERACT-* exists,
+    # is optional, or was retired.
+    if hits:
+        verdict_blockers.append(f"{len(hits)} forbidden token(s) visible")
+    if unwired:
+        verdict_blockers.append(f"{len(unwired)} unwired control(s)")
+    verdict = "PASS" if not verdict_blockers else "FAIL"
     data = {
         "schemaVersion": dlc.SCHEMA_VERSION,
         "evaluatedAtUtc": dlc.utc_now_iso(args.deterministic),
@@ -2006,11 +2508,23 @@ def main() -> int:
         "ux": ux_acc,
         "screenshots": screenshots,
     }
+    if verdict_blockers:
+        data["summary"]["verdictBlockers"] = verdict_blockers
+    if opt_bad:
+        data["summary"]["optionalNonPassingIds"] = [r["id"] for r in opt_bad]
     audit_out = dlc.project_path(root, args.audit_report)
-    gstatus = write_audit_report(root, iteration, results, audit_out, spec_md, args.deterministic)
-    if gstatus != "CLEAR" and args.approve_guardrail_flags:
-        dlc.write_text(audit_out, dlc.read_text(audit_out) + "\n`GUARDRAIL_HUMAN_DECISION: APPROVED_BY_USER` (recorded via --approve-guardrail-flags)\n")
-    data["guardrailReviewStatus"] = ("NOT_REQUIRED" if gstatus == "CLEAR" else ("APPROVED_BY_USER" if args.approve_guardrail_flags else gstatus))
+    audit = write_audit_report(root, iteration, results, audit_out, spec_md, args.deterministic,
+                               displaced=displaced, approve=args.approve_guardrail_flags, had_prior_results=had_prior_results)
+    gstatus = audit["status"]
+    # eval_results.schema.json enum: NOT_REQUIRED | FLAGGED_REQUIRES_HUMAN_APPROVAL | APPROVED_BY_USER
+    if audit["pending"]:
+        data["guardrailReviewStatus"] = "FLAGGED_REQUIRES_HUMAN_APPROVAL"
+    elif audit["approvedNow"]:
+        data["guardrailReviewStatus"] = "APPROVED_BY_USER"
+    else:
+        data["guardrailReviewStatus"] = "NOT_REQUIRED"
+    data["guardrail"] = {"status": gstatus, "baseline": audit["baseline"], "pendingHunks": audit["pending"], "approvedNow": audit["approvedNow"],
+                         "flaggedHunksInDiff": audit["flaggedTotal"], "stateFile": GUARDRAIL_STATE_FILE}
     schema_errors: list[str] = []
     try:
         schema_errors = dlc.validate_against_schema(data, dlc.load_schema("eval_results.schema.json"))
@@ -2025,32 +2539,29 @@ def main() -> int:
     archive_iteration_artifacts(root, iteration, json_out, report_out, audit_out, data, args.deterministic)
 
     # Automatically synchronize story statuses ('To Do' / 'In Progress' / 'Done') to local backlog + Jira/ADO
-    bridge = Path(__file__).resolve().parents[2] / "03-story-and-sprint-planner" / "scripts" / "alm_jira_ado_bridge.py"
-    if not args.skip_alm_sync and bridge.is_file() and (root / "backlog" / "user_stories.json").is_file():
-        cmd = [
-            sys.executable, str(bridge),
-            "--project-root", str(root),
-            "--action", "sync-status-from-eval",
-        ] + (["--deterministic"] if args.deterministic else [])
-        cp = subprocess.run(cmd, cwd=str(root))
-        if cp.returncode not in (0, 2):
-            dlc.warn(f"ALM status synchronization from evaluation returned {cp.returncode}")
-        archive_iteration_artifacts(root, iteration, json_out, report_out, audit_out, data, args.deterministic)
+    if run_alm_bridge(root, stack, ["--action", "sync-status-from-eval"], args.deterministic, args.skip_alm_sync, args.alm_sync):
+        archive_iteration_artifacts(root, iteration, json_out, report_out, audit_out, data, args.deterministic)  # defects.* may have changed
 
     print("\n=== Stage 6 closed-loop evaluation — iteration", iteration, "===")
     print(f"browser={browser_name} backendStarted={backend_started} statesReached={browser_states_reached}")
     print(f"total={total} pass={counts['PASS']} fail={counts['FAIL']} notRun={counts['NOT_RUN']} error={counts['ERROR']} "
-          f"leakHits={len(hits)} unwired={len(unwired)} a11yFindings={len(a11y_findings)}")
+          f"leakHits={len(hits)} unwired={len(unwired)} a11yFindings={len(a11y_findings)} optionalNonPassing={len(opt_bad)}")
     for r in results:
         if r["status"] != "PASS":
-            print(f"  - {r['id']:<20} {r['status']:<8} step={r.get('failedStep')} {r.get('message', '')[:110]}")
-    print(f"GUARDRAIL_REVIEW_STATUS: {gstatus}")
+            print(f"  - {r['id']:<20} {r['status']:<8} step={r.get('failedStep')} {'[optional] ' if r.get('optional') else ''}{r.get('message', '')[:110]}")
+    if opt_bad:
+        print(f"OPTIONAL NON-PASSING ({len(opt_bad)}): " + ", ".join(r["id"] for r in opt_bad) + " — authored as optional; they do not block the verdict but must not be ignored.")
+    if verdict_blockers:
+        print("VERDICT BLOCKERS: " + "; ".join(verdict_blockers))
+    print(f"GUARDRAIL_REVIEW_STATUS: {gstatus}" + (f" (pending hunks: {len(audit['pending'])}, baseline {audit['baseline']}, state in {GUARDRAIL_STATE_FILE})" if audit["pending"] else ""))
+    if audit["approvedNow"]:
+        print(f"Gate 4: {len(audit['approvedNow'])} flagged hunk(s) recorded as APPROVED_BY_USER in {GUARDRAIL_STATE_FILE}")
     print(f"PRESERVED_RUN_ARCHIVE: test/history/iter-{iteration}/ , test/.snapshots/iter-{iteration}/ , test/*.iter-{iteration:02d}.*")
     print(f"VERDICT: {verdict}  → {json_out.relative_to(root)}, {Path(args.report)}, {Path(args.audit_report)}")
     if verdict != "PASS":
         return 1
-    if gstatus != "CLEAR" and not args.approve_guardrail_flags:
-        print("Gate 4: guardrail-sensitive hunks need human approval (exit 3). Re-run with --approve-guardrail-flags once reviewed.")
+    if audit["pending"]:
+        print("Gate 4: guardrail-sensitive hunks need human approval (exit 3). Review them in the audit report, then re-run with --approve-guardrail-flags.")
         return 3
     dlc.mark_gate_awaiting_human(
         root,

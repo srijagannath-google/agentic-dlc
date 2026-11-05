@@ -18,7 +18,7 @@
   "capabilityGroupingDimension": "functional",
   "capabilityGroups": [
     {"id": "GRP-01", "name": "Buyer Self-Service Intake & Surety Bond Portal", "dimension": "functional", "isSharedFoundation": true, "dependsOnGroups": [], "capabilities": ["CAP-02", "CAP-04", "CAP-08"]},
-    {"id": "GRP-02", "name": "Forestry Division Adjudication, Registry & Card Issuance", "dimension": "business-unit", "isSharedFoundation": false, "dependsOnGroups": ["GRP-01"], "capabilities": ["CAP-01", "CAP-03", "CAP-05", "CAP-06"]},
+    {"id": "GRP-02", "name": "Licensing Operations Adjudication, Registry & Card Issuance", "dimension": "business-unit", "isSharedFoundation": false, "dependsOnGroups": ["GRP-01"], "capabilities": ["CAP-01", "CAP-03", "CAP-05", "CAP-06"]},
     {"id": "GRP-03", "name": "Quarterly Volume Fee Reporting & Compliance", "dimension": "functional", "isSharedFoundation": false, "dependsOnGroups": ["GRP-01", "GRP-02"], "capabilities": ["CAP-07"]}
   ],
   "selectedCapabilityGroups": ["ALL"],

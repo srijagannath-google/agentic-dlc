@@ -23,19 +23,38 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
 
 QUOTE_SPLIT_RE = re.compile(r"\s+(?:…|\.\.\.|\[\.\.\.\]|\[…\])\s+")
+MIN_EVIDENCE_CHARS = 25
+MIN_EVIDENCE_WORDS = 5
+PILLAR_HEADING_RE = {1: r"pillar\s*1\b", 2: r"pillar\s*2\b", 3: r"pillar\s*3\b", 4: r"pillar\s*4\b", 5: r"pillar\s*5\b"}
+
+
+def split_quotes(evidence: str) -> list[str]:
+    out = []
+    for q in QUOTE_SPLIT_RE.split(evidence):
+        q = q.strip().strip('"“”\'')
+        if q:
+            out.append(q)
+    return out
 
 
 def evidence_found(evidence: str, spec_norm: str) -> tuple[bool, list[str]]:
     """All ' … '-separated quotes must be present (whitespace-normalised, case-insensitive, md markers ignored)."""
     missing = []
-    for q in QUOTE_SPLIT_RE.split(evidence):
-        q = q.strip().strip('"“”\'')
-        if not q:
-            continue
+    for q in split_quotes(evidence):
         qn = dlc.normalise_ws(dlc.strip_md(q))
         if qn and qn not in spec_norm:
             missing.append(q)
     return (not missing, missing)
+
+
+def evidence_substance(evidence: str, criterion_id: str) -> str | None:
+    """Reject token-sized 'evidence' (a single word, a bare id, the criterion id itself). Returns a reason or None."""
+    norm = dlc.normalise_ws(dlc.strip_md(" ".join(split_quotes(evidence))))
+    if norm == criterion_id.lower() or re.fullmatch(r"p[1-5]-c\d+", norm):
+        return "evidence is just the criterion id"
+    if len(norm) < MIN_EVIDENCE_CHARS or len(norm.split()) < MIN_EVIDENCE_WORDS:
+        return f"evidence too short to be a verbatim quote ({len(norm)} chars / {len(norm.split())} words; need ≥ {MIN_EVIDENCE_CHARS} chars and ≥ {MIN_EVIDENCE_WORDS} words)"
+    return None
 
 
 def render_markdown(sc: dict, rubric: dict, checks_failed: list[str], computed_verdict: str, spec_rel: str) -> str:
@@ -94,6 +113,27 @@ def main() -> int:
     spec_path = root / "specs" / "application_spec.md"
     spec = dlc.load_spec(root)
     spec_norm = dlc.normalise_ws(dlc.strip_md(spec))
+    # Per-pillar scope for the (WARN-only) "evidence belongs to its pillar" check. The header block (before the first
+    # `## ` heading: scenario, slug, ASSUMPTION-NN), the parsed lifecycle tables (§3.3–§3.5) and the traceability
+    # section are cited legitimately from every pillar, so they are part of every pillar's scope.
+    header_block = re.split(r"^##\s+", spec, maxsplit=1, flags=re.MULTILINE)[0]
+
+    def _section(*patterns: str) -> str:
+        for pat in patterns:
+            sec = dlc.md_section(spec, pat)
+            if sec:
+                return sec
+        return ""
+
+    shared_scope = "\n".join([
+        header_block,
+        _section(r"^3\.3\b", r"lifecycle state machine|state[- ]transition"),
+        _section(r"^3\.4\b", r"business rules\s*(?:&|and)\s*formulas"),
+        _section(r"^3\.5\b", r"^roles\b"),
+        _section(r"^6\b.*traceability", r"^traceability"),
+    ])
+    shared_norm = dlc.normalise_ws(dlc.strip_md(shared_scope))
+    pillar_norm = {pn: dlc.normalise_ws(dlc.strip_md(dlc.md_section(spec, pat))) + "\n" + shared_norm for pn, pat in PILLAR_HEADING_RE.items()}
     spec_sha = dlc.sha256_file(spec_path)
     rubric = dlc.read_json(dlc.require_file(Path(args.rubric), "plugin schemas/spec_rubric.json"))
     sc_path = dlc.require_file(dlc.project_path(root, args.scorecard), "Stage 2 LLM judge (spec-judge) — write the JSON scorecard against schemas/spec_rubric.json")
@@ -158,9 +198,23 @@ def main() -> int:
             if not ev:
                 fails.append(f"{rc['id']}: awarded {awarded} but evidence is empty.")
             else:
+                weak = evidence_substance(ev, rc["id"])
+                if weak:
+                    fails.append(f"{rc['id']}: {weak}: {ev[:120]!r}")
                 ok, missing = evidence_found(ev, spec_norm)
                 if not ok:
                     fails.append(f"{rc['id']}: evidence not found verbatim in spec: {missing[0][:120]!r}")
+                elif not weak:
+                    # At least one quote should come from the criterion's own pillar section (WARN: the lifecycle tables
+                    # §3.3–§3.5 and the header block are legitimately cited across pillars, but when *no* quote touches
+                    # the pillar being scored the judge usually scored the wrong thing).
+                    sec_norm = pillar_norm.get(rc["pillar"], "")
+                    for extra_pat in rc.get("evidenceSections") or []:
+                        sec_norm += "\n" + dlc.normalise_ws(dlc.strip_md(_section(str(extra_pat))))
+                    if sec_norm.strip():
+                        quotes = [dlc.normalise_ws(dlc.strip_md(q)) for q in split_quotes(ev)]
+                        if quotes and not any(q in sec_norm for q in quotes):
+                            warns.append(f"{rc['id']}: none of the evidence quotes is inside the Pillar {rc['pillar']} section: {ev[:100]!r}")
         if awarded < rc["maxPoints"] and not str(c.get("gap", "")).strip():
             warns.append(f"{rc['id']}: awarded {awarded}/{rc['maxPoints']} but gap is empty.")
         if rc.get("blocking") and awarded == 0:
@@ -198,7 +252,6 @@ def main() -> int:
             for p in (hist_root.glob("iter-*") if hist_root.is_dir() else [])
             if (m := re.match(r"^iter-(\d+)$", p.name))
         ]
-        # Avoid creating a duplicate archive if the JSON content is byte-identical to the latest archived iteration
         sc_bytes = sc_path.read_bytes() if sc_path.is_file() else b""
         latest_hist_json = (hist_root / f"iter-{max(existing_iters)}" / "application_eval_scorecard.json") if existing_iters else None
         if latest_hist_json is None or not latest_hist_json.is_file() or latest_hist_json.read_bytes() != sc_bytes:

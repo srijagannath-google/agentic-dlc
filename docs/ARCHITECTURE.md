@@ -143,7 +143,7 @@ Before running `01/scripts/scan_input_sources.py`, `discovery-architect` confirm
   "schemaVersion": "4.0",
   "scannedAtUtc": "…",
   "projectRoot": "…",
-  "domainSlug": "leave-request-portal",         // kebab-case, derived from --domain-slug, source repo name, first H1 of primary input, or dir name
+  "domainSlug": "example-service-portal",       // kebab-case, derived from --domain-slug, source repo name, first H1 of primary input, or dir name
   "domainSlugSource": "flag | source-repository | primary-document-h1 | project-directory-name",
   "sourceRepository": {                         // optional provenance when ingested via --ado-repo or --git-repo
     "provider": "ado | git | local",
@@ -202,7 +202,7 @@ Before running `01/scripts/scan_input_sources.py`, `discovery-architect` confirm
   `| From | To | Trigger | Actor Role | Guard |` that mirrors it (this table is what scripts parse).
 - `### 3.4 Business Rules & Formulas` — a table `| Rule ID | Formula / Rule | Inputs | Source |` (Rule IDs `BR-NN`).
 - `### 3.5 Roles` — a table `| Role | Kind | Views | Allowed Transitions |`  (Kind values: `external` or `internal`; never put a pipe inside a header cell).
-- `### 4.2 View & Component Topology Table` — a table `| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |` (parsed by `dlc_common.parse_view_topology`; when `resources/design_references/reference_ui_manifest.json` exists, every reference view/tab must be mapped).
+- `### 4.2 View & Component Topology Table` — a table `| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |` (parsed by `dlc_common.parse_view_topology`; when `specs/design_reference/reference_ui_manifest.json` exists, every reference view/tab must be mapped).
 - Every REQ id unique; every REQ appears in `traceability_matrix.md`.
 
 ### 4.4 `specs/application_eval_scorecard.json` (LLM judge, validated by `02/scripts/validate_spec_scorecard.py`)
@@ -311,7 +311,7 @@ Derivation rules (`05/scripts/derive_test_cases.py`):
 | 5 Build | `06/validate_build.py` | `install/build/start/healthcheck` succeed per `target_stack.json` |
 | 6 Closed loop | `07/run_closed_loop_eval.py` | verdict PASS, leakage 0 hits, no unwired controls, guardrail flags approved |
 | 7 Container & GDC pkg | `08/validate_gdc_packaging.py` | Zero cloud-provider SDK lock-in in `src/`, hardened rootless OCI images, Kustomize base + 4 GDC overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + Spec `§3.5` RBAC |
-| 8 GDC Fleet deploy & obs | `09/run_gdc_fleet_deploy_and_verify.py` | Config Sync GitOps RootSync & ClusterSelectors valid, OpenTelemetry Collector + SLOs + multi-cloud dashboard valid, runbook complete, `/health` smoke probe PASS |
+| 8 GDC Fleet deploy & obs | `09/run_gdc_fleet_deploy_and_verify.py` | Config Sync GitOps RootSync & ClusterSelectors valid, OpenTelemetry Collector + SLOs + multi-cloud dashboard valid, runbook complete, local `/health` smoke probe PASS (`MANIFEST_VALIDATED` by default; `DEPLOYED` / `gdc-live-fleet` only when `--live` `kubectl apply` succeeds across all target environments) |
 
 ## 6. Writing rules for skills & agents (v4)
 

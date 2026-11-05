@@ -1,9 +1,9 @@
 {
   "schemaVersion": "4.0",
-  "evaluatedAtUtc": "2026-11-04T18:00:55Z",
+  "evaluatedAtUtc": "1970-01-01T00:00:00Z",
   "abstractionPlane": "gdc-fleet",
   "connectivityMode": "gdc-connected",
-  "executionMode": "local-runtime-verified",
+  "executionMode": "manifest-validation",
   "targetEnvironments": [
     "on-prem-gdc",
     "gcp",
@@ -22,7 +22,7 @@
         "aws",
         "azure"
       ],
-      "status": "DEPLOYED"
+      "status": "MANIFEST_VALIDATED"
     },
     {
       "wave": 2,
@@ -37,7 +37,7 @@
         "aws",
         "azure"
       ],
-      "status": "DEPLOYED"
+      "status": "MANIFEST_VALIDATED"
     },
     {
       "wave": 2,
@@ -52,7 +52,7 @@
         "aws",
         "azure"
       ],
-      "status": "DEPLOYED"
+      "status": "MANIFEST_VALIDATED"
     }
   ],
   "containerImages": [
@@ -119,15 +119,18 @@
   },
   "smokeProbes": [
     {
-      "probe": "healthcheck",
+      "probe": "local-healthcheck",
       "target": "http://127.0.0.1:8766/health",
       "httpStatus": 200,
-      "status": "SKIPPED"
+      "status": "PASS",
+      "detail": "local application started from commands.start answered the healthcheck."
     }
   ],
+  "failures": [],
+  "warnings": [],
   "summary": {
-    "totalChecks": 10,
-    "passedChecks": 10,
+    "totalChecks": 17,
+    "passedChecks": 17,
     "failedChecks": 0,
     "verdict": "PASS"
   }

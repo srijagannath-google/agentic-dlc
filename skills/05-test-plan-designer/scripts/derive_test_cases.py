@@ -24,11 +24,22 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
 
+# Shared legacy-identifier classification lives next to the DDL legacy check (04/extract_contracts.py) so both
+# gates agree on what is a real legacy object name (FAIL) vs. a bare file stem (WARN). Follow-up: move to dlc_common.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "04-solution-architect" / "scripts"))
+from extract_contracts import legacy_identifier_sets  # noqa: E402
+
 CATEGORY_PREFIX = {"Positive": "POS", "Negative": "NEG", "Edge": "EDGE", "State": "STATE", "Interact": "UI-INTERACT",
                    "UiLeak": "UI-LEAK", "A11y": "A11Y", "Api": "API"}
 ENGINEERING_NOTE_PATTERNS = [r"\bTODO\b", r"\bFIXME\b", r"\bparity\b", r"\bTraceback\b", r"\bSELECT\s+.+\s+FROM\b",
                              r"\bNullPointer|\bundefined is not\b", r"/api/[a-z0-9_/{}-]+", r"\blorem ipsum\b"]
 UUID_PATTERN = r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"
+# HTTP methods that get a derived smoke test; HEAD/OPTIONS are contract metadata, not business operations, and are
+# outside the httpRequest.method enum in schemas/test_cases.schema.json.
+API_SMOKE_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+DEFERRED_STEP_NOTE = ("Deferred: the parent story's capability group is not in specs/target_stack.json#selectedCapabilityGroups "
+                      "— not executed in this increment; steps are authored when the group is scheduled.")
+SKELETON_STEP_NOTE = "Skeleton seed — the testing-agent replaces/extends this with concrete actions and at least one assertion."
 
 
 def to_upper_snake(s: str) -> str:
@@ -52,11 +63,15 @@ class Counter:
 def tc(counter: Counter, category: str, title: str, expected: str, runtime: str, key: str, *, story: str | None = None,
        ac: str | None = None, reqs: list[str] | None = None, role: str | None = None, steps: list[dict] | None = None,
        derivation: dict | None = None, tc_id: str | None = None) -> dict[str, Any]:
-    steps = steps or []
+    needs_steps = not steps
+    if needs_steps:
+        # Skeleton seed only (schemas/test_cases.schema.json requires >= 1 step): every UI test starts by opening the
+        # application; the testing-agent replaces/extends it with real actions and >= 1 assertion (Gate 4b).
+        steps = [{"action": "goto", "target": "ui", "note": SKELETON_STEP_NOTE}]
     return {
         "id": tc_id or counter.next_id(category), "category": category, "storyRef": story, "acRef": ac,
         "requirementRefs": reqs or [], "title": title, "expected": expected, "runtime": runtime, "role": role,
-        "needsSteps": not steps, "derivationKey": key, "derivation": derivation or {}, "steps": steps,
+        "needsSteps": needs_steps, "derivationKey": key, "derivation": derivation or {}, "steps": steps,
     }
 
 
@@ -87,7 +102,8 @@ def main() -> int:
     inv = dlc.load_inventory(root)
     legacy = inv.get("inputScenario") == "SCENARIO_LEGACY_APP"
     stories = dlc.load_stories(root)
-    stories_sha = dlc.sha256_file(root / "backlog" / "user_stories.json")
+    # Content hash ignoring mutable ALM runtime fields (status, jiraKey, …) so board syncs do not make tests stale.
+    stories_sha = dlc.stories_content_sha256(root / "backlog" / "user_stories.json")
     spec_path = root / "specs" / "application_spec.md"
     spec = dlc.load_spec(root)
     spec_sha = dlc.sha256_file(spec_path)
@@ -129,32 +145,44 @@ def main() -> int:
             ignored.append(s)  # single plain words (a table/column literally named like a UI label) -> false positives
     schema_ids = sorted(kept)
 
-    # Raw codes: UPPER_SNAKE forms of every state and trigger (never rendered — labels from spec §3.3 are) + OpenAPI enums
-    enum_codes: list[str] = [to_upper_snake(s) for s in sm.states] + [to_upper_snake(t) for t in sm.triggers()]
-    # Other OpenAPI enum members (entity types, categories, ...) are FAIL-level only when they contain an
-    # underscore (clearly a machine code); short all-caps words (e.g. legal-entity abbreviations) are common in
-    # legitimate human-readable text, so they go to the warn-only class.
+    # Raw codes: UPPER_SNAKE forms of every state and trigger (never rendered — labels from spec §3.3 are) + OpenAPI enums.
+    # Multi-word codes (IN_REVIEW, SUBMIT_FOR_APPROVAL) are unmistakable machine tokens -> FAIL-level `enumCodes`.
+    # Single-word codes (DRAFT, APPROVED, SUBMIT) collide with legitimate upper-case words in headings/buttons/legal
+    # text -> warn-only `enumCodesWarnOnly` (the eval runner reads both keys from forbiddenUiTokens).
+    enum_codes: list[str] = []
     enum_warn_only: list[str] = []
+    for code in [to_upper_snake(s) for s in sm.states] + [to_upper_snake(t) for t in sm.triggers()]:
+        if not code:
+            continue
+        (enum_codes if "_" in code else enum_warn_only).append(code)
     if contracts:
         for e in contracts.get("enums", []):
             e = str(e)
-            if not re.fullmatch(r"[A-Z][A-Z0-9_]+", e) or e in enum_codes:
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]+", e) or e in enum_codes or e in enum_warn_only:
                 continue
             (enum_codes if "_" in e else enum_warn_only).append(e)
     enum_codes = sorted(dict.fromkeys(enum_codes))
     enum_warn_only = sorted(dict.fromkeys(enum_warn_only))
 
     legacy_ids: list[str] = []
+    legacy_ids_warn: list[str] = []
     if legacy:
-        for f in inv.get("files", []):
-            if str(f.get("category", "")).startswith("legacy_"):
-                legacy_ids.append(Path(f["name"]).stem)
-        legacy_ids += [str(n) for n in inv.get("legacyObjectNames", [])]
+        fail_set, warn_set = legacy_identifier_sets(inv)
+        # keep original casing for readable regexes; classification is case-insensitive via the shared helper
+        originals = {str(n).lower(): str(n) for n in inv.get("legacyObjectNames", [])}
+        stems_raw = inv.get("legacyFileStems")
+        if not isinstance(stems_raw, list):
+            stems_raw = [Path(str(f.get("name", ""))).stem for f in inv.get("files", []) if str(f.get("category", "")).startswith("legacy_")]
+        originals.update({str(s).lower(): str(s) for s in stems_raw if str(s).lower() not in originals})
+        legacy_ids = [originals.get(x, x) for x in fail_set]
+        legacy_ids_warn = [originals.get(x, x) for x in warn_set]
     legacy_ids = sorted(dict.fromkeys(x for x in legacy_ids if len(x) >= 3))
+    legacy_ids_warn = sorted(dict.fromkeys(x for x in legacy_ids_warn if len(x) >= 3))
     pii_patterns = collect_pii_patterns(spec)
     forbidden = {"schemaIdentifiers": schema_ids, "schemaIdentifiersIgnored": sorted(ignored), "enumCodes": enum_codes,
                  "enumCodesWarnOnly": enum_warn_only,
-                 "legacyIdentifiers": legacy_ids, "piiPatterns": pii_patterns, "engineeringNotePatterns": ENGINEERING_NOTE_PATTERNS}
+                 "legacyIdentifiers": legacy_ids, "legacyIdentifiersWarnOnly": legacy_ids_warn,
+                 "piiPatterns": pii_patterns, "engineeringNotePatterns": ENGINEERING_NOTE_PATTERNS}
 
     # ---------------------------------------------------------------- derive
     counter = Counter()
@@ -227,9 +255,12 @@ def main() -> int:
             if cg:
                 t_item["capabilityGroup"] = cg
             if not in_selected:
+                # Not executed this increment; a single annotated goto keeps the record schema-valid (steps.minItems=1)
+                # without inventing assertions. validate_test_cases.py recomputes deferral from target_stack.json.
                 t_item["optional"] = True
                 t_item["deferredByGroupSelection"] = True
                 t_item["needsSteps"] = False
+                t_item["steps"] = [{"action": "goto", "target": "ui", "note": DEFERRED_STEP_NOTE}]
             tcs.append(t_item)
 
     # Synthesised state tests: illegal (state, trigger) pairs. Triggers that only originate from the pseudo-state
@@ -289,9 +320,11 @@ def main() -> int:
                     "no schema identifiers known — run 04/scripts/extract_contracts.py then re-derive, or add patterns"))
     tcs.append(leak("Zero raw enum / state / error codes in visible UI text",
                     "No UPPER_SNAKE_CASE state, trigger or error code is rendered; the human label from spec §3.3 is shown instead.",
-                    "leak:enum", [word_regex(enum_codes)]))
+                    "leak:enum", [word_regex(enum_codes)] if enum_codes else [],
+                    "no multi-word UPPER_SNAKE codes in the state machine / OpenAPI enums — single-word codes are warn-only "
+                    "(forbiddenUiTokens.enumCodesWarnOnly); add steps or set optional:true with a reason"))
     tcs.append(leak("Zero internal UUIDs, primary keys, legacy identifiers or engineering notes in visible UI text",
-                    "No UUIDs, raw numeric primary keys labelled as ids, legacy object/file names, 'parity'/'TODO' notes, SQL or API paths are visible.",
+                    "No UUIDs, raw numeric primary keys labelled as ids, legacy object names, 'parity'/'TODO' notes, SQL or API paths are visible.",
                     "leak:legacy", [UUID_PATTERN] + ([word_regex(legacy_ids)] if legacy_ids else []) + ENGINEERING_NOTE_PATTERNS))
     tcs.append(leak("Zero unmasked sensitive identifiers (PII) in visible UI text",
                     "Sensitive identifiers listed in spec Pillar 2 render only in their masked form.",
@@ -300,8 +333,12 @@ def main() -> int:
 
     # API smoke tests
     if backend_kind != "none" and contracts and contracts.get("paths"):
+        skipped_methods: list[str] = []
         for p in contracts["paths"]:
             method, path, op = p["method"], p["path"], p.get("operationId") or ""
+            if method not in API_SMOKE_METHODS:
+                skipped_methods.append(f"{method} {path}")
+                continue
             has_params = "{" in path
             if method == "GET":
                 status: Any = 200
@@ -319,6 +356,8 @@ def main() -> int:
                    "http", f"api:{method} {path}", steps=[step], derivation={"method": method, "path": path, "operationId": op})
             t["needsSteps"] = has_params or method != "GET"  # LLM must add ids / payloads
             tcs.append(t)
+        if skipped_methods:
+            dlc.info(f"no TC-API-* derived for HEAD/OPTIONS operations (metadata, not business operations): {', '.join(skipped_methods[:6])}")
     elif backend_kind != "none":
         dlc.warn("backend.kind != none but no OpenAPI operations in design/.contracts_index.json — no TC-API-* derived.")
 
@@ -335,8 +374,10 @@ def main() -> int:
         new_ids = {t["id"] for t in tcs}
         for t in tcs:
             prev = by_key.get(t["derivationKey"]) or (by_id.get(t["id"]) if by_id.get(t["id"], {}).get("derivationKey") in (None, t["derivationKey"]) else None)
+            if prev and prev.get("deferredByGroupSelection") and not t.get("deferredByGroupSelection"):
+                prev = None  # group newly scheduled: the deferral marker step is not authored content
             if prev and prev.get("steps") and not prev.get("needsSteps", False):
-                t["steps"] = prev["steps"]
+                t["steps"] = prev["steps"]  # authored steps survive, even when the group is deferred again
                 t["needsSteps"] = False
                 if prev.get("role") is not None:
                     t["role"] = prev["role"]

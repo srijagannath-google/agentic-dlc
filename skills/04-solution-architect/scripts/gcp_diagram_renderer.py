@@ -24,9 +24,11 @@ Google Cloud Reference SVG/PNG directly from the Mermaid `flowchart LR` blocks i
 from __future__ import annotations
 
 import html
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -270,45 +272,71 @@ def _white_product_card(
 
 
 def render_gcp_reference_svg(spec: dict[str, Any]) -> str:
-    """Renders an application-specific Google Cloud Reference Style SVG from a `gcp-arch-diagram` dict."""
+    """Renders an application-specific Google Cloud Reference Style SVG from a `gcp-arch-diagram` dict.
+
+    The layout is derived from the diagram itself: N persona/client cards on the left, M edge cards in column 1,
+    R stacked regions inside the hub container and an r x c spoke grid on the right. Nothing is truncated and no
+    placeholder card is invented — the canvas simply grows (the classic 4 / 2 / 3x3 reference layout renders at
+    exactly 1320x500 as before).
+    """
     on_prem = spec.get("onPremises") or {}
-    on_prem_lines = on_prem.get("titleLines") or ["Actor Personas", "(Spec §3.5)"]
-    # Support either a list of `cards` (1..5 persona/client cards) or a single `gatewayCard`
+    on_prem_lines = on_prem.get("titleLines") or ["External Tier", ""]
+    # Support either a list of `cards` (persona/client cards) or a single `gatewayCard`
     left_cards: list[dict[str, Any]] = list(on_prem.get("cards") or [])
-    if not left_cards:
-        gw = on_prem.get("gatewayCard") or {"line1": "Client Tier", "line2": "Authenticated", "icon": "persona"}
-        left_cards = [gw]
+    if not left_cards and on_prem.get("gatewayCard"):
+        left_cards = [on_prem["gatewayCard"]]
 
     cloud_title = spec.get("cloudTitle") or "Enterprise Target Platform"
-    adv_route = spec.get("advertisedRoute") or {
-        "line1": "Private Service Route:",
-        "line2": "internal.service.mesh",
-        "line3": "10.240.0.0/16",
-    }
-
+    adv_route = spec.get("advertisedRoute")  # None when the Mermaid source has no dashed ('-.->') connector
     edge_cards = list(spec.get("edgeCards") or [])
-    while len(edge_cards) < 4:
-        edge_cards.append({"line1": "Edge Service", "line2": f"Tier {len(edge_cards)+1}", "icon": "security"})
-
     hub = spec.get("hubProject") or {}
-    hub_title = hub.get("title") or "Shared Domain & Workflow Core"
-    vpc_title = hub.get("vpcTitle") or "Shared VPC / Domain Core"
+    hub_title = hub.get("title") or ""
+    vpc_title = hub.get("vpcTitle") or ""
     regions = list(hub.get("regions") or [])
-    while len(regions) < 2:
-        regions.append(
-            {
-                "title": f"Tier {len(regions)+1}",
-                "router": {"line1": "RBAC Guard", "line2": "Spec §3.5", "icon": "security"},
-                "loadBalancer": {"line1": "State Engine", "line2": "Spec §3.3", "icon": "workflow"},
-                "subnetTitle": "Rule Gate",
-                "workload": {"line1": "Rules Engine", "line2": "Spec §3.4", "line3": "Server Guard", "icon": "compute"},
-            }
-        )
+    spoke_rows = [list(r or []) for r in (spec.get("spokeRows") or [])]
+    n_cols = max((len(r) for r in spoke_rows), default=0)
+    n_rows = len(spoke_rows)
 
-    spoke_rows = list(spec.get("spokeRows") or [])
+    # ---------------------------------------------------------------- geometry (derived from counts)
+    n_left = len(left_cards)
+    if n_left <= 1:
+        left_gap, left_h, left_start = 74, 48, 68
+    elif n_left <= 4:
+        left_gap, left_h, left_start = 74, 52, 66
+    else:
+        left_gap, left_h, left_start = 62, 48, 66
+    left_bottom = left_start + (n_left - 1) * left_gap + left_h if n_left else 60
+
+    EDGE_GAP, EDGE_H = 78, 52
+    edge_ys = [118 + i * EDGE_GAP for i in range(len(edge_cards))]
+    edge_bottom = (edge_ys[-1] + EDGE_H) if edge_ys else 118
+
+    REGION_GAP, REGION_H = 128, 118
+    n_reg = len(regions)
+    region_ys = [162 + i * REGION_GAP for i in range(n_reg)]
+    vpc_y = 136
+    vpc_h = 26 + REGION_GAP * max(n_reg, 1)
+    proj_y = 108
+    proj_h = vpc_h + 42
+    perim_y = 96
+    perim_h = proj_h + 32
+    hub_bottom = perim_y + perim_h
+    hub_mid = (region_ys[0] + (region_ys[-1] + REGION_H - region_ys[0]) / 2) if region_ys else (vpc_y + vpc_h / 2)
+
+    COL_W, ROW_H = 168, 124
+    col_xs = [778 + c * COL_W for c in range(n_cols)]
+    row_ys = [84 + r * ROW_H for r in range(n_rows)]
+    spoke_w = 12 + COL_W * max(n_cols, 1)
+    spoke_h = 16 + ROW_H * max(n_rows, 1)
+    spoke_bottom = 72 + spoke_h
+
+    width = max(1320, 766 + spoke_w + 38)
+    height = max(500, int(max(left_bottom + 36, edge_bottom + 40, hub_bottom + 40, spoke_bottom + 40)))
+    frame_h = height - 36
+    inner_h = height - 80
 
     svg: list[str] = [
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 500" width="1320" height="500" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
         'font-family="\'Google Sans\', \'Roboto\', \'Inter\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Arial, sans-serif">',
         "<defs>",
         '  <marker id="arrowDark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">',
@@ -321,186 +349,140 @@ def render_gcp_reference_svg(spec: dict[str, Any]) -> str:
         '    <path d="M 1 1.5 L 8.5 5 L 1 8.5" fill="none" stroke="#F29900" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
         "  </marker>",
         "</defs>",
-        '<rect x="0" y="0" width="1320" height="500" fill="#FFFFFF"/>',
+        f'<rect x="0" y="0" width="{width}" height="{height}" fill="#FFFFFF"/>',
         # 1. Left Container (#F1F3F4)
-        '<rect x="16" y="18" width="136" height="464" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>',
+        f'<rect x="16" y="18" width="136" height="{frame_h}" rx="4" fill="#F1F3F4" stroke="#9AA0A6" stroke-width="1.2"/>',
         f'<text x="84" y="38" text-anchor="middle" font-size="11" font-weight="500" fill="#3C4043">{_esc(on_prem_lines[0])}</text>',
         f'<text x="84" y="52" text-anchor="middle" font-size="10.5" font-weight="400" fill="#5F6368">{_esc(on_prem_lines[1] if len(on_prem_lines) > 1 else "")}</text>',
     ]
 
-    # Render 1..5 stacked cards inside Left Container
-    n_left = min(len(left_cards), 5)
+    # Render every persona/client card inside the Left Container
     left_card_positions: list[tuple[float, float]] = []
     if n_left == 1:
         lc = left_cards[0]
         svg.append(
             _white_product_card(
-                25,
-                68,
-                118,
-                48,
-                lc.get("line1", "Gateway"),
-                lc.get("line2", ""),
-                lc.get("line3", ""),
-                icon_kind=lc.get("icon", "gateway"),
-                bold_line1=True,
+                25, 68, 118, 48,
+                lc.get("line1", ""), lc.get("line2", ""), lc.get("line3", ""),
+                icon_kind=lc.get("icon", "gateway"), bold_line1=True,
             )
         )
         left_card_positions.append((25, 68))
     else:
-        start_y = 66
-        gap = 74 if n_left <= 4 else 62
-        card_h = 52 if n_left <= 4 else 48
-        for idx, lc in enumerate(left_cards[:5]):
-            cy = start_y + idx * gap
+        for idx, lc in enumerate(left_cards):
+            cy = left_start + idx * left_gap
             svg.append(
                 _white_product_card(
-                    24,
-                    cy,
-                    120,
-                    card_h,
-                    lc.get("line1", f"Persona {idx+1}"),
-                    lc.get("line2", ""),
-                    lc.get("line3", ""),
-                    icon_kind=lc.get("icon", "persona"),
-                    bold_line1=True,
+                    24, cy, 120, left_h,
+                    lc.get("line1", ""), lc.get("line2", ""), lc.get("line3", ""),
+                    icon_kind=lc.get("icon", "persona"), bold_line1=True,
                 )
             )
             left_card_positions.append((24, cy))
 
     # 2. Right Outer Frame: Google Cloud (#1A73E8 banner + white interior canvas)
     svg += [
-        '<rect x="168" y="18" width="1136" height="464" rx="3" fill="#1A73E8" stroke="#1A73E8" stroke-width="2"/>',
+        f'<rect x="168" y="18" width="{width - 184}" height="{frame_h}" rx="3" fill="#1A73E8" stroke="#1A73E8" stroke-width="2"/>',
         f'<text x="184" y="42" font-size="17" font-weight="500" fill="#FFFFFF">{_esc(cloud_title)}</text>',
-        '<rect x="176" y="54" width="1120" height="420" rx="2" fill="#FFFFFF"/>',
+        f'<rect x="176" y="54" width="{width - 200}" height="{inner_h}" rx="2" fill="#FFFFFF"/>',
     ]
 
-    # 3. Column 1 Inside Frame: 4 Stacked Cards (UI Workspaces in §1, Edge Security/Ingress in §2)
-    edge_ys = [118, 196, 274, 352]
-    for idx, ec in enumerate(edge_cards[:4]):
-        cy = edge_ys[idx]
+    # 3. Column 1 Inside Frame: stacked cards (UI Workspaces in §1, Edge Security/Ingress in §2)
+    for ec, cy in zip(edge_cards, edge_ys):
         svg.append(
             _white_product_card(
-                196,
-                cy,
-                122,
-                52,
-                ec.get("line1", "Service"),
-                ec.get("line2", ""),
-                ec.get("line3", ""),
+                196, cy, 122, EDGE_H,
+                ec.get("line1", ""), ec.get("line2", ""), ec.get("line3", ""),
                 icon_kind=ec.get("icon", "ui"),
             )
         )
+    edge_mids = [cy + EDGE_H / 2 for cy in edge_ys]
 
     # Orthogonal Bus connecting Left Column Cards <-> Column 1 Cards -> Column 2 Hub Core
-    if n_left == 1:
+    left_mids = [cy + (24 if n_left == 1 else 25) for _, cy in left_card_positions]
+    if n_left == 1 and edge_mids:
         svg.append(
-            '<path d="M 84 118 L 84 144 L 182 144" fill="none" stroke="#202124" stroke-width="1.3" marker-start="url(#arrowDark)"/>'
+            f'<path d="M 84 {left_card_positions[0][1] + 48} L 84 {edge_mids[0]:.1f} L 182 {edge_mids[0]:.1f}" fill="none" stroke="#202124" stroke-width="1.3" marker-start="url(#arrowDark)"/>'
         )
     else:
-        for _, cy in left_card_positions:
-            mid_y = cy + 25
+        for mid_y in left_mids:
             svg.append(f'<line x1="144" y1="{mid_y:.1f}" x2="182" y2="{mid_y:.1f}" stroke="#202124" stroke-width="1.2"/>')
-        top_left_y = min( left_card_positions[0][1] + 25, 144 )
-        bot_left_y = max( left_card_positions[-1][1] + 25, 378 )
-        svg.append(f'<line x1="182" y1="{top_left_y:.1f}" x2="182" y2="{bot_left_y:.1f}" stroke="#202124" stroke-width="1.3"/>')
-
-    svg += [
-        '<line x1="182" y1="144" x2="182" y2="378" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="182" y1="144" x2="194" y2="144" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>',
-        '<line x1="182" y1="222" x2="194" y2="222" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>',
-        '<line x1="182" y1="300" x2="194" y2="300" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>',
-        '<line x1="182" y1="378" x2="194" y2="378" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>',
-        # Right side of Column 1 cards merging into Column 2 Hub Core
-        '<line x1="318" y1="144" x2="332" y2="144" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="318" y1="222" x2="332" y2="222" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="318" y1="300" x2="332" y2="300" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="318" y1="378" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="332" y1="144" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>',
-        '<line x1="332" y1="292" x2="356" y2="292" stroke="#202124" stroke-width="1.3"/>',
-    ]
+    bus_ys = left_mids + edge_mids
+    if bus_ys:
+        svg.append(f'<line x1="182" y1="{min(bus_ys):.1f}" x2="182" y2="{max(bus_ys):.1f}" stroke="#202124" stroke-width="1.3"/>')
+    for my in edge_mids:
+        svg.append(f'<line x1="182" y1="{my:.1f}" x2="194" y2="{my:.1f}" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>')
+        svg.append(f'<line x1="318" y1="{my:.1f}" x2="332" y2="{my:.1f}" stroke="#202124" stroke-width="1.3"/>')
+    if edge_mids:
+        svg.append(f'<line x1="332" y1="{min(edge_mids + [hub_mid]):.1f}" x2="332" y2="{max(edge_mids + [hub_mid]):.1f}" stroke="#202124" stroke-width="1.3"/>')
+    svg.append(f'<line x1="332" y1="{hub_mid:.1f}" x2="356" y2="{hub_mid:.1f}" stroke="#202124" stroke-width="1.3"/>')
 
     # 4. Column 2: Dashed Hub Perimeter + Stacked Project Container (#F1F3F4) + Nested Blue Container (#AECBFA)
     svg += [
-        '<rect x="344" y="96" width="398" height="356" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>',
-        '<rect x="364" y="116" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
-        '<rect x="360" y="112" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
-        '<rect x="356" y="108" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#5F6368" stroke-width="1.3"/>',
-        f'<text x="539" y="126.5" text-anchor="middle" font-size="{"9.5" if len(hub_title) > 48 else "11.0"}" font-weight="500" fill="#202124">{_esc(hub_title)}</text>',
-        '<rect x="368" y="136" width="342" height="282" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.2"/>',
-        f'<text x="539" y="153" text-anchor="middle" font-size="{"9.8" if len(vpc_title) > 44 else "10.8"}" font-weight="500" fill="#202124">{_esc(vpc_title)}</text>',
+        f'<rect x="344" y="{perim_y}" width="398" height="{perim_h}" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>',
+        f'<rect x="364" y="{proj_y + 8}" width="366" height="{proj_h}" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
+        f'<rect x="360" y="{proj_y + 4}" width="366" height="{proj_h}" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
+        f'<rect x="356" y="{proj_y}" width="366" height="{proj_h}" rx="4" fill="#F1F3F4" stroke="#5F6368" stroke-width="1.3"/>',
+        f'<text x="539" y="{proj_y + 18.5}" text-anchor="middle" font-size="{"9.5" if len(hub_title) > 48 else "11.0"}" font-weight="500" fill="#202124">{_esc(hub_title)}</text>',
+        f'<rect x="368" y="{vpc_y}" width="342" height="{vpc_h}" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.2"/>',
+        f'<text x="539" y="{vpc_y + 17}" text-anchor="middle" font-size="{"9.8" if len(vpc_title) > 44 else "10.8"}" font-weight="500" fill="#202124">{_esc(vpc_title)}</text>',
     ]
 
-    region_ys = [162, 290]
-    for r_idx, reg in enumerate(regions[:2]):
+    for r_idx, reg in enumerate(regions):
         ry = region_ys[r_idx]
         card_y = ry + 42
         sub_y = ry + 18
-        r_router = reg.get("router") or {"line1": "Guard", "line2": "Tier 1", "icon": "security"}
-        r_lb = reg.get("loadBalancer") or {"line1": "Engine", "line2": "Tier 2", "icon": "workflow"}
-        r_wk = reg.get("workload") or {"line1": "Service", "line2": "Compute", "line3": "Tier 3", "icon": "compute"}
+        r_router = reg.get("router")
+        r_lb = reg.get("loadBalancer")
+        r_wk = reg.get("workload")
+        has_subnet = bool(reg.get("subnetTitle") or r_wk)
         svg += [
-            f'<rect x="378" y="{ry}" width="322" height="118" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
-            f'<text x="388" y="{ry + 15.5}" text-anchor="start" font-size="9.0" font-weight="500" fill="#3C4043">{_esc(reg.get("title", f"Region {r_idx + 1}"))}</text>',
-            _white_product_card(
-                386,
-                card_y,
-                92,
-                52,
-                r_router.get("line1", "Router"),
-                r_router.get("line2", ""),
-                r_router.get("line3", ""),
-                icon_kind=r_router.get("icon", "network"),
-            ),
-            _white_product_card(
-                484,
-                card_y,
-                94,
-                52,
-                r_lb.get("line1", "Load Balancer"),
-                r_lb.get("line2", ""),
-                r_lb.get("line3", ""),
-                icon_kind=r_lb.get("icon", "network"),
-            ),
-            f'<rect x="586" y="{sub_y}" width="106" height="90" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.1"/>',
-            f'<text x="639" y="{sub_y + 15}" text-anchor="middle" font-size="9.5" font-weight="500" fill="#202124">{_esc(reg.get("subnetTitle", f"Subnet {r_idx + 1}"))}</text>',
-            _white_product_card(
-                592,
-                card_y,
-                94,
-                52,
-                r_wk.get("line1", "Workload"),
-                r_wk.get("line2", ""),
-                r_wk.get("line3", ""),
-                icon_kind=r_wk.get("icon", "compute"),
-                bold_line1=True,
-            ),
-            f'<line x1="478" y1="{card_y + 26}" x2="484" y2="{card_y + 26}" stroke="#202124" stroke-width="1.3"/>',
-            f'<line x1="578" y1="{card_y + 26}" x2="592" y2="{card_y + 26}" stroke="#202124" stroke-width="1.3"/>',
+            f'<rect x="378" y="{ry}" width="322" height="{REGION_H}" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>',
+            f'<text x="388" y="{ry + 15.5}" text-anchor="start" font-size="9.0" font-weight="500" fill="#3C4043">{_esc(reg.get("title", ""))}</text>',
+        ]
+        if r_router:
+            svg.append(_white_product_card(386, card_y, 92, 52, r_router.get("line1", ""), r_router.get("line2", ""), r_router.get("line3", ""),
+                                           icon_kind=r_router.get("icon", "network")))
+        if r_lb:
+            svg.append(_white_product_card(484, card_y, 94, 52, r_lb.get("line1", ""), r_lb.get("line2", ""), r_lb.get("line3", ""),
+                                           icon_kind=r_lb.get("icon", "network")))
+        if has_subnet:
+            svg += [
+                f'<rect x="586" y="{sub_y}" width="106" height="90" rx="4" fill="#AECBFA" stroke="#4285F4" stroke-width="1.1"/>',
+                f'<text x="639" y="{sub_y + 15}" text-anchor="middle" font-size="9.5" font-weight="500" fill="#202124">{_esc(reg.get("subnetTitle", ""))}</text>',
+            ]
+        if r_wk:
+            svg.append(_white_product_card(592, card_y, 94, 52, r_wk.get("line1", ""), r_wk.get("line2", ""), r_wk.get("line3", ""),
+                                           icon_kind=r_wk.get("icon", "compute"), bold_line1=True))
+        if r_router and r_lb:
+            svg.append(f'<line x1="478" y1="{card_y + 26}" x2="484" y2="{card_y + 26}" stroke="#202124" stroke-width="1.3"/>')
+        if r_lb and r_wk:
+            svg.append(f'<line x1="578" y1="{card_y + 26}" x2="592" y2="{card_y + 26}" stroke="#202124" stroke-width="1.3"/>')
+
+    # 5. Red Dashed Guard / Route Advertisement Path (#D93025) — only when the diagram declares a dashed connector
+    if adv_route:
+        red_target_x = 146 if n_left > 1 else 145
+        red_start_y = (region_ys[0] + 42) if region_ys else (vpc_y + 20)
+        svg += [
+            f'<path d="M 432 {red_start_y} L 432 88 L {red_target_x} 88" fill="none" stroke="#D93025" stroke-width="1.4" stroke-dasharray="5,4" marker-end="url(#arrowRed)"/>',
+            f'<text x="262" y="65" text-anchor="middle" font-size="8.3" font-weight="600" fill="#D93025">{_esc(adv_route.get("line1", ""))}</text>',
+            f'<text x="262" y="74.5" text-anchor="middle" font-size="8.2" font-weight="500" fill="#202124">{_esc(adv_route.get("line2", ""))}</text>',
+            f'<text x="262" y="84" text-anchor="middle" font-size="8.0" font-weight="400" fill="#3C4043">{_esc(adv_route.get("line3", ""))}</text>',
         ]
 
-    # 5. Red Dashed Guard / Route Advertisement Path (#D93025)
-    red_target_x = 146 if n_left > 1 else 145
-    svg += [
-        f'<path d="M 432 204 L 432 88 L {red_target_x} 88" fill="none" stroke="#D93025" stroke-width="1.4" stroke-dasharray="5,4" marker-end="url(#arrowRed)"/>',
-        f'<text x="262" y="65" text-anchor="middle" font-size="8.3" font-weight="600" fill="#D93025">{_esc(adv_route.get("line1", "Private Service Route:"))}</text>',
-        f'<text x="262" y="74.5" text-anchor="middle" font-size="8.2" font-weight="500" fill="#202124">{_esc(adv_route.get("line2", "internal.service.mesh"))}</text>',
-        f'<text x="262" y="84" text-anchor="middle" font-size="8.0" font-weight="400" fill="#3C4043">{_esc(adv_route.get("line3", "10.240.0.0/16"))}</text>',
-    ]
-
-    # 6. Column 3: Dashed Spoke / Capability Grid Perimeter + 3x3 Matrix + Amber (#F29900) Bus
+    # 6. Column 3: Dashed Spoke / Capability Grid Perimeter + r x c Matrix + Amber (#F29900) Bus
     svg.append(
-        '<rect x="766" y="72" width="516" height="388" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>'
+        f'<rect x="766" y="72" width="{spoke_w}" height="{spoke_h}" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>'
     )
 
-    col_xs = [778, 946, 1114]
-    row_ys = [84, 208, 332]
-    for r_idx, row in enumerate(spoke_rows[:3]):
+    for r_idx, row in enumerate(spoke_rows):
         ry = row_ys[r_idx]
-        for c_idx, cell in enumerate(row[:3]):
+        for c_idx, cell in enumerate(row):
+            if not cell:
+                continue  # ragged row — leave the slot empty rather than inventing a card
             cx = col_xs[c_idx]
-            tlines = cell.get("titleLines") or [f"Tier {r_idx + 1}.{c_idx + 1}", ""]
-            card = cell.get("card") or {"line1": "Service", "line2": "Component", "icon": "compute"}
+            tlines = cell.get("titleLines") or ["", ""]
+            card = cell.get("card") or {}
             box_fill = cell.get("containerFill") or "#F1F3F4"
             box_stroke = cell.get("containerStroke") or "#9AA0A6"
             svg += [
@@ -508,25 +490,21 @@ def render_gcp_reference_svg(spec: dict[str, Any]) -> str:
                 f'<text x="{cx + 78}" y="{ry + 17}" text-anchor="middle" font-size="9.8" font-weight="500" fill="#202124">{_esc(tlines[0])}</text>',
                 f'<text x="{cx + 78}" y="{ry + 29}" text-anchor="middle" font-size="9.0" font-weight="400" fill="#3C4043">{_esc(tlines[1] if len(tlines) > 1 else "")}</text>',
                 _white_product_card(
-                    cx + 14,
-                    ry + 40,
-                    128,
-                    58,
-                    card.get("line1", "Service"),
-                    card.get("line2", ""),
-                    card.get("line3", ""),
+                    cx + 14, ry + 40, 128, 58,
+                    card.get("line1", ""), card.get("line2", ""), card.get("line3", ""),
                     icon_kind=card.get("icon", "compute"),
                 ),
             ]
 
     # Amber bus drawn on top so arrowheads cleanly reach each row's first card (x=790)
-    svg += [
-        '<line x1="710" y1="292" x2="750" y2="292" stroke="#F29900" stroke-width="1.6"/>',
-        '<line x1="750" y1="153" x2="750" y2="401" stroke="#F29900" stroke-width="1.6"/>',
-        '<line x1="750" y1="153" x2="790" y2="153" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>',
-        '<line x1="750" y1="277" x2="790" y2="277" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>',
-        '<line x1="750" y1="401" x2="790" y2="401" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>',
-    ]
+    if row_ys:
+        arrow_ys = [ry + 69 for ry in row_ys]
+        svg += [
+            f'<line x1="710" y1="{hub_mid:.1f}" x2="750" y2="{hub_mid:.1f}" stroke="#F29900" stroke-width="1.6"/>',
+            f'<line x1="750" y1="{min(arrow_ys + [hub_mid]):.1f}" x2="750" y2="{max(arrow_ys + [hub_mid]):.1f}" stroke="#F29900" stroke-width="1.6"/>',
+        ]
+        for ay in arrow_ys:
+            svg.append(f'<line x1="750" y1="{ay}" x2="790" y2="{ay}" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>')
 
     svg.append("</svg>")
     return "\n".join(svg) + "\n"
@@ -698,15 +676,13 @@ def parse_mermaid_flowchart_to_spec(mermaid_text: str, diagram_id: str = "logica
         return None
 
     onprem_sg = _find_sg("sg_onprem") or (root_children[0] if root_children else {"title": "External Tier", "cards": []})
-    cloud_sg = (
-        _find_sg("sg_targetplatform", "sg_cloudplatform", "sg_enterprisecloud", "sg_googlecloud")
-        or (root_children[1] if len(root_children) > 1 else {"title": "Enterprise Target Platform", "children": []})
-    )
+    cloud_sg = _find_sg("sg_googlecloud") or (root_children[1] if len(root_children) > 1 else {"title": "Google Cloud", "children": []})
     edge_sg = _find_sg("sg_edge") or {"title": "Edge Tier", "cards": []}
-    hub_proj_sg = _find_sg("sg_hubproject") or {"title": "Shared Hub Core", "children": []}
-    vpc_sg = _find_sg("sg_sharedvpc", "sg_sharedvnet") or {"title": "Shared Virtual Network", "children": []}
-    reg1_sg = _find_sg("sg_region1") or {"title": "Region 1", "cards": [], "children": []}
-    reg2_sg = _find_sg("sg_region2") or {"title": "Region 2", "cards": [], "children": []}
+    hub_proj_sg = _find_sg("sg_hubproject") or {"title": "", "children": []}
+    vpc_sg = _find_sg("sg_sharedvpc") or {"title": "", "children": []}
+    # Every SG_Region* subgraph in declaration order (no fixed count of two) — nested in the Shared VPC when present
+    region_sgs = [c for c in (vpc_sg.get("children") or []) if str(c.get("id", "")).lower().startswith("sg_region")] \
+        or [v for k, v in all_sgs.items() if k.startswith("sg_region")]
     spoke_perim_sg = _find_sg("sg_spokeperimeter") or {"title": "Spoke Grid", "children": []}
 
     onprem_cards = []
@@ -733,41 +709,47 @@ def parse_mermaid_flowchart_to_spec(mermaid_text: str, diagram_id: str = "logica
         )
 
     regions = []
-    for r_sg in (reg1_sg, reg2_sg):
+    for r_sg in region_sgs:
         rcards = r_sg.get("cards", [])
-        c_router = rcards[0] if len(rcards) > 0 else {"line1": "Router", "line2": ""}
-        c_lb = rcards[1] if len(rcards) > 1 else {"line1": "Engine", "line2": ""}
-        sub_sg = (r_sg.get("children") or [{}])[0]
-        sub_cards = sub_sg.get("cards") or [{"line1": "Workload", "line2": ""}]
-        c_wk = sub_cards[0]
-        wk_l2 = c_wk.get("line2", "")
-        wk_l3 = c_wk.get("line3", "")
-        if not wk_l3 and len(wk_l2) > 16 and " " in wk_l2:
-            wk_l2, wk_l3 = _split_two_lines(wk_l2, max_len=14)
+        c_router = rcards[0] if len(rcards) > 0 else None
+        c_lb = rcards[1] if len(rcards) > 1 else None
+        sub_sg = (r_sg.get("children") or [None])[0]
+        sub_cards = (sub_sg or {}).get("cards") or []
+        c_wk = sub_cards[0] if sub_cards else None
+        workload = None
+        if c_wk:
+            wk_l2 = c_wk.get("line2", "")
+            wk_l3 = c_wk.get("line3", "")
+            if not wk_l3 and len(wk_l2) > 16 and " " in wk_l2:
+                wk_l2, wk_l3 = _split_two_lines(wk_l2, max_len=14)
+            workload = {
+                "line1": c_wk["line1"],
+                "line2": wk_l2,
+                "line3": wk_l3,
+                "icon": _infer_card_icon(c_wk["line1"], wk_l2, "subnet_workload", is_logical),
+            }
         regions.append(
             {
-                "title": r_sg.get("title", "Region"),
+                "title": r_sg.get("title", ""),
                 "router": {
                     "line1": c_router["line1"],
                     "line2": c_router["line2"],
                     "icon": _infer_card_icon(c_router["line1"], c_router["line2"], "region_router", is_logical),
-                },
+                } if c_router else None,
                 "loadBalancer": {
                     "line1": c_lb["line1"],
                     "line2": c_lb["line2"],
                     "icon": _infer_card_icon(c_lb["line1"], c_lb["line2"], "region_lb", is_logical),
-                },
-                "subnetTitle": sub_sg.get("title", "Subnet"),
-                "workload": {
-                    "line1": c_wk["line1"],
-                    "line2": wk_l2,
-                    "line3": wk_l3,
-                    "icon": _infer_card_icon(c_wk["line1"], wk_l2, "subnet_workload", is_logical),
-                },
+                } if c_lb else None,
+                "subnetTitle": (sub_sg or {}).get("title", ""),
+                "workload": workload,
+                "cardCount": len(rcards) + len(sub_cards),
             }
         )
 
-    # Parse advertisedRoute / policy rejection label from dashed edge
+    # Parse advertisedRoute / policy rejection label from the dashed edge. None when the diagram has no '-.->'
+    # connector so validate_gcp_diagram_spec() can fail meaningfully (no silent default text is rendered).
+    adv_route: dict[str, Any] | None
     if "10.240.0.0/16" in dashed_label or "internal.service.mesh" in dashed_label:
         adv_route = {
             "line1": "Private Service Route:",
@@ -797,26 +779,14 @@ def parse_mermaid_flowchart_to_spec(mermaid_text: str, diagram_id: str = "logica
                 "line3": l3_part,
             }
     else:
-        adv_route = (
-            {
-                "line1": "Policy Rejection:",
-                "line2": "Unauthorized | Invalid State",
-                "line3": "Compliance Alert",
-            }
-            if is_logical
-            else {
-                "line1": "Private Service Route:",
-                "line2": "internal.service.mesh",
-                "line3": "10.240.0.0/16",
-            }
-        )
+        adv_route = None
 
     spoke_rows: list[list[dict[str, Any]]] = []
     row_sgs = spoke_perim_sg.get("children") or []
-    for r_idx, r_sg in enumerate(row_sgs[:3]):
+    for r_idx, r_sg in enumerate(row_sgs):
         row_cells: list[dict[str, Any]] = []
         r_title = r_sg.get("title", f"Row {r_idx + 1}")
-        for c_idx, c in enumerate((r_sg.get("cards") or [])[:3]):
+        for c_idx, c in enumerate(r_sg.get("cards") or []):
             row_cells.append(
                 {
                     "titleLines": _derive_spoke_cell_header(r_title, c["line1"], c["line2"], r_idx, c_idx, is_logical),
@@ -840,8 +810,8 @@ def parse_mermaid_flowchart_to_spec(mermaid_text: str, diagram_id: str = "logica
         "advertisedRoute": adv_route,
         "edgeCards": edge_cards,
         "hubProject": {
-            "title": hub_proj_sg.get("title", "Shared Hub Network"),
-            "vpcTitle": vpc_sg.get("title", "Shared Virtual Network"),
+            "title": hub_proj_sg.get("title", ""),
+            "vpcTitle": vpc_sg.get("title", ""),
             "regions": regions,
         },
         "spokeRows": spoke_rows,
@@ -855,7 +825,12 @@ def validate_gcp_diagram_spec(
     cap_group_ids: list[str] | None = None,
     target_stack: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Validates that an architecture diagram spec (parsed from Mermaid `flowchart LR`) is application-specific."""
+    """Validates that an architecture diagram spec (parsed from Mermaid `flowchart LR`) is application-specific.
+
+    Structural minimums are *patterns*, not fixed counts: >= 1 persona/client card, >= 1 edge card, >= 1 region
+    container with >= 1 card, a dashed route/feedback connector, and a spoke grid with >= 1 row of >= 1 card.
+    Uniqueness thresholds are derived from the number of cards actually drawn.
+    """
     errors: list[str] = []
     if not isinstance(spec, dict):
         return [f"{label}: diagram specification must be a dictionary."]
@@ -865,39 +840,47 @@ def validate_gcp_diagram_spec(
         errors.append(f"{label}: SG_OnPrem must declare >= 1 Persona/Client card.")
 
     edge_cards = spec.get("edgeCards")
-    if not isinstance(edge_cards, list) or len(edge_cards) < 4:
-        errors.append(f"{label}: SG_Edge must declare >= 4 cards.")
+    if not isinstance(edge_cards, list) or len(edge_cards) < 1:
+        errors.append(f"{label}: SG_Edge must declare >= 1 card (UI workspaces in §1, edge security / ingress services in §2).")
 
     hub = spec.get("hubProject")
-    if not isinstance(hub, dict) or not isinstance(hub.get("regions"), list) or len(hub.get("regions", [])) < 2:
-        errors.append(f"{label}: SG_HubProject / SG_SharedVPC must declare 2 stacked region subgraphs (SG_Region1, SG_Region2).")
+    regions = hub.get("regions") if isinstance(hub, dict) else None
+    if not isinstance(regions, list) or len(regions) < 1:
+        errors.append(f"{label}: SG_HubProject / SG_SharedVPC must declare >= 1 region subgraph (SG_Region1, SG_Region2, …) containing component cards.")
+    else:
+        empty = [str(r.get("title") or f"#{i + 1}") for i, r in enumerate(regions) if not r.get("cardCount")]
+        if empty:
+            errors.append(f"{label}: region subgraph(s) {empty} declare no component cards.")
 
     adv = spec.get("advertisedRoute")
     if not isinstance(adv, dict) or not adv.get("line2"):
         errors.append(f"{label}: diagram must declare a dashed route/feedback connector ('-.->|...|').")
 
     spoke_rows = spec.get("spokeRows")
-    if not isinstance(spoke_rows, list) or len(spoke_rows) < 3 or any(not isinstance(r, list) or len(r) < 3 for r in spoke_rows[:3]):
-        errors.append(f"{label}: SG_SpokePerimeter must declare 3 row subgraphs (SG_ProdRow, SG_NonProdRow, SG_DevRow) with 3 cards each (3x3 matrix).")
+    if not isinstance(spoke_rows, list) or len(spoke_rows) < 1 or any(not isinstance(r, list) or len(r) < 1 for r in spoke_rows):
+        errors.append(f"{label}: SG_SpokePerimeter must declare >= 1 row subgraph (e.g. SG_ProdRow, SG_NonProdRow, SG_DevRow), each with >= 1 card.")
         return errors
 
-    # Anti-boilerplate check 1: Forbid repeating generic "Compute Engine" or "Virtual Private Cloud" across the 3x3 grid
+    # Anti-boilerplate check 1: Forbid repeating generic "Compute Engine" or "Virtual Private Cloud" across the grid
     card_sigs: list[str] = []
-    for row in spoke_rows[:3]:
-        for cell in row[:3]:
+    for row in spoke_rows:
+        for cell in row:
             c = (cell or {}).get("card") or {}
             sig = f"{str(c.get('line1', '')).strip().lower()}|{str(c.get('line2', '')).strip().lower()}"
             card_sigs.append(sig)
+    n_cards = len(card_sigs)
+    grid_desc = f"{len(spoke_rows)}x{max(len(r) for r in spoke_rows)}"
     if card_sigs.count("compute|engine") >= 2 or card_sigs.count("virtual|private cloud") >= 2:
         errors.append(
-            f"{label}: Architecture diagram repeats generic 'Compute Engine' or 'Virtual Private Cloud' cards across the 3x3 grid. "
-            f"Every cell in the 3x3 grid MUST name a distinct, application-specific business capability service, "
+            f"{label}: Architecture diagram repeats generic 'Compute Engine' or 'Virtual Private Cloud' cards across the {grid_desc} grid. "
+            f"Every cell in the grid MUST name a distinct, application-specific business capability service, "
             f"logical domain data store, or cloud platform service."
         )
-    if len(set(card_sigs)) < 7:
+    min_unique = max(1, -(-3 * n_cards // 4))  # ceil(75 %) of the cards drawn (7 of 9 for the classic 3x3)
+    if len(set(card_sigs)) < min_unique:
         errors.append(
-            f"{label}: Architecture diagram 3x3 grid has duplicate card labels ({len(set(card_sigs))}/9 unique). "
-            f"Each of the 9 cells must represent a distinct business capability, domain data store, or cloud platform component."
+            f"{label}: Architecture diagram {grid_desc} grid has duplicate card labels ({len(set(card_sigs))}/{n_cards} unique; need >= {min_unique}). "
+            f"Each cell must represent a distinct business capability, domain data store, or cloud platform component."
         )
 
     blob = str(spec).lower()
@@ -908,13 +891,13 @@ def validate_gcp_diagram_spec(
         )
 
     # Anti-boilerplate check 2: Forbid spec/design trace codes (GRP-01, FRP-04, BR-01, REQ-FUNC-01, US-FUNC-01, Spec §3.3) in Architecture diagrams
-    leaked_codes = re.findall(r"\b(?:grp-\d+|frp-\d+|br-\d+|req-(?:func|arch|nfr|enh)-\d+|us-(?:func|tech)-\d+)\b|spec\s*§\s*\d+", blob)
+    leaked_codes = re.findall(r"\b(?:grp-\d+|cap-\d+|frp-\d+|br-\d+|req-(?:func|arch|nfr|enh)-\d+|us-(?:func|tech)-\d+)\b|spec\s*§\s*\d+", blob)
     if leaked_codes:
         errors.append(
             f"{label}: Architecture diagram contains spec/design trace codes ({sorted(set(leaked_codes))[:5]}). "
             f"Keep GRP-*, FRP-*, BR-*, REQ-*, US-*, and Spec §* identifiers in specs/ and design/solution_design.md ONLY; "
-            f"§2 Logical Architecture must use pure Business Capability names, and §3 Technical Architecture must use "
-            f"cloud-agnostic Platform-of-Choice infrastructure services (e.g., Kubernetes, Global L7 Load Balancer, WAF, PostgreSQL HA, Object Storage, KMS, OpenTelemetry)."
+            f"§1 Logical Architecture must use pure Business Capability names, and §2 Technical Architecture must use "
+            f"Platform-of-Choice services (e.g., GKE, Cloud Load Balancing, Cloud Armor, AlloyDB/Cloud SQL, Cloud Logging, Cloud Monitoring)."
         )
 
     # Anti-boilerplate check 3: Logical vs Technical diagram differentiation
@@ -931,25 +914,111 @@ def validate_gcp_diagram_spec(
                 f"(e.g., Kubernetes / Container Runtime, Global L7 Load Balancer, WAF, Managed PostgreSQL HA, "
                 f"Object Storage, KMS & Secrets Manager, OpenTelemetry Logging/Tracing/Metrics, GitOps)."
             )
+        declared_db = str(((target_stack or {}).get("database") or {}).get("kind") or "").strip().lower()
+        if declared_db and declared_db not in ("tbd", "sqlite") and "sqlite" in blob:
+            errors.append(
+                f"{label}: Future-State Infrastructure diagram mentions 'SQLite' even though specs/target_stack.json "
+                f"declares database.kind={declared_db!r}. Depict only the target production database in Stage 4A."
+            )
 
     if other_spec and isinstance(other_spec, dict):
         other_rows = other_spec.get("spokeRows") or []
         other_sigs = [
             f"{str(((cell or {}).get('card') or {}).get('line1', '')).strip().lower()}"
-            for row in other_rows[:3]
-            for cell in (row[:3] if isinstance(row, list) else [])
+            for row in other_rows
+            for cell in (row if isinstance(row, list) else [])
         ]
         this_l1 = [s.split("|")[0] for s in card_sigs]
         overlap = set(this_l1) & set(other_sigs)
-        if len(overlap) > 3:
+        if len(overlap) > max(3, n_cards // 3):
             errors.append(
-                f"{label}: §2 Logical Architecture and §3 Technical Architecture diagrams share too many "
-                f"identical 3x3 card titles ({sorted(overlap)}). §2 must show Business Personas, User Experience Channels, "
-                f"Domain Orchestration/Policy Core, and Business Capability Services; §3 must show cloud-agnostic Platform-of-Choice "
-                f"Infrastructure (Kubernetes, L7 Load Balancer, WAF, Managed PostgreSQL HA, Object Storage, KMS, OpenTelemetry, GitOps)."
+                f"{label}: §1 Logical Architecture and §2 Technical Architecture gcp-arch-diagram blocks share too many "
+                f"identical spoke-grid card titles ({sorted(overlap)}). §1 must show Business Personas, User Experience Channels, "
+                f"Domain Orchestration/Policy Core, and Business Capability Services; §2 must show Platform-of-Choice "
+                f"Infrastructure (GKE, Cloud Load Balancing, Cloud Armor, AlloyDB/Cloud SQL, Cloud Storage, Cloud KMS, Cloud Logging, Cloud Monitoring)."
             )
 
     return errors
+
+
+# Canonical shape of `resources/reference_gcp_architecture_diagram.png` (the layout every §1 / §2 diagram is
+# expected to follow): persona column, 4 edge cards, hub with 2 region bands, 3×3 spoke grid.
+REFERENCE_LAYOUT = {"personaCards": 3, "edgeCards": 4, "regions": 2, "spokeRows": 3, "spokeCols": 3}
+
+
+def reference_layout_warnings(spec: dict[str, Any], label: str) -> list[str]:
+    """Non-blocking drift report against the canonical reference layout.
+
+    `validate_gcp_diagram_spec` only enforces pattern minimums; this helper tells the author *how* a diagram
+    deviates from the reference shape (which the renderer still draws faithfully) so the Business Capability
+    diagram keeps the same visual structure across projects unless a deviation is intentional.
+    """
+    if not isinstance(spec, dict):
+        return []
+    on_prem = spec.get("onPremises") if isinstance(spec.get("onPremises"), dict) else {}
+    personas = len(on_prem.get("cards") or []) + (1 if on_prem.get("gatewayCard") else 0)
+    edge = len(spec.get("edgeCards") or [])
+    hub = spec.get("hubProject") if isinstance(spec.get("hubProject"), dict) else {}
+    regions = len(hub.get("regions") or [])
+    rows = [r for r in (spec.get("spokeRows") or []) if isinstance(r, list)]
+    cols = max((len(r) for r in rows), default=0)
+    drift: list[str] = []
+    if personas != REFERENCE_LAYOUT["personaCards"]:
+        drift.append(f"{personas} persona/client card(s) (reference: {REFERENCE_LAYOUT['personaCards']})")
+    if edge != REFERENCE_LAYOUT["edgeCards"]:
+        drift.append(f"{edge} edge card(s) (reference: {REFERENCE_LAYOUT['edgeCards']})")
+    if regions != REFERENCE_LAYOUT["regions"]:
+        drift.append(f"{regions} region band(s) (reference: {REFERENCE_LAYOUT['regions']})")
+    if len(rows) != REFERENCE_LAYOUT["spokeRows"] or cols != REFERENCE_LAYOUT["spokeCols"] or any(len(r) != cols for r in rows):
+        drift.append(f"{len(rows)}x{cols} spoke grid (reference: {REFERENCE_LAYOUT['spokeRows']}x{REFERENCE_LAYOUT['spokeCols']}, uniform rows)")
+    if not drift:
+        return []
+    return [
+        f"{label}: layout deviates from the Google Cloud reference diagram — " + "; ".join(drift)
+        + ". The SVG is still rendered, but keep the reference shape (persona column → 4 edge cards → hub with 2 region bands "
+        "→ 3x3 capability grid) unless the deviation is intentional, so §1 Business Capability diagrams stay comparable across projects."
+    ]
+
+
+_CHROME_CANDIDATES = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge")
+
+
+def find_chrome_binary() -> str | None:
+    """Chrome/Chromium binary: dlc_common.find_chrome_binary() when available, else CHROME_BIN / PATH lookup."""
+    try:
+        import dlc_common as _dlc  # type: ignore  # noqa: WPS433 (optional; present when run from extract_contracts.py)
+        finder = getattr(_dlc, "find_chrome_binary", None)
+        if callable(finder):
+            found = finder()
+            if found:
+                return str(found)
+    except Exception:
+        pass
+    env_bin = os.environ.get("CHROME_BIN", "").strip()
+    if env_bin and (Path(env_bin).is_file() or shutil.which(env_bin)):
+        return shutil.which(env_bin) or env_bin
+    for c in _CHROME_CANDIDATES:
+        w = shutil.which(c)
+        if w:
+            return w
+    return None
+
+
+def _chrome_headless_flags(profile_dir: Path | None = None) -> list[str]:
+    """`--no-sandbox` only when running as root or when DLC_CHROME_NO_SANDBOX=1 is set explicitly; a private
+    `--user-data-dir` avoids blocking on the default profile lock when another Chrome instance is running."""
+    flags = ["--headless=new", "--disable-gpu", "--hide-scrollbars"]
+    if profile_dir is not None:
+        flags.append(f"--user-data-dir={profile_dir}")
+    is_root = hasattr(os, "geteuid") and os.geteuid() == 0
+    if is_root or os.environ.get("DLC_CHROME_NO_SANDBOX") == "1":
+        flags.append("--no-sandbox")
+    return flags
+
+
+def _svg_size(svg_text: str) -> tuple[int, int]:
+    m = re.search(r'<svg[^>]*\swidth="(\d+)"[^>]*\sheight="(\d+)"', svg_text)
+    return (int(m.group(1)), int(m.group(2))) if m else (1320, 500)
 
 
 def write_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
@@ -958,22 +1027,18 @@ def write_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path 
     svg_text = render_gcp_reference_svg(spec)
     svg_path.write_text(svg_text, encoding="utf-8")
     png_path = svg_path.with_suffix(".png")
-    chrome_bin = (
-        shutil.which("google-chrome")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-    )
+    chrome_bin = find_chrome_binary()
     if chrome_bin:
+        w, h = _svg_size(svg_text)
+        profile_dir = Path(tempfile.mkdtemp(prefix="dlc-chrome-profile-"))
         try:
             subprocess.run(
                 [
                     chrome_bin,
-                    "--headless",
-                    "--no-sandbox",
-                    "--disable-gpu",
-                    "--window-size=1320,500",
+                    *_chrome_headless_flags(profile_dir),
+                    f"--window-size={w},{h}",
                     f"--screenshot={png_path}",
-                    f"file://{svg_path.resolve()}",
+                    svg_path.resolve().as_uri(),
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -982,8 +1047,10 @@ def write_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path 
             )
             if png_path.exists() and png_path.stat().st_size > 0:
                 return svg_path, png_path
-        except Exception:
+        except (subprocess.TimeoutExpired, OSError):
             pass
+        finally:
+            shutil.rmtree(profile_dir, ignore_errors=True)
     return svg_path, None
 
 
@@ -1433,62 +1500,23 @@ def validate_capability_map_spec(
     return errors
 
 
-def write_capability_map_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
-    """Writes the Slide-8-style Business Capability Map SVG (`1440x810`) to `svg_path` and renders a PNG sibling."""
-    svg_path.parent.mkdir(parents=True, exist_ok=True)
-    svg_text = render_capability_map_svg(spec)
-    svg_path.write_text(svg_text, encoding="utf-8")
-    png_path = svg_path.with_suffix(".png")
-    chrome_bin = (
-        shutil.which("google-chrome")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-    )
-    if chrome_bin:
-        try:
-            subprocess.run(
-                [
-                    chrome_bin,
-                    "--headless",
-                    "--no-sandbox",
-                    "--disable-gpu",
-                    "--window-size=1440,810",
-                    f"--screenshot={png_path}",
-                    f"file://{svg_path.resolve()}",
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
-                check=False,
-            )
-            if png_path.exists() and png_path.stat().st_size > 0:
-                return svg_path, png_path
-        except Exception:
-            pass
-    return svg_path, None
-
-
 def _save_svg_and_png(svg_text: str, svg_path: Path, width: int = 1440, height: int = 840) -> tuple[Path, Path | None]:
     """Writes `svg_text` to `svg_path` and renders a PNG sibling at `width x height` if headless Chrome is available."""
     svg_path.parent.mkdir(parents=True, exist_ok=True)
     svg_path.write_text(svg_text, encoding="utf-8")
     png_path = svg_path.with_suffix(".png")
-    chrome_bin = (
-        shutil.which("google-chrome")
-        or shutil.which("chromium")
-        or shutil.which("chromium-browser")
-    )
+    chrome_bin = find_chrome_binary()
     if chrome_bin:
+        w, h = _svg_size(svg_text) if (width <= 0 or height <= 0) else (width, height)
+        profile_dir = Path(tempfile.mkdtemp(prefix="dlc-chrome-profile-"))
         try:
             subprocess.run(
                 [
                     chrome_bin,
-                    "--headless",
-                    "--no-sandbox",
-                    "--disable-gpu",
-                    f"--window-size={width},{height}",
+                    *_chrome_headless_flags(profile_dir),
+                    f"--window-size={w},{h}",
                     f"--screenshot={png_path}",
-                    f"file://{svg_path.resolve()}",
+                    svg_path.resolve().as_uri(),
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -1497,9 +1525,16 @@ def _save_svg_and_png(svg_text: str, svg_path: Path, width: int = 1440, height: 
             )
             if png_path.exists() and png_path.stat().st_size > 0:
                 return svg_path, png_path
-        except Exception:
+        except (subprocess.TimeoutExpired, OSError):
             pass
+        finally:
+            shutil.rmtree(profile_dir, ignore_errors=True)
     return svg_path, None
+
+
+def write_capability_map_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
+    """Writes the Slide-8-style Business Capability Map SVG (`1440x810`) to `svg_path` and renders a PNG sibling."""
+    return _save_svg_and_png(render_capability_map_svg(spec), svg_path, width=1440, height=810)
 
 
 # ===========================================================================
@@ -1689,7 +1724,7 @@ def render_high_level_solution_svg(parsed: dict[str, Any]) -> str:
     """Renders the Executive High-Level Future State Solution Architecture (`1440x860`).
 
     Modeled directly on `resources/reference_high_level_solution_architecture.png` enhanced with the
-    AI-Era System of Intelligence & AI (Agentic Layer) and Salesforce Illuminate multi-layer structure:
+    AI-Era System of Intelligence & AI (Agentic Layer) and enterprise system-of-intelligence multi-layer structure:
     - Top Row: Business Personas & Actors with blue silhouette user avatars
     - Band 1: Engagement Layer (System of Engagement — Portals, Consoles, BI/Analytics, AI Copilot UX)
     - Band 2: System of Intelligence & AI (Thick Cyan `#00A1E0` rounded container with:

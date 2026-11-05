@@ -17,7 +17,7 @@ upstream artefacts everything else derives from. Read first: `docs/ARCHITECTURE.
 0. **Verify Stage 0 (`gate_0_setup`) is Approved Before Scanning.** If the user only asked to connect/configure Azure DevOps (ADO) or Jira, or has not yet selected which ADO Project and repository to work on, **STOP IMMEDIATELY** — Stage 0 (`00-setup-and-connection`) must run `setup_project_connection.py --action list-ado-projects`, ask the user which ADO Project & repository to work on, save `specs/project_setup.json`, and obtain human Gate 0 approval (`gate_0_setup = APPROVED_BY_USER`) before Stage 1 runs.
 1. **Classify, don't guess (and crawl any reference URL first).** If the user provided a reference portal URL
    (in their prompt or inside `resources/design_references/`), run `capture_design_reference.py --project-root <ROOT> [--url <URL>]`
-   first so `resources/design_references/reference_ui_manifest.json` and `resources/design_references/screenshots/`
+   first so `specs/design_reference/reference_ui_manifest.json` and `specs/design_reference/screenshots/`
    capture the live CSS tokens, tab/view topology, wizard steps, and viewport screenshots before authoring
    `specs/discovery_architecture_and_inventory.md`. Then run `scan_input_sources.py` (with `--ado-repo`, `--git-repo`, or `--input-dir` as confirmed in Step 0); read `specs/input_inventory.json`. If
    `scenarioConfidence == LOW`, or the inputs mix legacy exports with a requirements document, ask the user

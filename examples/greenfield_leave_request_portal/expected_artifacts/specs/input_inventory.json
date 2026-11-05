@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "scannedAtUtc": "2026-10-29T23:52:14Z",
+  "scannedAtUtc": "1970-01-01T00:00:00Z",
   "projectRoot": ".",
   "domainSlug": "employee-leave-exception-request-portal",
   "domainSlugSource": "primary-document-h1",
@@ -11,7 +11,7 @@
     "requirementsDocCount": 1,
     "legacyWeight": 0,
     "requirementsWeight": 3,
-    "decisionRule": "majority-by-weight over categorised files under resources/inputs (schema/source=3, query/form/report=2, requirements_doc=3); LOW confidence when zero files, margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
+    "decisionRule": "majority-by-weight over categorised files under resources/inputs (schema/source/db-container/data-export=3, query/form/report=2, requirements_doc=3); narrative .md/.docx/.pdf files count as requirements_doc only when they carry requirement keywords or are the only/largest document; LOW confidence when zero files, margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
   },
   "scenarioConfidence": "HIGH",
   "includeModernizationEnhancementsInSpec": false,
@@ -19,6 +19,7 @@
   "hasUserProvidedDesignReferences": false,
   "userProvidedDesignReferences": [],
   "legacyObjectNames": [],
+  "legacyFileStems": [],
   "inputFingerprintSha256": "b34dd5c4da8289f9e792d1df0d553667edbbd9e6122f6ccdb68d58202c58e823",
   "totalFilesScanned": 1,
   "files": [

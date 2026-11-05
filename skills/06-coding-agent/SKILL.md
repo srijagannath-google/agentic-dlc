@@ -33,7 +33,7 @@ Gaps are reported upstream, not reconstructed.
 ## Procedure
 
 ### 1. Design-reference & Google Cloud UI Design System ingestion (`google-cloud-ui-design`)
-- Inspect `resources/design_references/reference_ui_manifest.json` and `resources/design_references/screenshots/`
+- Inspect `specs/design_reference/reference_ui_manifest.json` and `specs/design_reference/screenshots/`
   when present: apply the extracted CSS custom properties (`designTokens`), header/banner and accent colours, font
   families, border radii, and view/tab topology (`views` + `wizardSteps`).
 - When user design references do not override the palette/layout, apply the **Google Cloud UI Design System**

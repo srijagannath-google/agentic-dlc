@@ -32,8 +32,31 @@ import dlc_common as dlc  # noqa: E402
 import gcp_diagram_renderer as gdr  # noqa: E402
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete", "head", "options"}
-CONSTRAINT_KW = ("primary", "foreign", "unique", "constraint", "check", "key", "index", "exclude", "period")
+# Table-level constraint clauses (token test — a column named key_number / index_no / check_in_date / period_start
+# must NOT be mistaken for a constraint).
+CONSTRAINT_RE = re.compile(
+    r"^\s*(?:PRIMARY\s+KEY|FOREIGN\s+KEY|UNIQUE|CONSTRAINT|CHECK\s*\(|INDEX|KEY\s*\(|EXCLUDE|PERIOD\s+FOR|LIKE)\b",
+    re.IGNORECASE,
+)
 SNAKE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def legacy_identifier_sets(inv: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """Return `(fail_ids, warn_ids)` of lower-cased legacy identifiers from `specs/input_inventory.json`.
+
+    * `fail_ids` — real legacy object names (`legacyObjectNames`: CREATE TABLE / XSD element / `Name=` / prefixed
+      Access identifiers). A target table, column or visible UI token equal to one of these is a legacy carry-over.
+    * `warn_ids` — bare file-name stems of legacy artefacts (`legacyFileStems`, or derived from `files[]` for
+      inventories written before that key existed). Collisions are reported as warnings only.
+
+    Shared by 04/extract_contracts.py and 05/derive_test_cases.py.
+    """
+    fail_ids = {str(n).strip().lower() for n in inv.get("legacyObjectNames", []) if str(n).strip()}
+    stems = inv.get("legacyFileStems")
+    if not isinstance(stems, list):
+        stems = [Path(str(f.get("name", ""))).stem for f in inv.get("files", []) if str(f.get("category", "")).startswith("legacy_")]
+    warn_ids = {str(s).strip().lower() for s in stems if len(str(s).strip()) >= 3}
+    return fail_ids, warn_ids - fail_ids
 
 
 # ------------------------------------------------------------------------------------------ OpenAPI (indent parser)
@@ -142,7 +165,7 @@ def parse_ddl(sql: str) -> list[dict[str, Any]]:
         cols, pk = [], False
         for part in split_top_level(body):
             first = part.split()[0].strip('`"[]') if part.split() else ""
-            if first.lower().startswith(CONSTRAINT_KW):
+            if CONSTRAINT_RE.match(part):
                 if re.search(r"PRIMARY\s+KEY", part, re.IGNORECASE):
                     pk = True
                 continue
@@ -164,6 +187,9 @@ def main() -> int:
     ap.add_argument("--ddl-out", default="src/db/schema.sql")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
+
+    # With --json stdout must stay parseable JSON: route progress messages to stderr.
+    log = (lambda m: print(f"[dlc] {m}", file=sys.stderr)) if args.json else dlc.info
 
     root = dlc.resolve_project_root(args.project_root)
     dlc.require_gate_approved(root, "gate_3_backlog", "Stage 4A (04-solution-architect / extract_contracts.py)")
@@ -398,6 +424,7 @@ def main() -> int:
             if spec_errs:
                 fails.extend(spec_errs)
             else:
+                warns.extend(gdr.reference_layout_warnings(spec_obj, label))
                 svg_out = arch_path.parent / "diagrams" / f"{default_stem}.svg"
                 svg_written, png_written = gdr.write_svg_and_png(spec_obj, svg_out)
                 rendered_svgs.append(str(svg_written.relative_to(root)))
@@ -558,6 +585,18 @@ def main() -> int:
         )
     elif not re.search(r"\w+\s+[|}o][|o]?--[|o][|{o]?\s+\w+", er_blocks[0]) and not re.search(r"^\s*\w+\s*\{", er_blocks[0], re.MULTILINE):
         fails.append(f"Future-State erDiagram block in {args.design} contains no entities or relationships.")
+    else:
+        data_er_blocks = [b for b in dlc.md_fenced_blocks(data_doc, "mermaid") if "erdiagram" in b.lower()]
+        if db_kind != "none" and data_doc and not data_er_blocks:
+            warns.append("design/data_architecture.md has no 3NF ```mermaid erDiagram block mirroring design/solution_design.md.")
+        elif data_er_blocks:
+            sol_ents = {e.lower() for e in re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\{", er_blocks[0], re.MULTILINE)}
+            dat_ents = {e.lower() for e in re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\{", data_er_blocks[0], re.MULTILINE)}
+            if sol_ents and dat_ents and sol_ents != dat_ents:
+                fails.append(
+                    f"3NF erDiagram entity mismatch between design/data_architecture.md ({sorted(dat_ents)}) and "
+                    f"{args.design} ({sorted(sol_ents)}). Keep both 3NF entity models synchronized."
+                )
 
     # ---- Legacy-to-Target 3NF Entity Mapping in Stage 4A (for SCENARIO_LEGACY_APP)
     if legacy:
@@ -578,6 +617,10 @@ def main() -> int:
         (fails if backend_kind != "none" else warns).append(
             f"No ```yaml block containing 'openapi:' in {args.design} (backend.kind={backend_kind}).")
     else:
+        if len(yaml_blocks) > 1:
+            fails.append(
+                f"Found {len(yaml_blocks)} ```yaml blocks containing 'openapi:' in {args.design} — consolidate into a single canonical OpenAPI 3.1 contract."
+            )
         openapi_text = yaml_blocks[0]
         api = parse_openapi(openapi_text)
         if not api["version"].startswith("3"):
@@ -600,7 +643,7 @@ def main() -> int:
                 warns.append(f"State-machine trigger '{trig}' has no OpenAPI path/operationId containing '{dlc.slugify(trig)}'.")
         out_api = dlc.project_path(root, args.openapi_out)
         dlc.write_text(out_api, openapi_text if openapi_text.endswith("\n") else openapi_text + "\n")
-        dlc.info(f"wrote {out_api} ({len(api['paths'])} operations)")
+        log(f"wrote {out_api} ({len(api['paths'])} operations)")
 
     # ---- DDL
     sql_blocks = [b for b in dlc.md_fenced_blocks(design, "sql") if re.search(r"CREATE\s+TABLE", b, re.IGNORECASE)]
@@ -613,12 +656,7 @@ def main() -> int:
         tables = parse_ddl(ddl_text)
         if not tables:
             fails.append("CREATE TABLE statements could not be parsed (check parentheses).")
-        legacy_ids = set()
-        if legacy:
-            for f in inv.get("files", []):
-                if str(f.get("category", "")).startswith("legacy_"):
-                    legacy_ids.add(Path(f["name"]).stem.lower())
-            legacy_ids |= {str(n).lower() for n in inv.get("legacyObjectNames", [])}
+        legacy_fail, legacy_warn = legacy_identifier_sets(inv) if legacy else (set(), set())
         seen_tables = set()
         for t in tables:
             if t["name"] in seen_tables:
@@ -633,11 +671,14 @@ def main() -> int:
                     fails.append(f"Column '{t['name']}.{c}' is not snake_case.")
             if legacy:
                 for ident in [t["name"]] + t["columns"]:
-                    if ident.lower() in legacy_ids:
-                        fails.append(f"'{t['name']}.{ident}' equals a legacy identifier from the input estate — rename (clean migration, no legacy carry-over).")
+                    low = ident.lower()
+                    if low in legacy_fail:
+                        fails.append(f"'{t['name']}.{ident}' equals a legacy object identifier from the input estate — rename (clean migration, no legacy carry-over).")
+                    elif low in legacy_warn:
+                        warns.append(f"'{t['name']}.{ident}' matches bare legacy file stem '{low}' — verify it is a genuine domain noun, not a legacy table/form name.")
         out_ddl = dlc.project_path(root, args.ddl_out)
         dlc.write_text(out_ddl, ddl_text)
-        dlc.info(f"wrote {out_ddl} ({len(tables)} tables)")
+        log(f"wrote {out_ddl} ({len(tables)} tables)")
 
     # ---- Legacy-only artefact
     if legacy and not (root / "design" / "data_migration_and_cutover.md").exists():

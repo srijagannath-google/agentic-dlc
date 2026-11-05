@@ -13,7 +13,7 @@
     "scannedAtUtc": { "type": "string" },
     "projectRoot": { "type": "string" },
     "domainSlug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-    "domainSlugSource": { "type": "string", "enum": ["flag", "primary-document-h1", "project-directory-name", "source-repository"] },
+    "domainSlugSource": { "type": "string", "enum": ["flag", "primary-document-h1", "primary-document-filename", "project-directory-name", "source-repository"] },
     "sourceRepository": {
       "type": ["object", "null"],
       "description": "Optional provenance metadata when Stage 1 ingests inputs from an Azure DevOps (ADO) or Git repository.",
@@ -55,7 +55,12 @@
     },
     "legacyObjectNames": {
       "type": "array",
-      "description": "Table/element/form/report object names found inside legacy artefacts (feeds forbiddenUiTokens.legacyIdentifiers).",
+      "description": "Real table/element/form/report object names found inside legacy artefacts (CREATE TABLE, XSD element, `Name=` object line, prefixed Access identifier). Feeds forbiddenUiTokens.legacyIdentifiers (FAIL-level).",
+      "items": { "type": "string" }
+    },
+    "legacyFileStems": {
+      "type": "array",
+      "description": "Bare file-name stems of legacy artefacts (not object names). Downstream scripts treat collisions with these as WARN only (forbiddenUiTokens.legacyIdentifiersWarnOnly).",
       "items": { "type": "string" }
     },
     "inputFingerprintSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },

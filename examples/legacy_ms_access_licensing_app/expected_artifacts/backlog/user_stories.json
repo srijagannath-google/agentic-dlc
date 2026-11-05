@@ -485,7 +485,7 @@
       "statusReason": "All 8/8 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "Form_frmBusinessLicenseApplication.txt (cmdAddAgent/cmdAssignAgent/cmdRemoveAgent/cmdDeleteAgent handlers)",
@@ -893,7 +893,7 @@
       "statusReason": "All 6/6 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "Form_frmBusinessLicenseNewApplications.txt",
@@ -1122,7 +1122,7 @@
       "statusReason": "All 6/6 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "Form_frmBusinessLicenseApplication.txt (cmdPreviewReport, cmdAgentCardsSingle)",
@@ -1459,7 +1459,7 @@
       "statusReason": "All 6/6 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "Form_frmBusinessLicenseApplicantSelection.txt (search handlers, cmdDeleteApplicant_Click)",
@@ -1615,7 +1615,7 @@
       "statusReason": "All 4/4 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "tblBusinessLicenseFiles.xsd",
@@ -1773,7 +1773,7 @@
       "statusReason": "All 6/6 linked tests passed and verified",
       "statusUpdatedAtUtc": "1970-01-01T00:00:00Z",
       "capabilityGroup": "GRP-02",
-      "capabilityGroupName": "Forestry Division Adjudication, Registry & Card Issuance",
+      "capabilityGroupName": "Licensing Operations Adjudication, Registry & Card Issuance",
       "traceability": {
         "legacySourceArtifacts": [
           "volume-fee form family (overview document)"

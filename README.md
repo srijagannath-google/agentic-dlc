@@ -76,11 +76,11 @@ flowchart LR
 <PROJECT_ROOT>/
 ├── resources/
 │   ├── inputs/                     # Legacy exports (.xsd, .sql, .txt, .bas) or greenfield requirements docs (.md, .docx)
-│   ├── design_references/          # Reference URLs (.url, .url.json, .txt), HTML prototypes, reference_ui_manifest.json, screenshots/
+│   ├── design_references/          # User-provided reference URLs (.url, .url.json, .txt) & HTML prototypes (read-only)
 │   ├── policies_and_statutes/      # Business policies, compliance rules, regulatory standards & UX mandates
 │   └── shared_services/            # Enterprise shared service catalogs & style guides
 ├── specs/
-│   ├── project_setup.json · gate_approvals.json · input_inventory.json
+│   ├── project_setup.json · gate_approvals.json · input_inventory.json · design_reference/ (manifest + screenshots)
 │   └── discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md · application_eval_scorecard.{md,json}
 ├── backlog/
 │   └── user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv

@@ -67,9 +67,9 @@
     },
     "selectedCapabilityGroups": {
       "type": "array",
-      "description": "Human-selected Capability Group IDs to take forward for implementation (e.g. ['GRP-01'] or ['GRP-01', 'GRP-02']), or ['ALL'] when the user selects all groupings.",
+      "description": "Human-selected Capability Group IDs to take forward for implementation (e.g. ['GRP-01'] or ['GRP-01', 'GRP-02']), or ['ALL'] when the user selects all groupings. 'SHARED' / 'GRP-SHARED' names the shared-foundation group (always included implicitly).",
       "minItems": 1,
-      "items": { "type": "string", "pattern": "^(ALL|\\*|GRP-[0-9]{2,})$" }
+      "items": { "type": "string", "pattern": "^(ALL|\\*|GRP-[0-9]{2,}|GRP-SHARED|SHARED)$" }
     },
     "sprintCapacityPoints": {
       "type": "integer",

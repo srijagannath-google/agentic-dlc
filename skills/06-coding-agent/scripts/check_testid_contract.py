@@ -8,8 +8,12 @@ Source of truth, in order:
      (plus role switcher ids implied by `setRole` steps: `role-switcher` or `role-<slug>` — either is accepted).
 
 Searches `src/ui/**` (html, js, jsx, ts, tsx, vue, svelte, css) and any `*.html` under `src/backend/**`
-(server templates). Matches `data-testid="x"`, `data-testid='x'`, `data-testid=x`, `data-testid={"x"}`,
-`dataset.testid = "x"`, `setAttribute('data-testid', 'x')` and `testid: 'x'`-style object literals.
+(server templates); `node_modules/`, `dist/`, `build/`, `.next/`, `coverage/`, `.venv/` are never scanned (built or
+vendored output is not the contract). Only ATTRIBUTE-EMITTING patterns count as an implementation:
+`data-testid="x"`, `data-testid='x'`, `data-testid=x`, `data-testid={"x"}`, `'data-testid': 'x'` / `"data-testid": "x"`
+inside JSX/props objects, `dataset.testid = "x"`, `setAttribute('data-testid', 'x')` and `testid="x"`-style template
+helpers. Mentions in `querySelector('[data-testid=x]')`, array literals or comments are reported separately as
+"weak evidence" and do NOT satisfy the contract.
 
 Usage: python3 check_testid_contract.py --project-root <PROJECT_ROOT> [--write-derived]
 Exit 1 if any declared test id is missing from the UI source.
@@ -25,7 +29,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
 
 UI_EXT = {".html", ".htm", ".js", ".mjs", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".css", ".py", ".java", ".go", ".kt", ".cs", ".php", ".rb", ".erb", ".jinja", ".jinja2", ".j2", ".tpl", ".hbs", ".ejs"}
+EXCLUDED_DIRS = {"node_modules", "dist", "build", ".next", ".nuxt", ".svelte-kit", "coverage", ".venv", "venv", "__pycache__", ".git", "out", "target"}
 TESTID_IN_SELECTOR = re.compile(r"data-testid\s*[*^$|~]?=\s*[\"']?([A-Za-z0-9_.:\-]+)[\"']?")
+_ID = r"([A-Za-z0-9_.:\-]+)"
+# Attribute-emitting patterns (strong evidence — these put the attribute on an element)
+STRONG_PATTERNS = [
+    re.compile(r"(?<![\[\w.-])data-testid\s*=\s*\{?\s*[\"'`]" + _ID + r"[\"'`]"),       # data-testid="x" / data-testid={'x'} (not inside [...] selectors)
+    re.compile(r"(?<![\[\w.-])data-testid\s*=\s*" + _ID + r"(?=[\s>/])"),               # data-testid=x (unquoted HTML attribute)
+    re.compile(r"[\"']data-testid[\"']\s*:\s*[\"'`]" + _ID + r"[\"'`]"),                 # {'data-testid': 'x'} props / attrs objects
+    re.compile(r"dataset\.testid\s*=\s*[\"'`]" + _ID + r"[\"'`]"),
+    re.compile(r"setAttribute\(\s*[\"']data-testid[\"']\s*,\s*[\"'`]" + _ID + r"[\"'`]"),
+    re.compile(r"(?<![\w.-])testid\s*=\s*[\"'`]" + _ID + r"[\"'`]"),                      # testid="x" template helpers (<Comp testid="x">)
+    re.compile(r"(?<![\w.\"'-])testid\s*:\s*[\"'`]" + _ID + r"[\"'`]"),                   # testid: 'x' inside a props/attrs object literal
+    re.compile(r"\b(?:testId|dataTestId|data_testid)\s*[:=]\s*[\"'`]" + _ID + r"[\"'`]"),  # React/Vue prop spellings
+]
+# Query / selector / comment mentions (weak evidence — they look for the attribute, they do not create it)
+WEAK_PATTERNS = [
+    re.compile(r"\[data-testid\s*[*^$|~]?=\s*[\"']?" + _ID + r"[\"']?\]"),
+    re.compile(r"(?://|#|\*|<!--)[^\n]*?\bdata-testid\b[^\n]*?[\"'`]" + _ID + r"[\"'`]"),
+]
 
 
 def declared_ids_from_steps(suite: dict) -> tuple[list[str], list[str]]:
@@ -41,22 +63,30 @@ def declared_ids_from_steps(suite: dict) -> tuple[list[str], list[str]]:
     return list(ids), list(roles)
 
 
-def collect_source_ids(files: list[Path]) -> dict[str, set[str]]:
-    found: dict[str, set[str]] = {}
-    pats = [
-        re.compile(r"data-testid\s*=\s*\{?\s*[\"'`]([^\"'`]+)[\"'`]"),
-        re.compile(r"data-testid\s*=\s*([A-Za-z0-9_.:\-]+)"),
-        re.compile(r"dataset\.testid\s*=\s*[\"'`]([^\"'`]+)[\"'`]"),
-        re.compile(r"setAttribute\(\s*[\"']data-testid[\"']\s*,\s*[\"'`]([^\"'`]+)[\"'`]"),
-        re.compile(r"[\"']?testid[\"']?\s*:\s*[\"'`]([^\"'`]+)[\"'`]", re.I),
-        re.compile(r"\[data-testid\s*=\s*[\"']?([A-Za-z0-9_.:\-]+)[\"']?\]"),  # querySelector usages in JS count as evidence too
-    ]
+def _strip_comments(txt: str, suffix: str) -> str:
+    """Blank out block/line comments so a commented-out `data-testid="x"` never counts as an implementation."""
+    txt = re.sub(r"/\*.*?\*/", lambda m: " " * len(m.group(0)), txt, flags=re.S)
+    txt = re.sub(r"<!--.*?-->", lambda m: " " * len(m.group(0)), txt, flags=re.S)
+    txt = re.sub(r"(?m)^\s*//[^\n]*", "", txt)
+    if suffix in (".py", ".rb"):
+        txt = re.sub(r"(?m)^\s*#[^\n]*", "", txt)
+    return txt
+
+
+def collect_source_ids(files: list[Path]) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    """Return (strong, weak): test id → files. Only `strong` (attribute-emitting) evidence satisfies the contract."""
+    strong: dict[str, set[str]] = {}
+    weak: dict[str, set[str]] = {}
     for f in files:
-        txt = dlc.read_text(f)
-        for rx in pats:
+        raw = dlc.read_text(f)
+        txt = _strip_comments(raw, f.suffix.lower())
+        for rx in STRONG_PATTERNS:
             for m in rx.finditer(txt):
-                found.setdefault(m.group(1), set()).add(str(f))
-    return found
+                strong.setdefault(m.group(1), set()).add(str(f))
+        for rx in WEAK_PATTERNS:
+            for m in rx.finditer(raw):
+                weak.setdefault(m.group(1), set()).add(str(f))
+    return strong, weak
 
 
 # Dynamic test ids: `data-testid="open-${ref}"`, `data-testid="row-" + ref`, `dataset.testid = 'open-' + ref`,
@@ -124,13 +154,16 @@ def main() -> int:
             dlc.write_json(contract_p, {"schemaVersion": dlc.SCHEMA_VERSION, "testIds": declared, "roleSlugs": role_slugs, "derivedFrom": str(tc_p.relative_to(root))})
     declared = list(dict.fromkeys(d for d in declared if d))
 
-    ui_files = [p for p in (root / "src" / "ui").rglob("*") if p.is_file() and p.suffix.lower() in UI_EXT] if (root / "src" / "ui").exists() else []
-    tpl_files = [p for p in (root / "src" / "backend").rglob("*.html") if p.is_file()] if (root / "src" / "backend").exists() else []
-    tpl_files += [p for p in (root / "src").rglob("*.html") if p.is_file() and p not in ui_files and p not in tpl_files and "node_modules" not in p.parts]
+    def _scannable(p: Path) -> bool:
+        return p.is_file() and not any(part in EXCLUDED_DIRS for part in p.relative_to(root).parts)
+
+    ui_files = sorted(p for p in (root / "src" / "ui").rglob("*") if _scannable(p) and p.suffix.lower() in UI_EXT) if (root / "src" / "ui").exists() else []
+    tpl_files = sorted(p for p in (root / "src" / "backend").rglob("*.html") if _scannable(p)) if (root / "src" / "backend").exists() else []
+    tpl_files += sorted(p for p in (root / "src").rglob("*.html") if _scannable(p) and p not in ui_files and p not in tpl_files)
     files = ui_files + tpl_files
     if not files:
         raise dlc.GateFailure("No UI source files under src/ui/ (or templates under src/) — Stage 5 (06-coding-agent) must generate the UI first.")
-    found = collect_source_ids(files)
+    found, weak = collect_source_ids(files)
     prefixes = collect_dynamic_prefixes(files)
     tc_p2 = dlc.project_path(root, args.test_cases)
     absence_only = absence_only_ids(dlc.read_json(tc_p2)) if tc_p2.exists() else set()
@@ -141,15 +174,19 @@ def main() -> int:
     missing = [d for d in declared if not present(d) and d not in absence_only]
     absent_ok = [d for d in declared if not present(d) and d in absence_only]
     dynamic_ok = [d for d in declared if d not in found and present(d)]
+    weak_only = [d for d in missing if d in weak]  # mentioned in a selector / comment but never emitted as an attribute
     role_missing = [r for r in role_slugs if "role-switcher" not in found and f"role-{r}" not in found]
 
     print(f"=== data-testid contract check ({source}) ===")
     print(f"declared: {len(declared)} · present: {len(declared) - len(missing) - len(absent_ok)} · dynamic-prefix matches: {len(dynamic_ok)} · "
-          f"absence-only (never rendered by design): {len(absent_ok)} · missing: {len(missing)} · scanned files: {len(files)}")
+          f"absence-only (never rendered by design): {len(absent_ok)} · missing: {len(missing)} (weak evidence only: {len(weak_only)}) · scanned files: {len(files)}")
     for d in absent_ok:
         print(f"  · absence-only id (only asserted hidden by the test plan): {d}")
     for d in missing:
-        print(f"  ✗ missing data-testid: {d}")
+        if d in weak:
+            print(f"  ✗ missing data-testid: {d}  (only referenced by a selector/comment in {', '.join(sorted(Path(x).name for x in weak[d])[:3])} — never emitted as an attribute)")
+        else:
+            print(f"  ✗ missing data-testid: {d}")
     for r in role_missing:
         print(f"  ✗ setRole('{r}') needs [data-testid=role-switcher] (select) or [data-testid=role-{r}] (button/tab)")
     if not declared:

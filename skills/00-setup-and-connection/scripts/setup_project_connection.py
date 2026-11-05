@@ -37,8 +37,11 @@ import dlc_common as dlc  # noqa: E402
 
 
 def load_env_files(project_root: Path | None = None) -> list[str]:
+    """Populate os.environ from `<PROJECT_ROOT>/.env` and `~/.gemini/config/agentic-dlc.env` only (never the current
+    working directory — a stray `.env` in an unrelated folder must not inject credentials). Real environment
+    variables are never overridden."""
     loaded: list[str] = []
-    candidates = [Path.cwd() / ".env", Path.home() / ".gemini" / "config" / "agentic-dlc.env"]
+    candidates = [Path.home() / ".gemini" / "config" / "agentic-dlc.env"]
     if project_root:
         candidates.insert(0, project_root / ".env")
     for env_path in candidates:
@@ -93,6 +96,25 @@ def _jira_get_json(url: str, email: str, token: str) -> Any:
         raise dlc.GateFailure(f"Could not reach Jira ({url}): {exc}") from exc
 
 
+def verify_alm_connection(alm: str, ado_org: str, ado_pat: str, jira_url: str, jira_email: str, jira_token: str) -> bool:
+    """`connectionVerified` is true ONLY after a successful authenticated REST call to the ALM platform —
+    never because a token happens to be present in the environment."""
+    try:
+        if alm == "ado":
+            if not (ado_org and ado_pat):
+                return False
+            _ado_get_json(f"{ado_org}/_apis/projects?api-version=7.1&$top=1", ado_pat)
+            return True
+        if alm == "jira":
+            if not (jira_url and jira_email and jira_token):
+                return False
+            me = _jira_get_json(f"{jira_url}/rest/api/3/myself", jira_email, jira_token)
+            return isinstance(me, dict) and bool(me.get("accountId") or me.get("emailAddress") or me.get("displayName"))
+    except SystemExit as exc:  # dlc.GateFailure — connection problems are reported, not fatal, at save time
+        dlc.warn(f"ALM connection could not be verified: {str(exc)[:300]}")
+    return False
+
+
 def _write_setup(root: Path, payload: dict[str, Any]) -> Path:
     out = root / "specs" / "project_setup.json"
     errs = dlc.validate_against_schema(payload, dlc.load_schema("project_setup.schema.json"))
@@ -120,6 +142,10 @@ def upsert_env_vars(env_file: Path, updates: dict[str, str]) -> None:
     for k, val in remaining.items():
         out_lines.append(f'{k}="{val}"' if " " in val else f"{k}={val}")
     env_file.write_text("\n".join(out_lines).rstrip() + "\n", encoding="utf-8")
+    try:
+        os.chmod(env_file, 0o600)  # the file may later hold ADO_PAT / JIRA_API_TOKEN — owner-only from the start
+    except OSError:
+        pass
 
 
 def main() -> int:
@@ -133,7 +159,6 @@ def main() -> int:
     )
     ap.add_argument("--ado-org-url", default=None, help="Azure DevOps Organization URL (https://dev.azure.com/<org>)")
     ap.add_argument("--ado-project", default=None, help="Azure DevOps Project name")
-    ap.add_argument("--ado-pat", default=None, help="Azure DevOps Personal Access Token (optional; prefer .env / env var)")
     ap.add_argument("--jira-url", default=None, help="Jira Cloud base URL")
     ap.add_argument("--jira-project-key", default=None, help="Jira Project Key")
     ap.add_argument("--input-kind", default="tbd", choices=["ado", "git", "local-dir", "resources-inputs", "tbd"])
@@ -164,7 +189,7 @@ def main() -> int:
     loaded_envs = load_env_files(root)
     ado_org = (args.ado_org_url or os.environ.get("ADO_ORG_URL") or "").strip().rstrip("/")
     ado_proj = (args.ado_project or os.environ.get("ADO_PROJECT") or "").strip()
-    ado_pat = (args.ado_pat or os.environ.get("ADO_PAT") or "").strip()
+    ado_pat = (os.environ.get("ADO_PAT") or "").strip()  # env / .env only — never a CLI flag (argv is visible in `ps`)
     jira_url = (args.jira_url or os.environ.get("JIRA_URL") or "").strip().rstrip("/")
     jira_email = (os.environ.get("JIRA_EMAIL") or "").strip()
     jira_token = (os.environ.get("JIRA_API_TOKEN") or "").strip()
@@ -335,7 +360,7 @@ def main() -> int:
                 "adoProject": ado_proj or None,
                 "jiraUrl": jira_url or None,
                 "jiraProjectKey": jira_key or None,
-                "connectionVerified": bool((alm == "ado" and ado_org and ado_pat) or (alm == "jira" and jira_url and jira_token)),
+                "connectionVerified": verify_alm_connection(alm, ado_org, ado_pat, jira_url, jira_email, jira_token),
             },
             "notes": args.notes,
         }

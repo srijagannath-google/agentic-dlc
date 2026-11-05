@@ -24,8 +24,9 @@
         "schemaIdentifiers": { "type": "array", "items": { "type": "string" } },
         "schemaIdentifiersIgnored": { "type": "array", "items": { "type": "string" }, "description": "Plain-English single-word column names excluded from scanning to avoid false positives on labels." },
         "enumCodes": { "type": "array", "items": { "type": "string" } },
-        "enumCodesWarnOnly": { "type": "array", "items": { "type": "string" }, "description": "Short all-caps OpenAPI enum members that may also be legitimate words; reported as warnings only." },
-        "legacyIdentifiers": { "type": "array", "items": { "type": "string" } },
+        "enumCodesWarnOnly": { "type": "array", "items": { "type": "string" }, "description": "Single-word all-caps codes (state/trigger codes such as DRAFT or SUBMIT and short OpenAPI enum members) that may also be legitimate words in visible text; reported as warnings only. Multi-word UPPER_SNAKE codes stay in enumCodes (FAIL-level)." },
+        "legacyIdentifiers": { "type": "array", "items": { "type": "string" }, "description": "Real legacy object names (tables, XSD elements, form/report/control names) from specs/input_inventory.json#legacyObjectNames; FAIL-level when rendered." },
+        "legacyIdentifiersWarnOnly": { "type": "array", "items": { "type": "string" }, "description": "Bare legacy file-name stems (specs/input_inventory.json#legacyFileStems); a collision is reported as a warning only." },
         "piiPatterns": { "type": "array", "items": { "type": "string" }, "description": "Regexes for unmasked sensitive values (from spec Pillar 2 PII inventory)." },
         "engineeringNotePatterns": { "type": "array", "items": { "type": "string" } }
       }
@@ -60,7 +61,7 @@
         "needsSteps": { "type": "boolean", "description": "true while the LLM still has to author/complete steps; validate_test_cases.py fails on any true." },
         "derivationKey": { "type": "string", "description": "Stable key used to preserve authored steps across re-derivation (e.g. 'ac:US-FUNC-01/AC-02', 'illegal:Draft/Approve', 'role:Applicant/Approve', 'api:GET /api/x')." },
         "derivation": { "type": "object", "description": "Free-form provenance (state, trigger, role, method, path, tag)." },
-        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } }
+        "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" }, "description": "At least one step; every non-deferred test case must also contain ≥ 1 assertion step (expect* or httpRequest with expectStatus/expectJsonPath)." }
       }
     },
     "step": {

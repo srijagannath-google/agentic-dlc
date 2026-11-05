@@ -2,7 +2,7 @@
   "schemaVersion": "4.0",
   "derivedAtUtc": "1970-01-01T00:00:00Z",
   "derivedFrom": {
-    "userStoriesSha256": "1558aa713b1e900660d5faa36782b1c5907c118515d03c4044a99bc56f20a713",
+    "userStoriesSha256": "1fad3dcd5c1fbc751a638877d8eb203ccabbb993dc2581e31c9311edf403928e",
     "specSha256": "da46761b820842390b60641fc8661b470f0a683d283e5328b79be11ddb66e648",
     "contractsIndexSha256": "724f2236d979951ff4947d9bd5d9e8f3f49eacbb137f888dceada8770d09ce2a",
     "inputInventoryFingerprint": "b34dd5c4da8289f9e792d1df0d553667edbbd9e6122f6ccdb68d58202c58e823"

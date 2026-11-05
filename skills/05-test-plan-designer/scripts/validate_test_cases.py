@@ -2,9 +2,11 @@
 """Gate 4b — validate `test/test_cases.json` (05-test-plan-designer).
 
 Checks: schema (schemas/test_cases.schema.json, stdlib validator), freshness against stories/spec, every AC of
-every story covered by a TC, no TC with `needsSteps: true` or empty `steps` (the Gate 4b condition), every step
-action allowed with the fields it needs, non-empty selectors, and writes `test/.testid_contract.json` — the
-sorted unique list of `[data-testid=…]` hooks the coding agent must implement (contract-first).
+every story covered by a TC, no TC with `needsSteps: true` or empty `steps` (the Gate 4b condition), every
+non-deferred TC carries >= 1 assertion step (expect* / httpRequest with an expectation), deferral recomputed from
+`specs/target_stack.json#selectedCapabilityGroups` + the story's `capabilityGroup`, every step action allowed with
+the fields it needs, non-empty selectors, and writes `test/.testid_contract.json` — the sorted unique list of
+`[data-testid=…]` hooks the coding agent must implement (contract-first).
 
 Usage:
     python3 validate_test_cases.py --project-root <PROJECT_ROOT> [--file test/test_cases.json] [--json]
@@ -24,6 +26,22 @@ SELECTOR_ACTIONS = {"fill", "select", "click", "expectText", "expectVisible", "e
                     "check", "uncheck", "expectAttribute"}
 NEEDS_VALUE = {"fill", "select", "setRole"}
 TESTID_RE = re.compile(r"\[data-testid\s*=\s*[\"']?([^\]\"']+)[\"']?\]")
+
+
+def is_assertion_step(st: dict) -> bool:
+    """A step that can fail the test: any expect* action, or an httpRequest that declares an expectation."""
+    a = str(st.get("action") or "")
+    if a.startswith("expect"):
+        return True
+    return a == "httpRequest" and ("expectStatus" in st or "expectJsonPath" in st)
+
+
+def story_is_deferred(story: dict | None, is_all: bool, selected_groups: set[str]) -> bool:
+    """Recompute deferral from specs/target_stack.json#selectedCapabilityGroups + the story's capabilityGroup
+    (the `deferredByGroupSelection` flag written by derive_test_cases.py is informational, never trusted)."""
+    if story is None:
+        return False
+    return not dlc.is_story_in_selected_group(story, is_all, selected_groups)
 
 
 def main() -> int:
@@ -73,18 +91,29 @@ def main() -> int:
         if t.get("storyRef") and t["storyRef"] not in story_ids:
             warns.append(f"{t.get('id')}: storyRef {t['storyRef']} not in backlog")
 
-    # Steps (skip step requirement on test cases deferred by capability group selection when selectedCapabilityGroups != ['ALL'])
+    # Steps. Test cases whose parent story belongs to an unselected Capability Group (specs/target_stack.json#
+    # selectedCapabilityGroups != ['ALL']) are deferred: the step requirement is skipped for them. Deferral is
+    # recomputed here from the stack + story, not read from the file.
+    is_all, selected_groups = dlc.active_capability_groups(root)
+    story_by_id = {s["id"]: s for s in stories}
     needing = []
+    no_assertion = []
     deferred_by_group = []
     testids: set[str] = set()
     for t in tcs:
         tid = t.get("id", "?")
         steps = t.get("steps") or []
-        if t.get("deferredByGroupSelection"):
+        deferred = story_is_deferred(story_by_id.get(t.get("storyRef")), is_all, selected_groups) if t.get("storyRef") else False
+        if bool(t.get("deferredByGroupSelection")) != deferred:
+            warns.append(f"{tid}: deferredByGroupSelection={t.get('deferredByGroupSelection', False)} in the file but target_stack.json "
+                         f"selection says deferred={deferred} — re-run 05/scripts/derive_test_cases.py")
+        if deferred:
             deferred_by_group.append(tid)
             continue
         if t.get("needsSteps") or not steps:
             needing.append(tid)
+        elif not any(is_assertion_step(st) for st in steps if isinstance(st, dict)):
+            no_assertion.append(tid)
         for i, st in enumerate(steps):
             a = st.get("action")
             if a not in allowed_actions:
@@ -162,12 +191,17 @@ def main() -> int:
     if needing:
         fails.append(f"Gate 4b: {len(needing)} test case(s) still need steps (needsSteps=true or empty steps): "
                      + ", ".join(needing[:40]) + (" …" if len(needing) > 40 else ""))
+    if no_assertion:
+        fails.append(f"Gate 4b: {len(no_assertion)} test case(s) have steps but no assertion (expect* or httpRequest with "
+                     f"expectStatus/expectJsonPath) — a test that cannot fail verifies nothing: "
+                     + ", ".join(no_assertion[:40]) + (" …" if len(no_assertion) > 40 else ""))
 
     contract = {"schemaVersion": dlc.SCHEMA_VERSION, "sourceSha256": dlc.sha256_file(path),
                 "testIds": sorted(testids), "selectors": [f"[data-testid={t}]" for t in sorted(testids)]}
     dlc.write_json(root / "test" / ".testid_contract.json", contract)
 
-    result = {"passed": not fails, "testCases": len(tcs), "needingSteps": needing, "testIds": len(testids), "failures": fails, "warnings": warns}
+    result = {"passed": not fails, "testCases": len(tcs), "needingSteps": needing, "noAssertion": no_assertion,
+              "deferredByGroupSelection": deferred_by_group, "testIds": len(testids), "failures": fails, "warnings": warns}
     if args.json:
         print(json.dumps(result, indent=2))
     else:

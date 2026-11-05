@@ -70,9 +70,11 @@ def main() -> int:
         name = m.group(1).strip()
         if not name or PLACEHOLDER_RE.search(name):
             fails.append(f"Project Name looks like a placeholder: {name!r}")
+        # Whole-word match only ('java' must not fire on 'javelin'); WARN because a business name may legitimately
+        # contain such a word — the human confirms at Gate 1.
         for w in TECH_WORDS:
-            if re.search(rf"(?<![a-z]){re.escape(w)}(?![a-z])", name.lower()):
-                fails.append(f"Project Name must not contain target tech-stack words ('{w}'): {name!r}")
+            if re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", name.lower()):
+                warns.append(f"Project Name should be the business/domain name only — it contains a target tech-stack word ('{w}'): {name!r}")
 
     # 2. Scenario header must agree with the inventory
     sm = re.search(r"\*\*Input Scenario(?: Mode)?:?\*\*:?\s*`?(SCENARIO_[A-Z_]+)", md)
@@ -182,9 +184,10 @@ def main() -> int:
         backend = (stack.get("backend") or {}).get("kind", "none")
         cmds = stack.get("commands") or {}
         if backend not in ("none", "tbd") and stack.get("decidedBy") != "pending-stage-4a":
+            # commands.* are enforced at Gate 4a (04/scripts/extract_contracts.py); at Gate 1 they are advisory.
             for k in ("start", "healthcheck", "uiEntry"):
                 if not cmds.get(k):
-                    errs.append(f"$.commands.{k}: required when backend.kind is confirmed ({backend!r})")
+                    warns.append(f"specs/target_stack.json#commands.{k} is not set yet (backend.kind={backend!r}) — required by Stage 4A (extract_contracts.py).")
         if errs:
             fails.append("specs/target_stack.json violates schemas/target_stack.schema.json:\n    - " + "\n    - ".join(errs))
         sel_groups = [str(g).strip().upper() for g in (stack.get("selectedCapabilityGroups") or []) if str(g).strip()]

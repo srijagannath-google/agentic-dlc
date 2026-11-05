@@ -7,6 +7,7 @@
   "maxScore": 100,
   "scoringRules": [
     "Score every criterion 0..maxPoints. Any criterion awarded > 0 MUST quote verbatim evidence from specs/application_spec.md (the validator checks the quote is present, whitespace-normalised, case-insensitive). Separate several quotes with ' … '.",
+    "Evidence must be a real quote: at least 25 characters and 5 words after whitespace normalisation, never a bare id (REQ-FUNC-01), a single word or the criterion id. The validator warns when no quote comes from the criterion's own pillar section (or the section(s) named by the criterion's optional 'evidenceSections' heading patterns; the header block, §3.3–§3.5 tables and traceability section count for every pillar).",
     "Criteria with 'appliesTo' not containing the project's inputScenario are not applicable: award maxPoints and set evidence to 'N/A — not applicable to <scenario>'.",
     "A criterion marked blocking:true that scores 0 forces verdict FAIL regardless of the total.",
     "Verdict is PASS iff totalScore >= 90 and no blocking criterion scored 0. Self-heal the spec (not the scorecard) until PASS."
@@ -105,7 +106,8 @@
     {
       "id": "P4-C1", "pillar": 4, "title": "End-to-end user journeys per role", "maxPoints": 4, "blocking": false,
       "whatGoodLooksLike": "For each role in §3.5 a numbered journey from entry to the role's terminal outcome, naming the views used and the state transitions performed; step count derives from the spec, not from a template.",
-      "evidenceHint": "Quote the first step of one role's journey."
+      "evidenceHint": "Quote the first step of one role's journey.",
+      "evidenceSections": ["journeys"]
     },
     {
       "id": "P4-C2", "pillar": 4, "title": "UX guardrails adopted or explicitly overridden", "maxPoints": 3, "blocking": false,

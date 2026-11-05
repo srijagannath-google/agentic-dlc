@@ -16,14 +16,21 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import signal
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 SCHEMA_VERSION = "4.0"
-INSTALLER_DIR_PATTERN = re.compile(r"^.*agentic-dlc", re.IGNORECASE)
+# Exact plugin directory name only (`agentic-dlc`, `agentic-dlc-v4`, …) — a project called `agentic-dlc-demo-app`
+# or `my-agentic-dlc-project` is a legitimate <PROJECT_ROOT>. Checkouts under any other name are still recognised
+# by their plugin layout (`plugin.json` + `skills/`), see `is_installer_dir`.
+INSTALLER_DIR_PATTERN = re.compile(r"^agentic-dlc(-v\d+)?$", re.IGNORECASE)
 PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -31,9 +38,16 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 # Exit / logging helpers
 # --------------------------------------------------------------------------------------
 class GateFailure(SystemExit):
-    """Raised to stop a stage with a non-zero exit code and a human-readable reason."""
+    """Raised to stop a stage with a non-zero exit code and a human-readable reason.
+
+    The message is printed to stderr at construction time so that every skill script's bare
+    `raise dlc.GateFailure(...)` reports the reason without needing a top-level handler. Helpers that
+    *catch* GateFailure (e.g. to probe an optional artefact) must therefore check `path.exists()` first
+    and let invalid JSON / schema errors propagate instead of swallowing them silently.
+    """
 
     def __init__(self, message: str, code: int = 1):
+        self.message = message
         print(f"\n[GATE FAILED] {message}", file=sys.stderr)
         super().__init__(code)
 
@@ -61,20 +75,39 @@ def require_file(path: Path, produced_by: str) -> Path:
 # Project root
 # --------------------------------------------------------------------------------------
 def is_installer_dir(p: Path) -> bool:
-    return bool(INSTALLER_DIR_PATTERN.match(p.name))
+    """True for the plugin/installer directory itself: an exact `agentic-dlc[-vN]` name, or any directory that
+    carries the plugin layout (`plugin.json` + `skills/`)."""
+    if INSTALLER_DIR_PATTERN.match(p.name):
+        return True
+    try:
+        return (p / "plugin.json").is_file() and (p / "skills").is_dir()
+    except OSError:
+        return False
 
 
 def resolve_project_root(explicit: str | None = None) -> Path:
-    """Resolve <PROJECT_ROOT> per _shared/project_root.md. Never returns the installer dir."""
+    """Resolve <PROJECT_ROOT> per _shared/project_root.md. Never returns the installer dir.
+
+    An explicit `--project-root` is authoritative: it must be an existing directory, otherwise the gate fails
+    (it never silently falls through to `project_root.txt` or the cwd).
+    """
     candidates: list[Path] = []
     if explicit:
         ex = Path(explicit).expanduser()
         if is_installer_dir(ex):
             raise GateFailure(f"--project-root {ex} is the plugin/installer directory — never a <PROJECT_ROOT> (see _shared/project_root.md).")
-        candidates.append(ex)
+        try:
+            ex = ex.resolve()
+        except OSError as e:
+            raise GateFailure(f"--project-root {explicit} cannot be resolved: {e}")
+        if not ex.is_dir():
+            raise GateFailure(f"--project-root {explicit} is not an existing directory. Create it (bootstrap.sh --project-root <dir>) or fix the path.")
+        if is_installer_dir(ex):
+            raise GateFailure(f"--project-root {ex} is the plugin/installer directory — never a <PROJECT_ROOT> (see _shared/project_root.md).")
+        return ex
     cfg = Path.home() / ".gemini" / "config" / "project_root.txt"
     if cfg.exists():
-        txt = cfg.read_text(encoding="utf-8").strip()
+        txt = cfg.read_text(encoding="utf-8-sig").strip()
         if txt:
             candidates.append(Path(txt).expanduser())
     cwd = Path.cwd()
@@ -97,9 +130,26 @@ def add_project_root_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project-root", default=None, help="Project root (see _shared/project_root.md)")
 
 
-def project_path(root: Path, rel: str | Path) -> Path:
-    p = Path(rel)
-    return p if p.is_absolute() else root / p
+def project_path(root: Path, rel: str | Path, allow_outside: bool = False) -> Path:
+    """Resolve `rel` against `root` and enforce containment.
+
+    Relative paths (the defaults of every `--output`/`--file` flag) resolve under `root`. Absolute paths are
+    accepted only when they resolve inside `root`; anything that escapes the project root (`../`, symlinks,
+    absolute paths elsewhere) raises GateFailure unless `allow_outside=True` is passed explicitly.
+    """
+    p = Path(rel).expanduser()
+    candidate = p if p.is_absolute() else root / p
+    if allow_outside:
+        return candidate
+    try:
+        root_r = Path(root).resolve()
+        # resolve(strict=False) follows existing symlink components so a link out of the root is caught
+        cand_r = candidate.resolve()
+    except OSError as e:
+        raise GateFailure(f"Cannot resolve path {candidate}: {e}")
+    if cand_r != root_r and not cand_r.is_relative_to(root_r):
+        raise GateFailure(f"Path {candidate} resolves outside <PROJECT_ROOT> {root_r}; scripts only read/write inside the project root.")
+    return candidate
 
 
 # --------------------------------------------------------------------------------------
@@ -130,14 +180,39 @@ def read_json(p: Path) -> Any:
         raise GateFailure(f"Invalid JSON in {p}: {e}")
 
 
-def write_json(p: Path, data: Any) -> None:
+def _atomic_write_text(p: Path, text: str) -> None:
+    """Write `text` to `p` atomically: temp file in the same directory, fsync, then os.replace."""
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False) + "\n", encoding="utf-8")
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{p.name}.", suffix=".tmp", dir=str(p.parent))
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            try:
+                os.fsync(fh.fileno())
+            except OSError:
+                pass
+        if p.exists():
+            try:
+                shutil.copymode(p, tmp)
+            except OSError:
+                pass
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
+
+
+def write_json(p: Path, data: Any) -> None:
+    _atomic_write_text(p, json.dumps(data, indent=2, ensure_ascii=False, sort_keys=False) + "\n")
 
 
 def write_text(p: Path, text: str) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
+    _atomic_write_text(p, text)
 
 
 def slugify(text: str) -> str:
@@ -178,13 +253,42 @@ def _is_type(value: Any, t: str) -> bool:
     return isinstance(value, _JSON_TYPES[t]) if t in _JSON_TYPES else True
 
 
-def _resolve_ref(ref: str, root: dict[str, Any]) -> dict[str, Any]:
+_REF_UNRESOLVED = object()
+
+
+def _resolve_ref(ref: str, root: dict[str, Any]) -> dict[str, Any] | object:
+    """Resolve a local JSON-pointer `#/…` reference. Returns `_REF_UNRESOLVED` (never `{}`) when the
+    reference is external or does not point at an object, so a broken $ref is reported instead of silently
+    accepting any value."""
     if not ref.startswith("#/"):
-        return {}
+        return _REF_UNRESOLVED
     node: Any = root
     for part in ref[2:].split("/"):
-        node = node.get(part, {}) if isinstance(node, dict) else {}
-    return node if isinstance(node, dict) else {}
+        part = part.replace("~1", "/").replace("~0", "~")
+        if not isinstance(node, dict) or part not in node:
+            return _REF_UNRESOLVED
+        node = node[part]
+    return node if isinstance(node, dict) else _REF_UNRESOLVED
+
+
+# Validation keywords this subset validator implements.
+_SUPPORTED_KEYWORDS = {
+    "type", "enum", "const", "required", "properties", "additionalProperties", "items", "minItems", "maxItems",
+    "minLength", "pattern", "minimum", "maximum", "anyOf", "oneOf", "allOf", "$ref",
+}
+# Annotation / structural keywords that carry no validation semantics and are safe to ignore.
+_IGNORED_KEYWORDS = {
+    "$schema", "$id", "$defs", "definitions", "$comment", "title", "description", "default", "examples",
+    "deprecated", "readOnly", "writeOnly", "$anchor", "$vocabulary", "$dynamicAnchor",
+}
+# Standard JSON-Schema validation keywords that are NOT implemented: a schema using one would silently
+# accept invalid data, so their presence is reported as an error.
+_UNSUPPORTED_KEYWORDS = {
+    "maxLength", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "uniqueItems", "contains", "minContains",
+    "maxContains", "prefixItems", "unevaluatedItems", "minProperties", "maxProperties", "patternProperties",
+    "propertyNames", "dependentRequired", "dependentSchemas", "unevaluatedProperties", "not", "if", "then",
+    "else", "format", "$dynamicRef", "additionalItems", "dependencies", "contentMediaType", "contentEncoding",
+}
 
 
 def validate_against_schema(data: Any, schema: dict[str, Any], root: dict[str, Any] | None = None, path: str = "$") -> list[str]:
@@ -192,11 +296,20 @@ def validate_against_schema(data: Any, schema: dict[str, Any], root: dict[str, A
 
     Supports: type, enum, const, required, properties, additionalProperties, items, minItems, maxItems,
     minLength, pattern, minimum, maximum, anyOf, oneOf, allOf, $ref (local '#/…' only).
+    An unresolved `$ref` or an unsupported JSON-Schema validation keyword in the schema is reported as an
+    error (the validator never degrades to "accept anything").
     """
     root = root if root is not None else schema
     errs: list[str] = []
     if "$ref" in schema:
-        schema = {**_resolve_ref(schema["$ref"], root), **{k: v for k, v in schema.items() if k != "$ref"}}
+        target = _resolve_ref(schema["$ref"], root)
+        if target is _REF_UNRESOLVED:
+            errs.append(f"{path}: schema error — unresolved $ref {schema['$ref']!r}")
+            return errs
+        schema = {**target, **{k: v for k, v in schema.items() if k != "$ref"}}  # type: ignore[dict-item]
+    unsupported = sorted(k for k in schema if k in _UNSUPPORTED_KEYWORDS)
+    if unsupported:
+        errs.append(f"{path}: schema error — unsupported JSON-Schema keyword(s) {unsupported} (validator subset: {sorted(_SUPPORTED_KEYWORDS)})")
     t = schema.get("type")
     if t is not None:
         types = t if isinstance(t, list) else [t]
@@ -278,32 +391,102 @@ def md_section(md: str, heading_regex: str) -> str:
     return ""
 
 
+_SEP_CELL_RE = re.compile(r"^\s*:?-+:?\s*$")
+
+
+def _split_table_row(line: str) -> list[str]:
+    """Split a pipe-table row into cells, honouring escaped `\\|` (kept as a literal `|` in the cell)."""
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|") and not s.endswith("\\|"):
+        s = s[:-1]
+    cells = re.split(r"(?<!\\)\|", s)
+    return [c.replace("\\|", "|").strip() for c in cells]
+
+
+def _is_separator_row(line: str, n_headers: int) -> bool:
+    cells = _split_table_row(line)
+    if not cells or not all(_SEP_CELL_RE.match(c) for c in cells):
+        return False
+    # GFM requires the delimiter row to have the same number of cells as the header row; tolerate a
+    # trailing empty cell produced by stray whitespace / pipes but not a different column count.
+    return len(cells) == n_headers
+
+
 def md_tables(md: str) -> list[list[dict[str, str]]]:
-    """Parse all GitHub-style pipe tables into lists of row dicts keyed by normalised header."""
+    """Parse all GitHub-style pipe tables into lists of row dicts keyed by normalised header.
+
+    Escaped pipes (`\\|`) inside cells are not treated as column separators. Rows with fewer cells than headers
+    are padded with ''; rows with *more* cells than headers keep the surplus by joining it into the last
+    column (`a | b`) instead of silently dropping it.
+    """
     tables: list[list[dict[str, str]]] = []
     lines = md.splitlines()
     i = 0
     while i < len(lines):
-        if lines[i].strip().startswith("|") and i + 1 < len(lines) and re.match(r"^\s*\|?\s*:?-+:?\s*(\||$)", lines[i + 1]):
-            headers = [h.strip().strip("*`").lower() for h in lines[i].strip().strip("|").split("|")]
-            rows = []
-            i += 2
-            while i < len(lines) and lines[i].strip().startswith("|"):
-                cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
-                row = {headers[k]: (cells[k] if k < len(cells) else "") for k in range(len(headers))}
-                rows.append(row)
-                i += 1
-            tables.append(rows)
-        else:
-            i += 1
+        if lines[i].strip().startswith("|") and i + 1 < len(lines):
+            headers = [h.strip().strip("*`").lower() for h in _split_table_row(lines[i])]
+            if headers and _is_separator_row(lines[i + 1], len(headers)):
+                rows = []
+                i += 2
+                while i < len(lines) and lines[i].strip().startswith("|"):
+                    cells = _split_table_row(lines[i])
+                    if len(cells) > len(headers):
+                        cells = cells[:len(headers) - 1] + [" | ".join(c for c in cells[len(headers) - 1:])]
+                    row = {headers[k]: (cells[k] if k < len(cells) else "") for k in range(len(headers))}
+                    rows.append(row)
+                    i += 1
+                tables.append(rows)
+                continue
+        i += 1
     return tables
 
 
-def find_table(md: str, required_headers: Iterable[str]) -> list[dict[str, str]]:
-    req = [h.lower() for h in required_headers]
-    for t in md_tables(md):
-        if t and all(any(r in h for h in t[0].keys()) for r in req):
-            return t
+def _norm_header(h: str) -> str:
+    """Normalise a header cell / needle for matching: lowercase, markdown emphasis and punctuation → spaces."""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", h.lower())).strip()
+
+
+def _header_matches(needle: str, header: str, mode: str) -> bool:
+    n, h = _norm_header(needle), _norm_header(header)
+    if not n:
+        return False
+    if mode == "exact":
+        return n == h
+    if mode == "word":
+        return re.search(rf"(?<![a-z0-9]){re.escape(n)}(?![a-z0-9])", h) is not None
+    # "prefix": needle starts at a word boundary and may be a prefix of the last word (e.g. "capabilit")
+    return re.search(rf"(?<![a-z0-9]){re.escape(n)}", h) is not None
+
+
+def find_table(md: str, required_headers: Iterable[str], section_regex: str | None = None) -> list[dict[str, str]]:
+    """Return the first table whose headers match every needle in `required_headers` and that has ≥ 1 data row.
+
+    Matching is header-aware, not substring-based: needles are compared against each header cell (lower-cased,
+    stripped of markdown emphasis and punctuation) in three passes of decreasing strictness — exact header
+    equality, whole-word match (so `to` never matches `actor` and `from` never matches `derived from` when an
+    exact `From` column exists), then word-prefix match (kept for legacy needles such as `capabilit`). When
+    `section_regex` is given, tables inside `md_section(md, section_regex)` are tried first, then the whole
+    document.
+    """
+    req = [h for h in required_headers if str(h).strip()]
+    if not req:
+        return []
+    scopes: list[list[list[dict[str, str]]]] = []
+    if section_regex:
+        sec = md_section(md, section_regex)
+        if sec:
+            scopes.append(md_tables(sec))
+    scopes.append(md_tables(md))
+    for mode in ("exact", "word", "prefix"):
+        for tables in scopes:
+            for t in tables:
+                if not t:
+                    continue
+                headers = list(t[0].keys())
+                if all(any(_header_matches(r, h, mode) for h in headers) for r in req):
+                    return t
     return []
 
 
@@ -326,6 +509,14 @@ def strip_md(s: str) -> str:
 # --------------------------------------------------------------------------------------
 # State machine
 # --------------------------------------------------------------------------------------
+# Heading regexes used to prefer the canonical section's table before falling back to the whole document.
+STATE_SECTION_RE = r"(^|\s)3\.3\b|lifecycle\s+state\s+machine|state\s+machine|state\s+transitions?"
+RULES_SECTION_RE = r"(^|\s)3\.4\b|business\s+rules"
+ROLES_SECTION_RE = r"(^|\s)3\.5\b|^roles?\b|\broles?\s*(&|and)?\s*(permissions|kinds?)?\s*(\*|$)"
+VIEWS_SECTION_RE = r"(^|\s)4\.2\b|view\s*(&|and)?\s*(component\s+)?topology"
+GROUPS_SECTION_RE = r"(^|\s)6\.1\b|capability\s+group"
+
+
 @dataclass
 class Transition:
     src: str
@@ -376,7 +567,7 @@ def _norm_state(s: str) -> str:
 
 def parse_state_table(md: str) -> StateMachine:
     """Parse the mandatory `| From | To | Trigger | Actor Role | Guard |` table (spec §3.3)."""
-    rows = find_table(md, ["from", "to", "trigger"])
+    rows = find_table(md, ["from", "to", "trigger"], section_regex=STATE_SECTION_RE)
     sm = StateMachine()
     for r in rows:
         src = _norm_state(r.get("from", ""))
@@ -429,7 +620,7 @@ def parse_state_machine(spec_md: str) -> StateMachine:
 
 def parse_roles(spec_md: str) -> list[dict[str, str]]:
     """Parse spec §3.5 `| Role | Kind | Views | Allowed Transitions |`."""
-    rows = find_table(spec_md, ["role", "kind"])
+    rows = find_table(spec_md, ["role", "kind"], section_regex=ROLES_SECTION_RE)
     out = []
     for r in rows:
         name = strip_md(r.get("role", ""))
@@ -447,7 +638,7 @@ def parse_roles(spec_md: str) -> list[dict[str, str]]:
 
 def parse_business_rules(spec_md: str) -> list[dict[str, str]]:
     """Parse spec §3.4 `| Rule ID | Formula / Rule | Inputs | Source |`."""
-    rows = find_table(spec_md, ["rule id", "formula"])
+    rows = find_table(spec_md, ["rule id", "formula"], section_regex=RULES_SECTION_RE)
     out = []
     for r in rows:
         rid = strip_md(r.get("rule id", ""))
@@ -463,9 +654,9 @@ def parse_business_rules(spec_md: str) -> list[dict[str, str]]:
 
 def parse_view_topology(spec_md: str) -> list[dict[str, Any]]:
     """Parse spec §4.2 `| View ID | Navigation Tab / Route | UI Pattern | Bound Role(s) | Primary CTA & Lifecycle Trigger |`."""
-    rows = find_table(spec_md, ["view id", "pattern"])
+    rows = find_table(spec_md, ["view id", "pattern"], section_regex=VIEWS_SECTION_RE)
     if not rows:
-        rows = find_table(spec_md, ["view id", "navigation"])
+        rows = find_table(spec_md, ["view id", "navigation"], section_regex=VIEWS_SECTION_RE)
     out: list[dict[str, Any]] = []
     for r in rows:
         vid = strip_md(next((v for k, v in r.items() if "view id" in k or k == "view"), ""))
@@ -492,9 +683,9 @@ def parse_view_topology(spec_md: str) -> list[dict[str, Any]]:
 
 def parse_capability_groups(md: str) -> list[dict[str, Any]]:
     """Parse discovery §6.1 `| Group ID | Group Name | Grouping Dimension | Capabilities | Prerequisite Groups / Shared | ... |`."""
-    rows = find_table(md, ["group id", "group name"])
+    rows = find_table(md, ["group id", "group name"], section_regex=GROUPS_SECTION_RE)
     if not rows:
-        rows = find_table(md, ["group id", "capabilit"])
+        rows = find_table(md, ["group id", "capabilit"], section_regex=GROUPS_SECTION_RE)
     out: list[dict[str, Any]] = []
     for r in rows:
         gid = strip_md(next((v for k, v in r.items() if "group id" in k or k == "group"), ""))
@@ -724,6 +915,127 @@ def load_target_stack(root: Path, allow_default: bool = True) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------------------------------
+# Browser discovery & process-group helpers (shared by Stage 1 capture, Stage 5 build and Stage 6 eval)
+# --------------------------------------------------------------------------------------
+CHROME_CANDIDATES = [
+    "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge",
+    "/opt/google/chrome/chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser",
+    "/snap/bin/chromium",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files\Chromium\Application\chrome.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+]
+
+
+def find_chrome_binary(explicit: str | None = None) -> str | None:
+    """Return the path of a Chrome/Chromium/Edge executable or None.
+
+    Order: `explicit` → `$CHROME_BIN` → well-known command names (via PATH) and install locations on
+    Linux / macOS / Windows. Returns None (never raises) when nothing usable is found.
+    """
+    cands = ([explicit] if explicit else []) + ([os.environ["CHROME_BIN"]] if os.environ.get("CHROME_BIN") else []) + CHROME_CANDIDATES
+    for c in cands:
+        c = (c or "").strip()
+        if not c:
+            continue
+        c = os.path.expanduser(c)
+        if os.path.sep in c or (os.name == "nt" and ":" in c):
+            if Path(c).is_file() and os.access(c, os.X_OK):
+                return c
+            continue
+        w = shutil.which(c)
+        if w:
+            return w
+    return None
+
+
+def start_process_group(cmd: str | list[str], cwd: Path | str | None = None, env: dict[str, str] | None = None,
+                        log_path: Path | str | None = None) -> subprocess.Popen:
+    """Start `cmd` as the leader of its own process group / session so the whole tree can be stopped later.
+
+    `cmd` may be a shell string (run with `shell=True`, e.g. the `commands.start` of target_stack.json) or an
+    argv list. stdout/stderr go to `log_path` (opened in append mode) or to DEVNULL. On POSIX the child is
+    started with `start_new_session=True` (setsid); on Windows with CREATE_NEW_PROCESS_GROUP. The returned
+    Popen carries `.log_handle` (or None) which `stop_process_group` closes.
+    """
+    if log_path is not None:
+        lp = Path(log_path)
+        lp.parent.mkdir(parents=True, exist_ok=True)
+        log_handle = open(lp, "ab")
+    else:
+        log_handle = None
+    kwargs: dict[str, Any] = {
+        "cwd": str(cwd) if cwd is not None else None,
+        "env": env,
+        "stdout": log_handle if log_handle is not None else subprocess.DEVNULL,
+        "stderr": subprocess.STDOUT,
+        "stdin": subprocess.DEVNULL,
+        "shell": isinstance(cmd, str),
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    else:
+        kwargs["start_new_session"] = True
+    try:
+        proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603 — command comes from the project's own config
+    except BaseException:
+        if log_handle is not None:
+            log_handle.close()
+        raise
+    proc.log_handle = log_handle  # type: ignore[attr-defined]
+    return proc
+
+
+def stop_process_group(proc: subprocess.Popen | None, timeout: float = 5.0) -> int | None:
+    """Terminate the process group started by `start_process_group`: SIGTERM the group, wait up to `timeout`
+    seconds, SIGKILL whatever is left, then `wait()` so no zombie remains. Safe to call twice or with None.
+    Returns the process return code (None if `proc` is None)."""
+    if proc is None:
+        return None
+    try:
+        if proc.poll() is None:
+            if os.name == "nt":
+                try:
+                    proc.send_signal(getattr(signal, "CTRL_BREAK_EVENT", signal.SIGTERM))
+                except (OSError, ValueError):
+                    proc.terminate()
+            else:
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                except (ProcessLookupError, PermissionError):
+                    proc.terminate()
+            try:
+                proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                if os.name == "nt":
+                    proc.kill()
+                else:
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
+                        proc.kill()
+                try:
+                    proc.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    pass
+        else:
+            proc.wait()
+    finally:
+        lh = getattr(proc, "log_handle", None)
+        if lh is not None:
+            try:
+                lh.close()
+            except OSError:
+                pass
+    return proc.returncode
+
+
+# --------------------------------------------------------------------------------------
 # Visible-text extraction from HTML (stdlib only)
 # --------------------------------------------------------------------------------------
 def html_visible_text(html: str) -> str:
@@ -767,35 +1079,106 @@ GATE_DEFINITIONS: dict[str, str] = {
     "gate_5_build": "Gate 5 — Stage 5 Runnable Target-Stack Application Build Review",
     "gate_6_eval": "Gate 6 — Stage 6 Closed-Loop Evaluation & Remediation/Guardrail Audit Approval",
     "gate_7_packaging": "Gate 7 — Stage 7 Cloud-Agnostic OCI Containers & GDC Multi-Cloud Packaging Approval",
+    "gate_8_deployment": "Gate 8 — Stage 8 GDC Fleet GitOps Deployment, Observability & SLO Verification Approval",
 }
 
+# Gates that autonomous mode may pre-approve without a human (AGENTS.md §3: Gates 1, 3 and 4A are skipped in
+# autonomous mode; Gate 0 is the Stage 0 setup gate and is likewise defaulted). Gate 2 (spec judge scorecard)
+# and the Stage 6 guardrail approval keep their documented semantics inside their own scripts.
+AUTONOMOUS_DEFAULT_GATES: tuple[str, ...] = ("gate_0_setup", "gate_1_discovery", "gate_3_backlog", "gate_4_design_and_tests")
 
-def is_autonomous_or_golden(root: Path, deterministic: bool = False) -> bool:
-    """Return True only for explicit --autonomous runs, deterministic CI verification, or repo examples/."""
-    if os.environ.get("DLC_AUTONOMOUS", "").strip() in ("1", "true", "TRUE", "yes"):
-        return True
-    if deterministic:
-        return True
-    try:
-        parts = root.resolve().parts
-        if "examples" in parts:
-            return True
-    except OSError:
-        pass
-    return False
+# Ledger statuses (schemas/gate_approvals.schema.json#status enum).
+GATE_STATUS_PENDING = "PENDING"
+GATE_STATUS_AWAITING = "AWAITING_HUMAN_REVIEW"
+GATE_STATUS_APPROVED = "APPROVED_BY_USER"
+GATE_STATUS_PRE_APPROVED = "PRE_APPROVED_AUTONOMOUS"
+GATE_STATUS_AUTONOMOUS_DEFAULT = "AUTONOMOUS_DEFAULT"
+GATE_APPROVED_STATUSES: frozenset[str] = frozenset({GATE_STATUS_APPROVED, GATE_STATUS_PRE_APPROVED, GATE_STATUS_AUTONOMOUS_DEFAULT})
+
+_TRUE_VALUES = ("1", "true", "yes", "on")
+
+
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in _TRUE_VALUES
+
+
+def is_autonomous_mode() -> bool:
+    """True only when the pipeline/user explicitly requested autonomous mode (`DLC_AUTONOMOUS=1`, set by
+    `run_agentic_dlc_pipeline.py --autonomous`)."""
+    return _env_flag("DLC_AUTONOMOUS")
+
+
+def is_golden_run() -> bool:
+    """True only inside `scripts/verify_golden_projects.py` (it exports `DLC_GOLDEN_RUN=1` for the child pipeline)."""
+    return _env_flag("DLC_GOLDEN_RUN")
+
+
+def is_autonomous_or_golden(root: Path | None = None, deterministic: bool = False) -> bool:
+    """Return True only when human gates may be bypassed: explicit autonomous mode (`DLC_AUTONOMOUS=1`) or a golden
+    project verification run (`DLC_GOLDEN_RUN=1`).
+
+    A plain `--deterministic` flag never bypasses gates (it only freezes timestamps), and the location of the
+    project root (e.g. a path containing `examples/`) is irrelevant. `root` / `deterministic` are accepted for
+    call-site compatibility only.
+    """
+    del root, deterministic
+    return is_autonomous_mode() or is_golden_run()
 
 
 def gate_approvals_path(root: Path) -> Path:
     return root / "specs" / "gate_approvals.json"
 
 
+def gate_tracker_command(root: Path, action: str, gate_id: str | None = None, extra: str = "") -> str:
+    """Render the `gate_tracker.py` command line to show in STOP notices and GateFailure messages."""
+    cmd = f'python3 "{PLUGIN_ROOT / "scripts" / "gate_tracker.py"}" --project-root "{root}" --action {action}'
+    if gate_id:
+        cmd += f" --gate {gate_id}"
+    if extra:
+        cmd += f" {extra}"
+    return cmd
+
+
+def new_gate_ledger(autonomous: bool = False) -> dict[str, Any]:
+    """Return a fresh ledger with every gate PENDING (with `autonomous=True`, the Gates that autonomous mode may
+    skip — `AUTONOMOUS_DEFAULT_GATES` — are recorded as AUTONOMOUS_DEFAULT instead)."""
+    now_iso = utc_now_iso(False)
+    gates: dict[str, Any] = {}
+    for gid, label in GATE_DEFINITIONS.items():
+        auto = autonomous and gid in AUTONOMOUS_DEFAULT_GATES
+        gates[gid] = {
+            "gateId": gid,
+            "stage": label,
+            "status": GATE_STATUS_AUTONOMOUS_DEFAULT if auto else GATE_STATUS_PENDING,
+            "readyAtUtc": None,
+            "readyAtEpoch": None,
+            "approvedAtUtc": now_iso if auto else None,
+            "userResponse": "Autonomous mode (--autonomous / DLC_AUTONOMOUS=1) explicitly requested by the user" if auto else None,
+            "summary": f"{label} — {'autonomous default (no human stop)' if auto else 'pending: stage not yet validated'}.",
+        }
+    return {"schemaVersion": SCHEMA_VERSION, "initializedAtUtc": now_iso, "gates": gates}
+
+
 def load_gate_approvals(root: Path) -> dict[str, Any]:
+    """Load the ledger. Returns an empty ledger structure when the file does not exist; invalid JSON or a file
+    without a `gates` object is a GateFailure (never silently treated as 'no gates')."""
     p = gate_approvals_path(root)
-    if p.exists():
-        data = read_json(p)
-        if isinstance(data, dict) and isinstance(data.get("gates"), dict):
-            return data
-    return {"schemaVersion": SCHEMA_VERSION, "gates": {}}
+    if not p.exists():
+        return {"schemaVersion": SCHEMA_VERSION, "gates": {}}
+    data = read_json(p)
+    if not isinstance(data, dict) or not isinstance(data.get("gates"), dict):
+        raise GateFailure(f"{p} is not a valid gate ledger (expected an object with a 'gates' object). "
+                          f"Re-initialise it with: {gate_tracker_command(root, 'init')}")
+    return data
+
+
+def gate_status(root: Path, gate_id: str) -> str:
+    """Current ledger status of `gate_id` (`NOT_STARTED` when the ledger or the entry is missing)."""
+    p = gate_approvals_path(root)
+    if not p.exists():
+        return "NOT_STARTED"
+    entry = (load_gate_approvals(root).get("gates") or {}).get(gate_id)
+    return str(entry.get("status") or "NOT_STARTED") if isinstance(entry, dict) else "NOT_STARTED"
 
 
 def mark_gate_awaiting_human(
@@ -805,7 +1188,11 @@ def mark_gate_awaiting_human(
     deterministic: bool = False,
     force_reset: bool = False,
 ) -> None:
-    """Stamp `gate_id` as AWAITING_HUMAN_REVIEW in `specs/gate_approvals.json` and print a mandatory STOP notice."""
+    """Stamp `gate_id` as AWAITING_HUMAN_REVIEW in `specs/gate_approvals.json` and print a mandatory STOP notice.
+
+    No-op in autonomous / golden runs (`is_autonomous_or_golden`). An existing APPROVED_BY_USER entry is preserved
+    on re-runs (e.g. Stage 6 healing) unless `force_reset=True`.
+    """
     if is_autonomous_or_golden(root, deterministic=deterministic):
         return
     import time as _time
@@ -813,7 +1200,7 @@ def mark_gate_awaiting_human(
     data = load_gate_approvals(root)
     gates = data.setdefault("gates", {})
     existing = gates.get(gate_id) if isinstance(gates.get(gate_id), dict) else {}
-    if existing.get("status") == "APPROVED_BY_USER" and not force_reset:
+    if existing.get("status") == GATE_STATUS_APPROVED and not force_reset:
         # Preserve an already-granted human approval during subsequent validation re-runs (e.g. Stage 6 healing).
         return
     label = GATE_DEFINITIONS.get(gate_id, gate_id)
@@ -821,7 +1208,7 @@ def mark_gate_awaiting_human(
     gates[gate_id] = {
         "gateId": gate_id,
         "stage": label,
-        "status": "AWAITING_HUMAN_REVIEW",
+        "status": GATE_STATUS_AWAITING,
         "readyAtUtc": now_iso,
         "readyAtEpoch": round(_time.time(), 3),
         "approvedAtUtc": None,
@@ -829,16 +1216,12 @@ def mark_gate_awaiting_human(
         "summary": summary or f"{label} artifacts validated and ready for human review.",
     }
     write_json(gate_approvals_path(root), data)
-    tracker_cmd = (
-        f'python3 "{PLUGIN_ROOT / "scripts" / "gate_tracker.py"}" '
-        f'--project-root "{root}" --action approve --gate {gate_id} '
-        f'--user-response "<verbatim quote from user approval reply>"'
-    )
+    tracker_cmd = gate_tracker_command(root, "approve", gate_id, '--user-response "<verbatim quote from user approval reply>"')
     print(
         f"\n{'=' * 78}\n"
         f"[STOP — HUMAN APPROVAL REQUIRED AT {gate_id.upper()}]\n"
         f"  Gate   : {label}\n"
-        f"  Status : AWAITING_HUMAN_REVIEW\n"
+        f"  Status : {GATE_STATUS_AWAITING}\n"
         f"  Action : 1) Present this stage's deliverables and open questions to the user.\n"
         f"           2) END YOUR TURN NOW (call no more tools) and wait for the user's reply.\n"
         f"           3) NEVER self-approve or start the next stage in the same turn!\n"
@@ -856,27 +1239,30 @@ def require_gate_approved(
 ) -> None:
     """Enforce that `upstream_gate_id` was explicitly approved by the human before `current_stage_name` executes.
 
-    Blocks progression whenever `specs/gate_approvals.json` exists and `upstream_gate_id` is not `APPROVED_BY_USER`
-    (or `PRE_APPROVED_AUTONOMOUS`).
+    * A missing `specs/gate_approvals.json` is itself a GateFailure: Stage 0 (skill `00-setup-and-connection` /
+      `gate_tracker.py --action init`) must initialise the ledger first.
+    * Progression is allowed only when the gate is `APPROVED_BY_USER`, `PRE_APPROVED_AUTONOMOUS` or
+      `AUTONOMOUS_DEFAULT`.
+    * The only bypasses are explicit autonomous mode (`DLC_AUTONOMOUS=1`) or a golden verification run
+      (`DLC_GOLDEN_RUN=1`); `deterministic` and the project location never bypass a gate.
     """
     if is_autonomous_or_golden(root, deterministic=deterministic):
         return
     p = gate_approvals_path(root)
     if not p.exists():
-        return
-    data = load_gate_approvals(root)
-    entry = (data.get("gates") or {}).get(upstream_gate_id)
-    status = entry.get("status") if isinstance(entry, dict) else "NOT_STARTED"
-    if status in ("APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"):
+        raise GateFailure(
+            f"Cannot start {current_stage_name}: the human gate ledger {p} does not exist.\n"
+            f"  Stage 0 (skill 00-setup-and-connection) must run first and initialise the ledger, or run:\n"
+            f"     {gate_tracker_command(root, 'init')}\n"
+            f"  Only an explicitly requested autonomous run (run_agentic_dlc_pipeline.py --autonomous) may proceed without it."
+        )
+    status = gate_status(root, upstream_gate_id)
+    if status in GATE_APPROVED_STATUSES:
         return
     label = GATE_DEFINITIONS.get(upstream_gate_id, upstream_gate_id)
-    tracker_cmd = (
-        f'python3 "{PLUGIN_ROOT / "scripts" / "gate_tracker.py"}" '
-        f'--project-root "{root}" --action approve --gate {upstream_gate_id} '
-        f'--user-response "<verbatim quote from user approval reply>"'
-    )
+    tracker_cmd = gate_tracker_command(root, "approve", upstream_gate_id, '--user-response "<verbatim quote from user approval reply>"')
     raise GateFailure(
-        f"Cannot start {current_stage_name} because {label} ({upstream_gate_id}) is '{status}' (not 'APPROVED_BY_USER').\n"
+        f"Cannot start {current_stage_name} because {label} ({upstream_gate_id}) is '{status}' (not '{GATE_STATUS_APPROVED}').\n"
         f"  MANDATORY RULE: Every stage requires explicit human review and approval before advancing to the next stage.\n"
         f"  1. Present the upstream stage deliverables and questions to the user in chat.\n"
         f"  2. END YOUR TURN immediately and wait for the human to review and approve.\n"

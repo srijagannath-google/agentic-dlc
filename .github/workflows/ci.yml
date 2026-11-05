@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: py_compile · domain-neutrality lint · golden projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Google Chrome (chrome-headless adapter for Stages 1/5/6)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg ca-certificates
+          wget -qO- https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] https://dl.google.com/linux/chrome/deb/ stable main" \
+            | sudo tee /etc/apt/sources.list.d/google-chrome.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      - name: Byte-compile every Python file
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import pathlib, py_compile, sys
+          failed = []
+          for p in sorted(pathlib.Path(".").rglob("*.py")):
+              if "__pycache__" in p.parts or ".git" in p.parts:
+                  continue
+              try:
+                  py_compile.compile(str(p), doraise=True)
+              except py_compile.PyCompileError as e:
+                  failed.append(f"{p}: {e.msg}")
+          print(f"py_compile: {len(failed)} failure(s)")
+          for f in failed:
+              print("  ✗", f)
+          sys.exit(1 if failed else 0)
+          EOF
+
+      - name: Domain-neutrality lint (no business-domain literals outside examples/)
+        run: python3 scripts/lint_domain_neutrality.py
+
+      - name: Golden projects (verify + derive pipeline over examples/*/expected_artifacts)
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python3 scripts/verify_golden_projects.py --browser chrome

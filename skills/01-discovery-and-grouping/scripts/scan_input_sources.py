@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -41,12 +43,18 @@ import dlc_common as dlc  # noqa: E402
 # Heuristics (generic — no domain literals)
 # --------------------------------------------------------------------------------------------------
 SCHEMA_EXT = {".xsd", ".ddl", ".dbml", ".prisma", ".dbschema", ".dacpac", ".edmx"}
+# Binary database containers / backups / data exports are strong legacy-estate evidence even though their
+# content cannot be read as text (weight comes from the legacy_schema category).
+DB_CONTAINER_EXT = {".accdb", ".mdb", ".dbf", ".bak", ".sqlite", ".sqlite3", ".db"}
+DATA_EXPORT_EXT = {".csv", ".xlsx", ".xls"}
 SOURCE_EXT = {
     ".vb", ".bas", ".cls", ".frm", ".cs", ".cshtml", ".vbhtml", ".razor", ".java", ".cbl", ".cob", ".cpy",
     ".jcl", ".py", ".js", ".jsx", ".ts", ".tsx", ".php", ".rb", ".go", ".pl", ".asp", ".aspx", ".ascx",
     ".master", ".jsp", ".vbs", ".c", ".cpp", ".h", ".kt", ".swift", ".rs", ".scala",
 }
 DOC_EXT = {".md", ".docx", ".pdf", ".txt", ".rtf", ".html", ".htm"}
+NARRATIVE_DOC_EXT = {".md", ".docx", ".pdf"}  # may be promoted to requirements_doc when the only/largest document
+GENERATED_REFERENCE_NAMES = {"reference_ui_manifest.json"}  # written by capture_design_reference.py, never user input
 FORM_PREFIXES = ("form_", "frm", "screen_", "screen-", "dialog_", "dlg", "ui_", "page_")
 REPORT_PREFIXES = ("report_", "rpt", "rep_", "print_")
 QUERY_PREFIXES = ("qry", "query_", "view_", "vw_", "sp_", "proc_")
@@ -88,7 +96,9 @@ WEIGHTS = {
 LEGACY_CATEGORIES = {"legacy_schema", "legacy_query", "legacy_form", "legacy_report", "legacy_source"}
 DECISION_RULE = (
     "majority-by-weight over categorised files under resources/inputs "
-    "(schema/source=3, query/form/report=2, requirements_doc=3); LOW confidence when zero files, "
+    "(schema/source/db-container/data-export=3, query/form/report=2, requirements_doc=3); "
+    "narrative .md/.docx/.pdf files count as requirements_doc only when they carry requirement keywords "
+    "or are the only/largest document; LOW confidence when zero files, "
     "margin < 3 or margin/total < 0.2 -> Gate 1 must ask the user to confirm the scenario"
 )
 
@@ -105,8 +115,11 @@ ADO_URL_RE = re.compile(
 # Environment & Repository Ingestion (Azure DevOps / Git)
 # --------------------------------------------------------------------------------------------------
 def load_env_files(project_root: Path | None = None) -> None:
-    """Populate os.environ from dotenv-style files without overriding real environment variables."""
-    candidates = [Path.cwd() / ".env", Path.home() / ".gemini" / "config" / "agentic-dlc.env"]
+    """Populate os.environ from dotenv-style files without overriding real environment variables.
+
+    Only `<PROJECT_ROOT>/.env` and `~/.gemini/config/agentic-dlc.env` are read — never the current working
+    directory (a stray `.env` in an unrelated folder must not inject credentials)."""
+    candidates = [Path.home() / ".gemini" / "config" / "agentic-dlc.env"]
     if project_root:
         candidates.insert(0, project_root / ".env")
     for env_path in candidates:
@@ -241,6 +254,18 @@ def _fetch_ado_items_via_rest(
     return commit_sha
 
 
+def _redact_secrets(text: str, *secrets: str | None) -> str:
+    """Mask Authorization headers, Basic/Bearer tokens and any literal secret value in diagnostic text."""
+    out = str(text or "")
+    out = re.sub(r"Authorization:\s*(Basic|Bearer)\s+[A-Za-z0-9+/=._-]+", r"Authorization: \1 ***", out, flags=re.IGNORECASE)
+    out = re.sub(r"(https?://)[^/\s@]+@", r"\1***@", out)  # user:token@host in clone URLs
+    for sec in secrets:
+        if sec and len(sec) >= 4:
+            out = out.replace(sec, "***")
+            out = out.replace(base64.b64encode(f":{sec}".encode("utf-8")).decode("ascii"), "***")
+    return out
+
+
 def ingest_remote_repository(
     root: Path,
     provider: str,
@@ -257,23 +282,27 @@ def ingest_remote_repository(
     dest_dir = root / "resources" / "inputs" / repo_slug
     dest_dir.parent.mkdir(parents=True, exist_ok=True)
 
-    git_extra_args: list[str] = []
-    if pat_or_token:
-        # Basic auth `:<PAT>` works for Azure DevOps PATs as well as GitHub/GitLab personal access tokens
-        b64 = base64.b64encode(f":{pat_or_token}".encode("utf-8")).decode("ascii")
-        git_extra_args = ["-c", f"http.extraHeader=Authorization: Basic {b64}"]
-
     env = dict(os.environ)
     env["GIT_TERMINAL_PROMPT"] = "0"
+    if pat_or_token:
+        # Basic auth `:<PAT>` works for Azure DevOps PATs as well as GitHub/GitLab personal access tokens.
+        # The header is passed through git's environment config (GIT_CONFIG_COUNT/KEY/VALUE, git >= 2.31) so the
+        # secret never appears in a process argv (visible in `ps`, shell history, CalledProcessError messages).
+        b64 = base64.b64encode(f":{pat_or_token}".encode("utf-8")).decode("ascii")
+        n = int(env.get("GIT_CONFIG_COUNT") or 0)
+        env[f"GIT_CONFIG_KEY_{n}"] = "http.extraHeader"
+        env[f"GIT_CONFIG_VALUE_{n}"] = f"Authorization: Basic {b64}"
+        env["GIT_CONFIG_COUNT"] = str(n + 1)
 
     commit_sha: str | None = None
     resolved_branch = branch
     git_succeeded = False
 
+    safe_url = _redact_secrets(repo_url, pat_or_token)
     try:
         if (dest_dir / ".git").is_dir():
-            dlc.info(f"updating existing {provider.upper()} checkout at {dest_dir} from {repo_url}")
-            fetch_cmd = ["git", *git_extra_args, "-C", str(dest_dir), "fetch", "--depth", "1", "origin"]
+            dlc.info(f"updating existing {provider.upper()} checkout at {dest_dir} from {safe_url}")
+            fetch_cmd = ["git", "-C", str(dest_dir), "fetch", "--depth", "1", "origin"]
             if branch:
                 fetch_cmd.append(branch)
             subprocess.run(fetch_cmd, check=True, capture_output=True, text=True, env=env, timeout=120)
@@ -283,8 +312,8 @@ def ingest_remote_repository(
             )
             git_succeeded = True
         else:
-            dlc.info(f"cloning {provider.upper()} repository {repo_url} -> {dest_dir}")
-            clone_cmd = ["git", *git_extra_args, "clone", "--depth", "1"]
+            dlc.info(f"cloning {provider.upper()} repository {safe_url} -> {dest_dir}")
+            clone_cmd = ["git", "clone", "--depth", "1"]
             if branch:
                 clone_cmd += ["--branch", branch]
             clone_cmd += [repo_url, str(dest_dir)]
@@ -305,19 +334,18 @@ def ingest_remote_repository(
                 )
                 if br_proc.returncode == 0 and br_proc.stdout.strip() not in ("", "HEAD"):
                     resolved_branch = br_proc.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        # Never echo credentials: redact on EVERY branch (the message may contain argv, env dumps or server echoes).
+        err_text = _redact_secrets(getattr(exc, "stderr", "") or str(exc), pat_or_token)
         if provider == "ado" and pat_or_token and ado_org_url and ado_project:
-            dlc.warn(f"git clone failed ({exc}); falling back to Azure DevOps Git Items REST API v7.1...")
+            dlc.warn(f"git clone failed ({err_text.strip()[:300]}); falling back to Azure DevOps Git Items REST API v7.1...")
             dest_dir.mkdir(parents=True, exist_ok=True)
             commit_sha = _fetch_ado_items_via_rest(
                 ado_org_url, ado_project, repo_name, pat_or_token, branch, dest_dir
             )
         else:
-            stderr_msg = getattr(exc, "stderr", "") or str(exc)
-            # Redact any accidental authorization headers from error output
-            stderr_msg = re.sub(r"Authorization:\s*Basic\s+[A-Za-z0-9+/=]+", "Authorization: Basic ***", stderr_msg)
             raise dlc.GateFailure(
-                f"Failed to ingest {provider.upper()} repository '{repo_url}': {stderr_msg.strip()}\n"
+                f"Failed to ingest {provider.upper()} repository '{safe_url}': {err_text.strip()}\n"
                 "Verify the repository URL, network connectivity, and authentication token "
                 "(ADO_PAT for Azure DevOps or GIT_TOKEN / GITHUB_TOKEN for Git)."
             ) from exc
@@ -325,7 +353,7 @@ def ingest_remote_repository(
     rel_checkout = str(dest_dir.resolve().relative_to(root.resolve()))
     return {
         "provider": provider,
-        "repositoryUrl": repo_url,
+        "repositoryUrl": _redact_secrets(repo_url, pat_or_token),  # never persist embedded credentials
         "repositoryName": repo_name,
         "branch": resolved_branch,
         "commitSha": commit_sha,
@@ -333,8 +361,21 @@ def ingest_remote_repository(
     }
 
 
+def _pdf_head_text(path: Path, max_bytes: int) -> str:
+    """First pages of a PDF via `pdftotext` when it is on PATH; otherwise no text (never binary garbage)."""
+    exe = shutil.which("pdftotext")
+    if not exe:
+        return ""
+    try:
+        cp = subprocess.run([exe, "-l", "5", "-layout", str(path), "-"], capture_output=True, text=True, timeout=20, check=False)
+        return (cp.stdout or "")[:max_bytes]
+    except (subprocess.TimeoutExpired, OSError):
+        return ""
+
+
 def head_text(path: Path, max_bytes: int = 64_000) -> str:
-    """Best-effort text from the start of a file (handles .docx via zipfile; binary otherwise latin-1)."""
+    """Best-effort text from the start of a file (handles .docx via zipfile, .pdf via pdftotext; binary
+    containers yield no text; other files decode utf-8 then latin-1)."""
     ext = path.suffix.lower()
     try:
         if ext == ".docx":
@@ -342,6 +383,10 @@ def head_text(path: Path, max_bytes: int = 64_000) -> str:
                 xml = z.read("word/document.xml").decode("utf-8", errors="replace")
             xml = re.sub(r"</w:p>", "\n", xml)
             return re.sub(r"<[^>]+>", "", xml)[:max_bytes]
+        if ext == ".pdf":
+            return _pdf_head_text(path, max_bytes)
+        if ext in DB_CONTAINER_EXT or ext in {".xlsx", ".xls"}:
+            return ""
         raw = path.read_bytes()[:max_bytes]
         try:
             return raw.decode("utf-8")
@@ -351,7 +396,24 @@ def head_text(path: Path, max_bytes: int = 64_000) -> str:
         return ""
 
 
+def printable_title(s: str) -> bool:
+    """A usable document title: printable, mostly alphanumeric, no replacement/control characters."""
+    s = s.strip()
+    if len(s) < 3 or len(s) > 120:
+        return False
+    if any((not ch.isprintable()) or ch == "\ufffd" for ch in s):
+        return False
+    alnum = sum(1 for ch in s if ch.isalnum() or ch.isspace())
+    return alnum / len(s) >= 0.7 and any(ch.isalpha() for ch in s)
+
+
+def title_from_filename(path: Path) -> str:
+    return re.sub(r"[_\-]+", " ", path.stem).strip()
+
+
 def first_heading(text: str, ext: str) -> str:
+    if ext == ".pdf":
+        return ""  # callers fall back to the file name (pdftotext output has no reliable heading structure)
     for line in text.splitlines():
         s = line.strip()
         if not s:
@@ -388,6 +450,10 @@ def categorise(path: Path, bucket: str, text: str) -> tuple[str, str]:
         return "legacy_report", "report name prefix"
     if ext in SCHEMA_EXT or stem.startswith(TABLE_PREFIXES):
         return "legacy_schema", "schema file extension or table name prefix"
+    if ext in DB_CONTAINER_EXT:
+        return "legacy_schema", f"legacy database container / backup file ({ext})"
+    if ext in DATA_EXPORT_EXT:
+        return "legacy_schema", f"tabular data export of a legacy store ({ext})"
     if ext == ".sql":
         if DDL_RE.search(text):
             return "legacy_schema", "SQL file containing DDL (CREATE …)"
@@ -406,8 +472,13 @@ def categorise(path: Path, bucket: str, text: str) -> tuple[str, str]:
         head = "\n".join(text.splitlines()[:40])
         if REQ_KEYWORDS.search(name) or REQ_KEYWORDS.search(head):
             return "requirements_doc", "requirements keyword in name or first lines"
-        if ext in (".md", ".docx"):
-            return "requirements_doc", f"{ext} document (default for narrative documents)"
+        if ext == ".pdf":
+            # A PDF in resources/inputs is a narrative document by construction (title from the file name;
+            # body text only when `pdftotext` is available) — never a legacy export.
+            return "requirements_doc", "PDF document (title from file name)"
+        if ext in NARRATIVE_DOC_EXT:
+            # Not a requirements document by evidence; scan() promotes the only/largest narrative document.
+            return "other", f"{ext} narrative document without requirements keywords"
         return "other", "plain document without requirements keywords"
     return "other", f"unrecognised extension {ext or '(none)'}"
 
@@ -426,7 +497,9 @@ def design_type(path: Path) -> str:
 
 
 def legacy_object_names(path: Path, category: str, text: str) -> list[str]:
-    """Object names inside legacy artefacts (tables, xsd elements, form/report names) for zero-leak lists."""
+    """Real object names inside legacy artefacts (CREATE TABLE names, XSD elements, `Name=` object lines, Access
+    prefixed object identifiers) for zero-leak lists. Bare file stems are NOT object names — they are reported
+    separately as `legacyFileStems` and only ever produce warnings downstream."""
     names: dict[str, None] = {}
     if category not in LEGACY_CATEGORIES:
         return []
@@ -438,8 +511,29 @@ def legacy_object_names(path: Path, category: str, text: str) -> list[str]:
         names.setdefault(m.group(1), None)  # object names only; captions are human labels and stay allowed
     for m in re.finditer(r"\b((?:tbl|frm|rpt|qry|cmd|txt|cbo|lst|chk)[A-Z][A-Za-z0-9_]{2,})\b", text):
         names.setdefault(m.group(1), None)
-    names.setdefault(path.stem, None)
     return sorted(names)
+
+
+def _sha256_and_size(path: Path, chunk: int = 1 << 20) -> tuple[str, int]:
+    """Stream the file through SHA-256 in 1 MiB chunks (database containers / backups can be large)."""
+    h = hashlib.sha256()
+    size = 0
+    with path.open("rb") as fh:
+        while True:
+            b = fh.read(chunk)
+            if not b:
+                break
+            h.update(b)
+            size += len(b)
+    return h.hexdigest(), size
+
+
+def _is_generated_reference(path: Path, bucket: str) -> bool:
+    """Generated capture artefacts (manifest + screenshots) are never user-provided design references, even when a
+    pre-v4.1 run left them under resources/design_references/."""
+    if bucket != "design_references":
+        return False
+    return path.name in GENERATED_REFERENCE_NAMES or "screenshots" in path.parts
 
 
 DOC_TYPE_PREFIX_RE = re.compile(
@@ -485,8 +579,11 @@ def scan(
     files: list[dict[str, Any]] = []
     seen: set[str] = set()
     legacy_names: dict[str, None] = {}
+    legacy_stems: dict[str, None] = {}
     user_design_refs: list[dict[str, str]] = []
-    primary_doc: tuple[int, str, str] | None = None  # (size, heading, relpath)
+    primary_doc: tuple[int, str, str, str] | None = None  # (size, heading, relpath, heading-source)
+    narrative_candidates: list[tuple[int, int, str, str]] = []  # (size, files-index, heading, heading-source) for promotion
+    resources_root = (root / "resources").resolve()
 
     for bucket, d in buckets:
         if not d.exists():
@@ -497,6 +594,19 @@ def scan(
                 continue
             if d.is_file() and (f.name.startswith(".") or f.name.lower() in IGNORED_FILES):
                 continue
+            if f.is_symlink():
+                # A symlink may only point inside resources/ (or the explicitly given input dir) — never escape
+                # into the home directory, /etc or another project.
+                try:
+                    target = f.resolve(strict=True)
+                    allowed = (resources_root, d.resolve()) if not d.is_file() else (resources_root,)
+                    if not any(str(target).startswith(str(a) + os.sep) or target == a for a in allowed):
+                        raise ValueError(target)
+                except (OSError, ValueError):
+                    dlc.warn(f"skipping symlink that points outside resources/: {f}")
+                    continue
+            if _is_generated_reference(f, bucket):
+                continue
             try:
                 rel = str(f.resolve().relative_to(root.resolve()))
             except ValueError:
@@ -506,21 +616,46 @@ def scan(
             seen.add(rel)
             text = head_text(f)
             cat, reason = categorise(f, bucket, text)
-            data = f.read_bytes()
+            sha, size = _sha256_and_size(f)
             entry = {
-                "relativePath": rel, "name": f.name, "extension": f.suffix.lower(), "sizeBytes": len(data),
-                "sha256": dlc.sha256_bytes(data), "category": cat,
+                "relativePath": rel, "name": f.name, "extension": f.suffix.lower(), "sizeBytes": size,
+                "sha256": sha, "category": cat,
                 "scenarioWeight": WEIGHTS[cat] if bucket == "inputs" else 0, "categoryReason": reason,
             }
             files.append(entry)
             for n in legacy_object_names(f, cat, text):
                 legacy_names.setdefault(n, None)
+            if cat in LEGACY_CATEGORIES and len(f.stem) >= 3:
+                legacy_stems.setdefault(f.stem, None)
             if cat == "design_reference" and bucket != "shared_services":
                 user_design_refs.append({"relativePath": rel, "designType": design_type(f)})
-            if cat == "requirements_doc" and bucket == "inputs":
-                h = first_heading(text, f.suffix.lower())
-                if primary_doc is None or len(data) > primary_doc[0]:
-                    primary_doc = (len(data), h, rel)
+            if bucket == "inputs" and f.suffix.lower() in NARRATIVE_DOC_EXT and cat in ("requirements_doc", "other"):
+                h, h_src = first_heading(text, f.suffix.lower()), "primary-document-h1"
+                if not printable_title(h):
+                    # No printable heading (binary garbage, PDF, empty) -> the file name is the only safe title
+                    h, h_src = title_from_filename(f), "primary-document-filename"
+                if cat == "requirements_doc":
+                    if primary_doc is None or size > primary_doc[0]:
+                        primary_doc = (size, h, rel, h_src)
+                else:
+                    narrative_candidates.append((size, len(files) - 1, h, h_src))
+            elif cat == "requirements_doc" and bucket == "inputs":
+                # .txt / .html requirements documents: title from the first heading when printable
+                h, h_src = first_heading(text, f.suffix.lower()), "primary-document-h1"
+                if not printable_title(h):
+                    h, h_src = title_from_filename(f), "primary-document-filename"
+                if primary_doc is None or size > primary_doc[0]:
+                    primary_doc = (size, h, rel, h_src)
+
+    # A narrative .md/.docx/.pdf without requirement keywords still counts as the requirements document when it is
+    # the only / largest document in resources/inputs and no keyword-bearing requirements document exists.
+    if primary_doc is None and narrative_candidates:
+        size, idx, h, h_src = max(narrative_candidates, key=lambda c: c[0])
+        e = files[idx]
+        e["category"] = "requirements_doc"
+        e["scenarioWeight"] = WEIGHTS["requirements_doc"]
+        e["categoryReason"] = f"{e['extension']} narrative document promoted: only/largest document in resources/inputs (no requirements keywords found)"
+        primary_doc = (size, h, e["relativePath"], h_src)
 
     files.sort(key=lambda e: e["relativePath"])
     legacy_w = sum(e["scenarioWeight"] for e in files if e["category"] in LEGACY_CATEGORIES)
@@ -536,8 +671,8 @@ def scan(
         slug, slug_src = dlc.slugify(domain_slug_flag), "flag"
     elif source_repo_meta and source_repo_meta.get("repositoryName") and scenario == "SCENARIO_LEGACY_APP":
         slug, slug_src = dlc.slugify(str(source_repo_meta["repositoryName"])), "source-repository"
-    elif primary_doc and primary_doc[1]:
-        slug, slug_src = dlc.slugify(strip_doc_type_prefix(primary_doc[1])), "primary-document-h1"
+    elif primary_doc and primary_doc[1] and printable_title(primary_doc[1]):
+        slug, slug_src = dlc.slugify(strip_doc_type_prefix(primary_doc[1])), primary_doc[3]
     else:
         slug, slug_src = dlc.slugify(root.name), "project-directory-name"
 
@@ -562,6 +697,7 @@ def scan(
         "hasUserProvidedDesignReferences": len(user_design_refs) > 0,
         "userProvidedDesignReferences": user_design_refs,
         "legacyObjectNames": sorted(legacy_names) if scenario == "SCENARIO_LEGACY_APP" or legacy_n else [],
+        "legacyFileStems": sorted(legacy_stems) if scenario == "SCENARIO_LEGACY_APP" or legacy_n else [],
         "inputFingerprintSha256": dlc.sha256_bytes(hasher_input),
         "totalFilesScanned": len(files),
         "files": files,
@@ -578,11 +714,9 @@ def main() -> int:
     ap.add_argument("--ado-repo", default=None, help="Azure DevOps Git repository URL (https://dev.azure.com/<org>/<project>/_git/<repo>) or repository name to ingest into resources/inputs/<repo>")
     ap.add_argument("--ado-org-url", default=None, help="Azure DevOps Organization URL (overrides ADO_ORG_URL when --ado-repo is a repo name)")
     ap.add_argument("--ado-project", default=None, help="Azure DevOps Project name (overrides ADO_PROJECT when --ado-repo is a repo name)")
-    ap.add_argument("--ado-pat", default=None, help="Azure DevOps Personal Access Token (overrides ADO_PAT)")
     ap.add_argument("--ado-branch", default=None, help="Optional Azure DevOps Git branch/tag to clone (overrides ADO_BRANCH)")
     ap.add_argument("--git-repo", default=None, help="Generic Git repository URL (GitHub/GitLab/Bitbucket/etc.) to ingest into resources/inputs/<repo>")
     ap.add_argument("--git-branch", default=None, help="Optional Git branch/tag to clone")
-    ap.add_argument("--git-token", default=None, help="Optional Git personal access token (overrides GIT_TOKEN / GITHUB_TOKEN)")
     ap.add_argument("--domain-slug", default=None, help="Override the kebab-case domain slug")
     ap.add_argument("--output", default="specs/input_inventory.json")
     ap.add_argument("--deterministic", action="store_true", help="Freeze timestamp for byte-identical output")
@@ -639,7 +773,7 @@ def main() -> int:
         org_url, proj, repo_name, clone_url = resolve_ado_repo_coordinates(
             args.ado_repo, args.ado_org_url, args.ado_project
         )
-        pat = args.ado_pat or os.environ.get("ADO_PAT")
+        pat = os.environ.get("ADO_PAT")  # env / .env only — never a CLI flag (argv is visible in `ps` and shell history)
         branch = args.ado_branch or os.environ.get("ADO_BRANCH")
         source_repo_meta = ingest_remote_repository(
             root=root,
@@ -656,7 +790,7 @@ def main() -> int:
         repo_name = Path(urllib.parse.urlparse(raw_git).path).stem or "git-repo"
         if repo_name.endswith(".git"):
             repo_name = repo_name[:-4]
-        token = args.git_token or os.environ.get("GIT_TOKEN") or os.environ.get("GITHUB_TOKEN")
+        token = os.environ.get("GIT_TOKEN") or os.environ.get("GITHUB_TOKEN")  # env / .env only — never a CLI flag
         branch = args.git_branch or os.environ.get("GIT_BRANCH")
         source_repo_meta = ingest_remote_repository(
             root=root,

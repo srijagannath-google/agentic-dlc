@@ -22,7 +22,11 @@
           "pillar": { "type": "integer", "minimum": 1, "maximum": 5 },
           "maxPoints": { "type": "integer", "minimum": 0 },
           "awarded": { "type": "integer", "minimum": 0 },
-          "evidence": { "type": "string", "description": "Verbatim quote(s) from specs/application_spec.md; several quotes separated by ' … '. Empty only when awarded == 0 or criterion is not applicable." },
+          "evidence": {
+            "type": "string",
+            "pattern": "^$|^[\\s\\S]{25,}$",
+            "description": "Verbatim quote(s) from specs/application_spec.md (≥ 25 characters and ≥ 5 words after whitespace normalisation — never a bare id or single word); several quotes separated by ' … '. Empty only when awarded == 0; 'N/A — …' (≥ 25 chars) when the criterion is not applicable to the scenario."
+          },
           "gap": { "type": "string", "description": "What is missing to reach maxPoints; empty when awarded == maxPoints." }
         }
       }

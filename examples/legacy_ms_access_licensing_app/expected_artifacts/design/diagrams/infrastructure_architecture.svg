@@ -49,17 +49,16 @@
 <line x1="144" y1="165.0" x2="182" y2="165.0" stroke="#202124" stroke-width="1.2"/>
 <line x1="144" y1="239.0" x2="182" y2="239.0" stroke="#202124" stroke-width="1.2"/>
 <line x1="182" y1="91.0" x2="182" y2="378.0" stroke="#202124" stroke-width="1.3"/>
-<line x1="182" y1="144" x2="182" y2="378" stroke="#202124" stroke-width="1.3"/>
-<line x1="182" y1="144" x2="194" y2="144" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
-<line x1="182" y1="222" x2="194" y2="222" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
-<line x1="182" y1="300" x2="194" y2="300" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
-<line x1="182" y1="378" x2="194" y2="378" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
-<line x1="318" y1="144" x2="332" y2="144" stroke="#202124" stroke-width="1.3"/>
-<line x1="318" y1="222" x2="332" y2="222" stroke="#202124" stroke-width="1.3"/>
-<line x1="318" y1="300" x2="332" y2="300" stroke="#202124" stroke-width="1.3"/>
-<line x1="318" y1="378" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>
-<line x1="332" y1="144" x2="332" y2="378" stroke="#202124" stroke-width="1.3"/>
-<line x1="332" y1="292" x2="356" y2="292" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="144.0" x2="194" y2="144.0" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="318" y1="144.0" x2="332" y2="144.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="222.0" x2="194" y2="222.0" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="318" y1="222.0" x2="332" y2="222.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="300.0" x2="194" y2="300.0" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="318" y1="300.0" x2="332" y2="300.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="182" y1="378.0" x2="194" y2="378.0" stroke="#202124" stroke-width="1.3" marker-end="url(#arrowDark)"/>
+<line x1="318" y1="378.0" x2="332" y2="378.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="332" y1="144.0" x2="332" y2="378.0" stroke="#202124" stroke-width="1.3"/>
+<line x1="332" y1="285.0" x2="356" y2="285.0" stroke="#202124" stroke-width="1.3"/>
 <rect x="344" y="96" width="398" height="356" rx="3" fill="none" stroke="#5F6368" stroke-width="1.2" stroke-dasharray="4,4"/>
 <rect x="364" y="116" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
 <rect x="360" y="112" width="366" height="324" rx="4" fill="#F1F3F4" stroke="#7F868D" stroke-width="1.1"/>
@@ -173,8 +172,8 @@
 <g transform="translate(1132.5,389.0)"><rect x="2" y="3" width="18" height="16" rx="2" fill="#FFFFFF" stroke="#1967D2" stroke-width="1.5"/><polyline points="4,14 8,10 11,13 15,7 18,9" fill="none" stroke="#34A853" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="7" r="1.6" fill="#4285F4"/></g>
 <text x="1156.5" y="398.5" font-size="8.2" font-weight="600" fill="#202124">GitOps &amp; Policy Engine</text>
 <text x="1156.5" y="409.5" font-size="7.3" font-weight="400" fill="#3C4043">Config Sync &amp; OPA Gatek…</text>
-<line x1="710" y1="292" x2="750" y2="292" stroke="#F29900" stroke-width="1.6"/>
-<line x1="750" y1="153" x2="750" y2="401" stroke="#F29900" stroke-width="1.6"/>
+<line x1="710" y1="285.0" x2="750" y2="285.0" stroke="#F29900" stroke-width="1.6"/>
+<line x1="750" y1="153.0" x2="750" y2="401.0" stroke="#F29900" stroke-width="1.6"/>
 <line x1="750" y1="153" x2="790" y2="153" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
 <line x1="750" y1="277" x2="790" y2="277" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>
 <line x1="750" y1="401" x2="790" y2="401" stroke="#F29900" stroke-width="1.6" marker-end="url(#arrowAmber)"/>

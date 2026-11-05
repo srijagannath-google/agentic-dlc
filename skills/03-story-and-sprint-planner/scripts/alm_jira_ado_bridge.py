@@ -13,14 +13,19 @@ v4 contract (docs/ARCHITECTURE.md §1, §4.5, §5 Gate 3):
   * Live sync is idempotent (upsert by `[US-ID]` title prefix). Offline mode or missing credentials produce a
     local export only and say so explicitly; a live sync is never reported unless it happened.
 
-Actions:  test-connection | audit | sync-stories | sync-sprints (--approved) | transition-stories | sync-status-from-eval | set-approval | export-csv
+Actions:  test-connection | audit | select-groups | sync-stories | sync-sprints (--approved) | set-approval | transition-stories
+          | sync-status-from-eval | sync-deployment-status | export-csv
+Exit codes: 0 ok · 1 gate / audit failure (or not connected for test-connection) · 2 live sync had errors
+            (details in backlog/jira_state.json / backlog/azure_devops_state.json#liveSyncErrors).
+All local artefacts are written under <PROJECT_ROOT>/backlog/ (fixed location).
 
-Environment / flags:
+Environment:
   JIRA_URL, JIRA_EMAIL, JIRA_API_TOKEN, JIRA_PROJECT_KEY (optional; auto-discovered), JIRA_BOARD_ID (optional),
   JIRA_ISSUE_TYPE (default Story)
   ADO_ORG_URL (https://dev.azure.com/<org>), ADO_PROJECT, ADO_PAT, ADO_WORK_ITEM_TYPE (default "User Story")
   DLC_OFFLINE_MODE=1 (same as --offline)
-  Values may also live in ./.env, <PROJECT_ROOT>/.env or ~/.gemini/config/agentic-dlc.env.
+  Secrets (JIRA_API_TOKEN, ADO_PAT) are read from the environment only — never from CLI flags. Values may also
+  live in <PROJECT_ROOT>/.env or ~/.gemini/config/agentic-dlc.env (never from an arbitrary cwd).
 
 Python >= 3.10, standard library only.
 """
@@ -36,6 +41,7 @@ import os
 import re
 import ssl
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -71,16 +77,26 @@ JIRA_SPRINT_NAME_MAX = 30
 ADO_API = "7.1"
 STORY_ID_PREFIX_RE = re.compile(r"^\[([A-Za-z0-9_-]+)\]")
 SPRINT_LABEL_RE = re.compile(r"^\s*sprint\s*(\d+)", re.IGNORECASE)
+JIRA_PROJECT_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+$")
+JIRA_DESCRIPTION_MAX_CHARS = 32_000      # Jira Cloud rejects descriptions above 32,767 characters
+JIRA_BULK_ISSUE_MOVE_CHUNK = 50          # Agile API: <= 50 issues per sprint / backlog move
+HTTP_RETRY_ATTEMPTS = 3
+HTTP_RETRY_STATUSES = (429, 502, 503, 504)
+HTTP_RETRY_MAX_SLEEP_SECONDS = 30.0
+BACKLOG_DIR = "backlog"                  # all local ALM artefacts live under <PROJECT_ROOT>/backlog/
 
 
 # ======================================================================================
 # Section 0 — environment, HTTP plumbing
 # ======================================================================================
 def load_env_files(project_root: Path | None = None) -> None:
-    """Populate os.environ from dotenv-style files without overriding real environment variables."""
-    candidates = [Path.cwd() / ".env", Path.cwd() / ".env.jira", Path.home() / ".gemini" / "config" / "agentic-dlc.env"]
+    """Populate os.environ from dotenv-style files without overriding real environment variables.
+
+    Only `<PROJECT_ROOT>/.env` and `~/.gemini/config/agentic-dlc.env` are consulted — never an arbitrary cwd."""
+    candidates: list[Path] = []
     if project_root:
-        candidates.insert(0, project_root / ".env")
+        candidates.append(project_root / ".env")
+    candidates.append(Path.home() / ".gemini" / "config" / "agentic-dlc.env")
     for env_path in candidates:
         if not env_path.is_file():
             continue
@@ -113,33 +129,63 @@ class HttpError(Exception):
         super().__init__(f"{method} {url} -> HTTP {status}: {body[:240]}")
 
 
+def _retry_after_seconds(headers: Any, attempt: int) -> float:
+    """Honour a numeric `Retry-After` header; otherwise use a small exponential backoff (1s, 2s, ...)."""
+    raw = ""
+    try:
+        raw = str(headers.get("Retry-After", "") if headers is not None else "").strip()
+    except Exception:  # noqa: BLE001 — headers object shape varies between urllib error types
+        raw = ""
+    if raw.isdigit():
+        return min(float(raw), HTTP_RETRY_MAX_SLEEP_SECONDS)
+    return min(float(2 ** (attempt - 1)), HTTP_RETRY_MAX_SLEEP_SECONDS)
+
+
 def http_json(method: str, url: str, headers: dict[str, str], body: Any = None, timeout: int = 20) -> tuple[int, Any]:
-    """Perform one HTTPS request; return (status, parsed-json-or-text-or-None). Raises HttpError."""
+    """Perform one HTTPS request; return (status, parsed-json-or-text-or-None). Raises HttpError.
+
+    Transient failures (HTTP 429/502/503/504 and connection-level errors) are retried up to
+    `HTTP_RETRY_ATTEMPTS` times, honouring `Retry-After` when present (bounded by `HTTP_RETRY_MAX_SLEEP_SECONDS`)."""
     data = None
     if body is not None:
         data = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
     ctx = build_ssl_context()
-    try:
+    last_error: HttpError | None = None
+    for attempt in range(1, HTTP_RETRY_ATTEMPTS + 1):
+        req = urllib.request.Request(url, data=data, headers=headers, method=method)
+        sleep_for = 0.0
         try:
-            resp = urllib.request.urlopen(req, timeout=timeout, context=ctx)
-        except urllib.error.URLError as e:
-            if "CERTIFICATE_VERIFY_FAILED" in str(e) and Path("/etc/ssl/cert.pem").exists():
-                resp = urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context(cafile="/etc/ssl/cert.pem"))
+            try:
+                resp = urllib.request.urlopen(req, timeout=timeout, context=ctx)
+            except urllib.error.URLError as e:
+                if "CERTIFICATE_VERIFY_FAILED" in str(e) and Path("/etc/ssl/cert.pem").exists():
+                    resp = urllib.request.urlopen(req, timeout=timeout, context=ssl.create_default_context(cafile="/etc/ssl/cert.pem"))
+                else:
+                    raise
+            with resp:
+                status, raw = resp.status, resp.read()
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            last_error = HttpError(method, url, e.code, err_body)
+            if e.code in HTTP_RETRY_STATUSES and attempt < HTTP_RETRY_ATTEMPTS:
+                sleep_for = _retry_after_seconds(e.headers, attempt)
             else:
-                raise
-        with resp:
-            status, raw = resp.status, resp.read()
-    except urllib.error.HTTPError as e:
-        raise HttpError(method, url, e.code, e.read().decode("utf-8", errors="replace")) from None
-    except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise HttpError(method, url, 0, f"{type(e).__name__}: {e}") from None
-    if not raw:
-        return status, None
-    try:
-        return status, json.loads(raw.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return status, raw.decode("utf-8", errors="replace")
+                raise last_error from None
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last_error = HttpError(method, url, 0, f"{type(e).__name__}: {e}")
+            if attempt < HTTP_RETRY_ATTEMPTS:
+                sleep_for = _retry_after_seconds(None, attempt)
+            else:
+                raise last_error from None
+        else:
+            if not raw:
+                return status, None
+            try:
+                return status, json.loads(raw.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return status, raw.decode("utf-8", errors="replace")
+        time.sleep(sleep_for)
+    raise last_error or HttpError(method, url, 0, "request failed")  # pragma: no cover — loop always returns or raises
 
 
 def basic_auth_header(user: str, secret: str) -> str:
@@ -223,8 +269,41 @@ def story_status_counts(stories: list[dict[str, Any]]) -> dict[str, int]:
     return counts
 
 
+def test_case_story_refs(tc: dict[str, Any]) -> set[str]:
+    """All story ids a test case is *directly* linked to (`storyRef`, `storyId`, `userStoryId`, `storyRefs`, `userStoryIds`)."""
+    refs: set[str] = set()
+    for k in ("storyRef", "storyId", "userStoryId", "userStory"):
+        v = tc.get(k)
+        if isinstance(v, str) and v.strip():
+            refs.add(v.strip())
+    for k in ("storyRefs", "storyIds", "userStoryIds"):
+        v = tc.get(k)
+        if isinstance(v, list):
+            refs |= {str(x).strip() for x in v if str(x).strip()}
+    return refs
+
+
+def directly_linked_test_cases(tcs: list[dict[str, Any]], sid: str, include_optional: bool = False) -> list[dict[str, Any]]:
+    """Test cases explicitly linked to story `sid` (never inferred from requirement overlap)."""
+    return [t for t in tcs if isinstance(t, dict) and (include_optional or not t.get("optional")) and sid in test_case_story_refs(t)]
+
+
+def load_test_cases(root: Path) -> list[dict[str, Any]]:
+    tc_path = root / "test" / "test_cases.json"
+    if not tc_path.is_file():
+        return []
+    tc_doc = dlc.read_json(tc_path)
+    if isinstance(tc_doc, dict):
+        return [t for t in (tc_doc.get("testCases") or []) if isinstance(t, dict)]
+    return [t for t in tc_doc if isinstance(t, dict)] if isinstance(tc_doc, list) else []
+
+
 def compute_story_statuses_from_eval(root: Path, stories: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Derive each story's status ('To Do' | 'In Progress' | 'Done') from test/eval_results.json + test/test_cases.json."""
+    """Derive each story's status ('To Do' | 'In Progress' | 'Done') from test/eval_results.json + test/test_cases.json.
+
+    A story reaches 'Done' only on the evidence of its *directly linked* test cases (`storyRef` et al.). A story without
+    any directly linked test case stays 'In Progress' with the reason "no linked test evidence"; a requirement-overlap
+    match is reported as a warning only and never promotes a story."""
     eval_path = dlc.require_file(root / "test" / "eval_results.json", "Stage 6 (07/scripts/run_closed_loop_eval.py)")
     eval_data = dlc.read_json(eval_path)
     if not isinstance(eval_data, dict):
@@ -234,18 +313,13 @@ def compute_story_statuses_from_eval(root: Path, stories: list[dict[str, Any]]) 
     verdict = str(summary.get("verdict") or eval_data.get("overallVerdict") or "").strip().upper()
     guardrail_status = str(eval_data.get("guardrailReviewStatus") or "NOT_REQUIRED").strip().upper()
     guardrail_blocked = guardrail_status == "FLAGGED_REQUIRES_HUMAN_APPROVAL"
-    overall_pass = (verdict == "PASS") and not guardrail_blocked
 
     results_by_id: dict[str, str] = {}
     for r in eval_data.get("results") or eval_data.get("testResults") or []:
         if isinstance(r, dict) and r.get("id"):
             results_by_id[str(r["id"])] = str(r.get("status") or "NOT_RUN").strip().upper()
 
-    tc_path = root / "test" / "test_cases.json"
-    tcs: list[dict[str, Any]] = []
-    if tc_path.is_file():
-        tc_doc = dlc.read_json(tc_path)
-        tcs = tc_doc.get("testCases", tc_doc) if isinstance(tc_doc, dict) else []
+    tcs = load_test_cases(root)
 
     is_all, selected_groups = dlc.active_capability_groups(root)
     out: dict[str, dict[str, Any]] = {}
@@ -269,9 +343,7 @@ def compute_story_statuses_from_eval(root: Path, stories: list[dict[str, Any]]) 
             }
             continue
         s_reqs = set(s.get("requirementRefs") or [])
-        direct = [t for t in tcs if isinstance(t, dict) and not t.get("optional") and t.get("storyRef") == sid]
-        if not direct and s_reqs:
-            direct = [t for t in tcs if isinstance(t, dict) and not t.get("optional") and (set(t.get("requirementRefs") or []) & s_reqs)]
+        direct = directly_linked_test_cases(tcs, sid)
 
         statuses = [results_by_id.get(str(t.get("id")), "NOT_RUN") for t in direct]
         total = len(statuses)
@@ -296,16 +368,19 @@ def compute_story_statuses_from_eval(root: Path, stories: list[dict[str, Any]]) 
             else:
                 target = "In Progress"
                 reason = f"{passed}/{total} passed, {not_run} not run"
+        elif is_product_backlog(sprint_label(s)):
+            target = "To Do"
+            reason = "Product Backlog (not yet evaluated)"
         else:
-            if overall_pass:
-                target = "Done"
-                reason = "Overall Stage 6 evaluation passed"
-            elif is_product_backlog(sprint_label(s)):
-                target = "To Do"
-                reason = "Product Backlog (not yet evaluated)"
-            else:
-                target = "In Progress"
-                reason = f"Overall evaluation verdict is {verdict or 'INCOMPLETE'}"
+            # No directly linked test evidence: never promote to Done (requirement overlap is a warning only).
+            target = "In Progress"
+            reason = "No linked test evidence — no test case references this story directly"
+            overlap = [t for t in tcs if not t.get("optional") and (set(t.get("requirementRefs") or []) & s_reqs)] if s_reqs else []
+            if overlap:
+                dlc.warn(f"{sid}: no test case links to it directly; {len(overlap)} test case(s) overlap only via requirementRefs "
+                         f"({', '.join(str(t.get('id')) for t in overlap[:5])}{', …' if len(overlap) > 5 else ''}). "
+                         "Add storyRef links in test/test_cases.json for the story to reach Done.")
+                reason += f" ({len(overlap)} test case(s) overlap via requirementRefs only; overall verdict {verdict or 'INCOMPLETE'})"
 
         out[sid] = {
             "storyId": sid,
@@ -320,8 +395,11 @@ def compute_story_statuses_from_eval(root: Path, stories: list[dict[str, Any]]) 
     return out
 
 
-def update_markdown_story_statuses(root: Path, stories_or_map: list[dict[str, Any]] | dict[str, str]) -> list[str]:
-    """Update or insert `- **Status:**` and `- **Traceability:**` lines inside each story section in backlog/user_stories.md."""
+def update_markdown_story_statuses(root: Path, stories_or_map: list[dict[str, Any]] | dict[str, str],
+                                   update_sprints: bool = False) -> list[str]:
+    """Update or insert `- **Status:**` and `- **Traceability:**` lines inside each story section in backlog/user_stories.md.
+    With `update_sprints=True` the `**Sprint:** \\`…\\`` value inside each story section is rewritten as well
+    (used by select-groups when stories move between sprints / Product Backlog)."""
     status_by_id: dict[str, str] = (
         {s["id"]: story_status(s) for s in stories_or_map if isinstance(s, dict) and s.get("id")}
         if isinstance(stories_or_map, list) else dict(stories_or_map)
@@ -335,6 +413,7 @@ def update_markdown_story_statuses(root: Path, stories_or_map: list[dict[str, An
     if stories_md.is_file():
         orig = dlc.read_text(stories_md)
         text = orig
+        sprint_lines_missing: list[str] = []
         for sid, st in status_by_id.items():
             sec_re = re.compile(rf"(^###?\s+[^\n]*\b{re.escape(sid)}\b[^\n]*\n(?:(?!^###?\s).*\n)*?)(- \*\*Status:\*\*[ \t]*`?[^`\n]+`?)", re.MULTILINE)
             if sec_re.search(text):
@@ -354,6 +433,19 @@ def update_markdown_story_statuses(root: Path, stories_or_map: list[dict[str, An
                     st_re = re.compile(rf"(^###?\s+[^\n]*\b{re.escape(sid)}\b[^\n]*\n(?:(?!^###?\s).*\n)*?- \*\*Status:\*\*[^\n]*\n)", re.MULTILINE)
                     if st_re.search(text):
                         text = st_re.sub(rf"\1- **Traceability:** {tr_line}\n", text, count=1)
+            if update_sprints and isinstance(s_obj, dict) and sprint_label(s_obj):
+                new_sprint = sprint_label(s_obj)
+                sp_re = re.compile(rf"(^###?\s+[^\n]*\b{re.escape(sid)}\b[^\n]*\n(?:(?!^###?\s).*\n)*?[^\n]*\*\*Sprint:\*\*[ \t]*)(`[^`\n]*`|[^\n—|]*?(?=[ \t]*(?:—|\||$)))", re.MULTILINE)
+                m_sp = sp_re.search(text)
+                if m_sp:
+                    quoted = m_sp.group(2).startswith("`")
+                    repl_val = f"`{new_sprint}`" if quoted else new_sprint
+                    text = text[:m_sp.start(2)] + repl_val + text[m_sp.end(2):]
+                else:
+                    sprint_lines_missing.append(sid)
+        if update_sprints and sprint_lines_missing:
+            dlc.warn(f"backlog/user_stories.md has no '**Sprint:**' line for {', '.join(sprint_lines_missing)} — "
+                     "update their sprint assignment in the markdown manually (user_stories.json is authoritative).")
         if text != orig:
             dlc.write_text(stories_md, text)
             touched.append(str(stories_md))
@@ -372,10 +464,10 @@ def format_traceability_markdown_line(tr: dict[str, Any]) -> str:
     return f"Reqs: {reqs} | Rules: {brs} | API: {apis} | DB: {tbls} | Code: {src_files} | Tests: {tcs} | Defects: {bugs}"
 
 
-def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects: list[dict[str, Any]] | None = None) -> None:
-    """Populate `story['traceability']` on every story linking Legacy/Input Sources -> Requirements & Business Rules ->
-    Design Contracts (OpenAPI/DDL) -> Target Source Code (`src/`) & UI `data-testid` hooks -> Test Cases (`TC-*`) -> Defects (`BUG-*`)."""
-    # 1. Discover input sources (legacy files or BRDs)
+def _project_wide_contract_index(root: Path) -> dict[str, list[str]]:
+    """Project-wide (NOT per-story) index of input sources, OpenAPI operations, DDL tables and src/ files.
+    Reported once (`sprint_plan.json#projectWideTraceability`) — never copied onto every story."""
+    # 1. Input sources (legacy files or BRDs)
     inv_files: list[str] = []
     inv_p = root / "specs" / "input_inventory.json"
     if inv_p.is_file():
@@ -387,7 +479,7 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
                 elif isinstance(f_item, str):
                     inv_files.append(f_item)
 
-    # 2. Discover design contracts (API operations & DB tables)
+    # 2. Design contracts (API operations & DB tables)
     api_ops: list[str] = []
     db_tables: list[str] = []
     cidx_p = root / "design" / ".contracts_index.json"
@@ -426,7 +518,7 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
             if tb_name not in db_tables:
                 db_tables.append(tb_name)
 
-    # 3. Discover target source files under src/
+    # 3. Target source files under src/
     src_files: list[str] = []
     src_dir = root / "src"
     if src_dir.is_dir():
@@ -434,14 +526,45 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
             if p.is_file() and not any(part in ("__pycache__", "node_modules", ".venv", ".git") for part in p.parts):
                 if p.suffix.lower() in (".html", ".js", ".ts", ".tsx", ".css", ".py", ".sql", ".yaml", ".yml", ".go", ".java"):
                     src_files.append(str(p.relative_to(root)).replace(os.sep, "/"))
+    return {"inputSources": inv_files, "apiContracts": api_ops, "databaseTables": db_tables, "targetSourceFiles": src_files}
 
-    # 4. Load test cases & latest evaluation statuses
-    tc_list: list[dict[str, Any]] = []
-    tc_p = root / "test" / "test_cases.json"
-    if tc_p.is_file():
-        tc_doc = dlc.read_json(tc_p)
-        if isinstance(tc_doc, dict):
-            tc_list = [t for t in (tc_doc.get("testCases") or []) if isinstance(t, dict)]
+
+def _api_path_matches(op_path: str, requested: str) -> bool:
+    """`/api/requests/{reference}` matches `/api/requests/LR-0001`; exact paths match themselves."""
+    if op_path == requested:
+        return True
+    pattern = "^" + re.sub(r"\\\{[^/]+\\\}", r"[^/]+", re.escape(op_path)) + "/?$"
+    return re.match(pattern, requested) is not None
+
+
+def enrich_story_traceability(root: Path, stories: list[dict[str, Any]],
+                              defects: list[dict[str, Any]] | None = None) -> dict[str, list[str]]:
+    """Populate `story['traceability']` on every story linking Legacy/Input Sources -> Requirements & Business Rules ->
+    Design Contracts (OpenAPI/DDL) -> Target Source Code (`src/`) & UI `data-testid` hooks -> Test Cases (`TC-*`) -> Defects (`BUG-*`).
+
+    Only *story-specific* evidence is emitted per story:
+      * test cases directly linked to the story (`storyRef` et al.), their `data-testid` selectors and HTTP endpoints;
+      * OpenAPI operations matched by those endpoints or named in the story's ACs / test steps;
+      * DDL tables whose names appear in the story's ACs or linked test steps;
+      * `src/` files that implement one of the story's selectors / endpoints or mention the story / its requirement ids;
+      * the story's own `legacyArtifactsReplaced`.
+    Project-wide lists (all inputs, all operations, all tables, all files) are returned once by this function and
+    recorded under `sprint_plan.json#projectWideTraceability` — they are never fabricated onto individual stories."""
+    project_wide = _project_wide_contract_index(root)
+    api_ops = project_wide["apiContracts"]
+    db_tables = project_wide["databaseTables"]
+    src_files = project_wide["targetSourceFiles"]
+
+    # Source file contents (read once) for story-specific implementation matching
+    src_text: dict[str, str] = {}
+    for rel in src_files:
+        try:
+            src_text[rel] = dlc.read_text(root / rel)
+        except (OSError, UnicodeDecodeError):
+            src_text[rel] = ""
+
+    # Test cases & latest evaluation statuses
+    tc_list = load_test_cases(root)
     eval_status_by_tc: dict[str, str] = {}
     eval_p = root / "test" / "eval_results.json"
     if eval_p.is_file():
@@ -451,11 +574,10 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
                 if isinstance(r, dict) and r.get("id"):
                     eval_status_by_tc[str(r["id"])] = str(r.get("status") or "NOT_RUN").strip().upper()
 
-    # 5. Load defects if not passed in
     if defects is None:
         defects = load_defects(root)
 
-    # 6. Load GDC deployment evaluation report if present (Stage 8)
+    # GDC deployment evaluation report if present (Stage 8)
     dep_eval: dict[str, Any] | None = None
     dep_eval_p = root / "deploy" / "deployment_eval_report.json"
     if dep_eval_p.is_file():
@@ -468,31 +590,32 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
             if isinstance(w, dict) and w.get("capabilityGroup"):
                 wave_by_group[str(w["capabilityGroup"]).upper()] = int(w.get("wave") or 1)
 
+    table_patterns = {
+        tb: re.compile(r"\b" + re.escape(tb).replace("_", r"[_ ]") + r"s?\b", re.IGNORECASE) for tb in db_tables
+    }
+
     for s in stories:
         sid = str(s.get("id") or "").strip()
         if not sid:
             continue
         legacy_srcs = [str(x) for x in (s.get("legacyArtifactsReplaced") or []) if str(x).strip()]
-        if not legacy_srcs and inv_files:
-            legacy_srcs = list(inv_files[:4])
         s_reqs = [str(x) for x in (s.get("requirementRefs") or []) if str(x).strip()]
         s_brs = [str(x) for x in (s.get("businessRuleRefs") or []) if str(x).strip()]
         s_trans = [str(x) for x in (s.get("workflowTransitions") or []) if str(x).strip()]
 
-        # Linked test cases for this story
-        s_req_set = set(s_reqs)
-        linked_tcs = [t for t in tc_list if t.get("storyRef") == sid]
-        for t in tc_list:
-            if t not in linked_tcs and (set(t.get("requirementRefs") or []) & s_req_set):
-                linked_tcs.append(t)
+        # Linked test cases for this story — direct links only
+        linked_tcs = directly_linked_test_cases(tc_list, sid, include_optional=True)
 
-        # Extract UI data-testid selectors and HTTP endpoints exercised by the story's linked test cases
+        # UI data-testid selectors and HTTP endpoints exercised by the story's linked test cases
         ui_testids: list[str] = []
         story_apis: list[str] = []
+        tc_text_parts: list[str] = []
         for t in linked_tcs:
+            tc_text_parts += [str(t.get("title") or ""), str(t.get("expected") or "")]
             for st in t.get("steps") or []:
                 if not isinstance(st, dict):
                     continue
+                tc_text_parts.append(json.dumps(st, ensure_ascii=False))
                 sel = str(st.get("selector") or "")
                 for m_tid in re.finditer(r"data-testid=['\"]?([A-Za-z0-9_-]+)['\"]?", sel):
                     tid_val = m_tid.group(1)
@@ -502,11 +625,35 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
                     meth = str(st.get("method") or "GET").upper()
                     pth = str(st.get("path") or st.get("url") or "")
                     if pth:
-                        op_label = f"{meth} {pth.split('?')[0]}"
+                        pth = pth.split("?")[0]
+                        if pth.startswith("http"):
+                            pth = urllib.parse.urlparse(pth).path
+                        matched = next((op for op in api_ops if op.split(" ", 1)[0] == meth and _api_path_matches(op.split(" ", 1)[1], pth)), None)
+                        op_label = matched or f"{meth} {pth}"
                         if op_label not in story_apis:
                             story_apis.append(op_label)
-        if not story_apis and api_ops:
-            story_apis = list(api_ops[:6])
+        story_text = story_search_text(s) + "\n" + "\n".join(tc_text_parts)
+        for op in api_ops:  # operations named verbatim in ACs / test steps
+            if op not in story_apis and op.split(" ", 1)[1] in story_text:
+                story_apis.append(op)
+
+        # DB tables whose names appear in the story's ACs or linked test steps (role names are not tables:
+        # 'Employee' as an actor must not link the `employee` table to every story).
+        role_words = {str(r).strip().lower() for r in (s.get("roles") or []) if str(r).strip()}
+        for t in linked_tcs:
+            for st in t.get("steps") or []:
+                if isinstance(st, dict) and st.get("action") == "setRole" and st.get("value"):
+                    role_words.add(str(st["value"]).strip().lower())
+        table_text = story_text
+        for rw in sorted(role_words, key=len, reverse=True):
+            table_text = re.sub(r"\b" + re.escape(rw).replace(r"\ ", r"[_ ]") + r"s?\b", " ", table_text, flags=re.IGNORECASE)
+        story_tables = [tb for tb, pat in table_patterns.items() if pat.search(table_text)]
+
+        # src/ files implementing this story: contain one of its data-testids / endpoints, or mention the story / REQ ids
+        needles = [f"data-testid=\"{t}\"" for t in ui_testids] + [f"data-testid='{t}'" for t in ui_testids] + [f"\"{t}\"" for t in ui_testids]
+        needles += [op.split(" ", 1)[1] for op in story_apis]
+        needles += [sid] + s_reqs
+        story_files = [rel for rel, txt in src_text.items() if txt and any(n in txt for n in needles)]
 
         tc_summaries = [
             {
@@ -526,21 +673,41 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]], defects
             "businessRuleRefs": s_brs,
             "workflowTransitions": s_trans,
             "apiContracts": story_apis,
-            "databaseTables": list(db_tables[:8]),
-            "targetSourceFiles": list(src_files),
-            "uiTestIds": ui_testids[:12],
+            "databaseTables": story_tables,
+            "targetSourceFiles": story_files,
+            "uiTestIds": ui_testids,
             "testCases": tc_summaries,
             "defectRefs": story_bugs,
         }
         if dep_eval:
             cg_u = str(s.get("capabilityGroup") or "GRP-01").strip().upper()
+            prev_dep = ((s.get("traceability") or {}).get("gdcDeployment") or {}) if isinstance(s.get("traceability"), dict) else {}
             tr_obj["gdcDeployment"] = {
                 "abstractionPlane": str(dep_eval.get("abstractionPlane") or "gdc-fleet"),
                 "targetEnvironments": list(dep_eval.get("targetEnvironments") or ["on-prem-gdc", "gcp", "aws", "azure"]),
                 "rolloutWave": wave_by_group.get(cg_u, 1),
                 "verdict": str((dep_eval.get("summary") or {}).get("verdict") or "PASS"),
             }
+            for carry in ("jiraCommentId", "adoCommentMarker"):  # live deployment-comment pointers survive re-enrichment
+                if prev_dep.get(carry):
+                    tr_obj["gdcDeployment"][carry] = prev_dep[carry]
         s["traceability"] = tr_obj
+    return project_wide
+
+
+def refresh_defect_traceability(defects: list[dict[str, Any]], stories: list[dict[str, Any]]) -> None:
+    """Copy the parent story's story-specific contract / source links onto each defect (after enrich_story_traceability)."""
+    story_by_id = {str(s.get("id")): s for s in stories if s.get("id")}
+    for bug in defects:
+        if not isinstance(bug, dict):
+            continue
+        ps = story_by_id.get(str(bug.get("storyRef") or ""), {})
+        tr_s = ps.get("traceability") or {}
+        if tr_s:
+            bug.setdefault("traceability", {})
+            bug["traceability"]["apiContracts"] = list(tr_s.get("apiContracts") or [])
+            bug["traceability"]["databaseTables"] = list(tr_s.get("databaseTables") or [])
+            bug["traceability"]["targetSourceFiles"] = list(tr_s.get("targetSourceFiles") or [])
 
 
 def load_defects(root: Path) -> list[dict[str, Any]]:
@@ -561,7 +728,6 @@ def compute_snapshot_diff_steps(root: Path, from_iter: int, to_iter: int) -> tup
     cur_dir = snaps / f"iter-{to_iter}"
     if not cur_dir.is_dir():
         cur_dir = root / "src"
-
     meta_skip = {
         "eval_results.json",
         "eval_report.md",
@@ -570,22 +736,20 @@ def compute_snapshot_diff_steps(root: Path, from_iter: int, to_iter: int) -> tup
         "defects.md",
     }
 
-    def _collect(base: Path, is_src_root: bool = False) -> dict[str, Path]:
+    def _collect(base: Path) -> dict[str, Path]:
         out: dict[str, Path] = {}
         if not base.is_dir():
             return out
         for p in sorted(base.rglob("*")):
             if p.is_file() and p.name not in meta_skip and not any(pt in ("__pycache__", "node_modules", ".venv", ".git", "screenshots") for pt in p.parts):
                 rel = str(p.relative_to(base)).replace(os.sep, "/")
-                if is_src_root and not rel.startswith("src/"):
-                    rel = f"src/{rel}"
-                elif not rel.startswith("src/"):
+                if not rel.startswith("src/"):
                     rel = f"src/{rel}"
                 out[rel] = p
         return out
 
     prev_files = _collect(prev_dir)
-    cur_files = _collect(cur_dir, is_src_root=(cur_dir == root / "src"))
+    cur_files = _collect(cur_dir)
     files_modified: list[str] = []
     steps_taken: list[str] = []
     diff_chunks: list[str] = []
@@ -642,21 +806,23 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
     cur_iter = int(cur_eval.get("iteration") or 1)
     now_iso = dlc.utc_now_iso(deterministic)
 
-    # Collect chronological evaluation snapshots (iter-1 .. cur_iter) from test/.snapshots and test/history
+    # Collect chronological evaluation snapshots (iter-1 .. cur_iter) from test/.snapshots and test/history;
+    # corrupt or unreadable snapshots are skipped with a warning (never abort the status sync).
     eval_by_iter: dict[int, dict[str, Any]] = {}
     for base_d in (root / "test" / ".snapshots", root / "test" / "history"):
-        if base_d.is_dir():
-            for snap_p in sorted(base_d.glob("iter-*/eval_results.json")):
-                m_it = re.search(r"iter-(\d+)", snap_p.parent.name)
-                it_num = int(m_it.group(1)) if m_it else 1
-                if it_num in eval_by_iter:
-                    continue
-                try:
-                    ed = dlc.read_json(snap_p)
-                    if isinstance(ed, dict):
-                        eval_by_iter[it_num] = ed
-                except Exception:
-                    pass
+        if not base_d.is_dir():
+            continue
+        for snap_p in sorted(base_d.glob("iter-*/eval_results.json")):
+            m_it = re.search(r"iter-(\d+)", snap_p.parent.name)
+            it_num = int(m_it.group(1)) if m_it else 1
+            if it_num in eval_by_iter:
+                continue
+            try:
+                ed = dlc.read_json(snap_p)
+                if isinstance(ed, dict):
+                    eval_by_iter[it_num] = ed
+            except (dlc.GateFailure, SystemExit, OSError, ValueError) as e:
+                dlc.warn(f"Skipping corrupt Stage 6 snapshot {snap_p}: {e}")
     eval_by_iter.setdefault(cur_iter, cur_eval)
     eval_history: list[tuple[int, dict[str, Any]]] = sorted(eval_by_iter.items(), key=lambda x: x[0])
 
@@ -674,9 +840,12 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
     default_tech_story = next((str(s["id"]) for s in stories if str(s.get("id", "")).startswith("US-TECH")), next(iter(story_by_id), "US-FUNC-01"))
 
     def _resolve_story_for_tc(tid: str, res_obj: dict[str, Any]) -> str:
-        sref = str(res_obj.get("storyRef") or tc_by_id.get(tid, {}).get("storyRef") or "").strip()
+        sref = str(res_obj.get("storyRef") or "").strip()
         if sref and sref in story_by_id:
             return sref
+        for cand in sorted(test_case_story_refs(tc_by_id.get(tid, {}))):
+            if cand in story_by_id:
+                return cand
         tc_reqs = set(tc_by_id.get(tid, {}).get("requirementRefs") or [])
         if tc_reqs:
             for s in stories:
@@ -810,21 +979,30 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
                 bug["resolvedInIteration"] = it_num
 
     all_defects = sorted(defect_by_key.values(), key=lambda d: str(d.get("id") or ""))
-    # Refresh traceability on each defect now that stories have traceability
-    for bug in all_defects:
-        ps = story_by_id.get(str(bug.get("storyRef") or ""), {})
-        tr_s = ps.get("traceability") or {}
-        if tr_s:
-            bug["traceability"]["apiContracts"] = list(tr_s.get("apiContracts") or [])
-            bug["traceability"]["databaseTables"] = list(tr_s.get("databaseTables") or [])
-            bug["traceability"]["targetSourceFiles"] = list(tr_s.get("targetSourceFiles") or [])
-
-    write_defects_artifacts(root, all_defects, deterministic, cur_iter)
+    # Defect traceability is refreshed from the (story-specific) story traceability by refresh_defect_traceability()
+    # and persisted once per action by finalize_local_artifacts().
     return all_defects
 
 
+def current_eval_iteration(root: Path) -> int | None:
+    """Stage 6 iteration number recorded in test/eval_results.json (None when absent / unreadable)."""
+    p = root / "test" / "eval_results.json"
+    if not p.is_file():
+        return None
+    try:
+        doc = dlc.read_json(p)
+    except (dlc.GateFailure, SystemExit, OSError, ValueError):
+        return None
+    if not isinstance(doc, dict):
+        return None
+    try:
+        return int(doc.get("iteration") or 1)
+    except (TypeError, ValueError):
+        return 1
+
+
 def write_defects_artifacts(root: Path, defects: list[dict[str, Any]], deterministic: bool, iteration: int | None = None) -> None:
-    """Write backlog/defects.json and backlog/defects.md, plus non-overwritten per-iteration copies."""
+    """Write backlog/defects.json and backlog/defects.md, plus non-overwritten per-iteration copies when `iteration` is known."""
     out_dir = root / "backlog"
     out_dir.mkdir(parents=True, exist_ok=True)
     open_cnt = sum(1 for d in defects if d.get("status") != "Done")
@@ -922,7 +1100,12 @@ def pack_stories_into_sprints(
     capacity_points: int = 21,
 ) -> dict[str, list[str]]:
     """Assign stories to Sprint 1..N dynamically based on capability-group topological order and velocity capacity
-    (`capacity_points` SP per sprint, default 21 SP) — never hardcoded to 3 sprints."""
+    (`capacity_points` SP per sprint, default 21 SP; `0` = unlimited, i.e. a single sprint per group boundary) — never
+    hardcoded to 3 sprints.
+
+    Only cross-cutting foundation stories (`capabilityGroup == "SHARED"`, or technical stories without any capability
+    group) are forced into Sprint 1; a `US-TECH-*` story that carries a concrete `capabilityGroup` follows that group
+    (and is deferred to Product Backlog with it when the group is not selected)."""
     cap = max(8, int(capacity_points)) if capacity_points and capacity_points > 0 else 10_000
     foundation: list[dict[str, Any]] = []
     by_group: dict[str, list[dict[str, Any]]] = {g: [] for g in effective_groups}
@@ -932,7 +1115,8 @@ def pack_stories_into_sprints(
         cg = str(s.get("capabilityGroup") or "").strip().upper()
         stype = str(s.get("type") or "").strip().lower()
         sid = str(s.get("id") or "").strip().upper()
-        if cg == "SHARED" or stype == "technical" or sid.startswith("US-TECH"):
+        is_tech = stype == "technical" or sid.startswith("US-TECH")
+        if cg == "SHARED" or (not cg and is_tech):
             foundation.append(s)
         elif cg in by_group:
             by_group[cg].append(s)
@@ -941,7 +1125,7 @@ def pack_stories_into_sprints(
         else:
             s["sprint"] = "Product Backlog"
             s["status"] = "To Do"
-            s["statusReason"] = f"Deferred — capability group {cg} not in selectedCapabilityGroups ({', '.join(selected_list)})"
+            s["statusReason"] = f"Deferred — capability group {cg or 'n/a'} not in selectedCapabilityGroups ({', '.join(selected_list)})"
 
     sprint_num = 1
     cur_points = 0.0
@@ -1000,6 +1184,7 @@ def persist_stories_metadata(root: Path, stories: list[dict[str, Any]], determin
     if not stories_path.is_file():
         return
     old_sha = dlc.sha256_file(stories_path)
+    old_content_sha = dlc.stories_content_sha256(stories_path)
     data = dlc.read_json(stories_path)
     if isinstance(data, dict) and isinstance(data.get("stories"), list):
         by_id = {s["id"]: s for s in stories if s.get("id")}
@@ -1013,12 +1198,17 @@ def persist_stories_metadata(root: Path, stories: list[dict[str, Any]], determin
                     orig[k] = src[k]
         dlc.write_json(stories_path, data)
         new_sha = dlc.sha256_file(stories_path)
+        new_content_sha = dlc.stories_content_sha256(stories_path)
         tc_path = root / "test" / "test_cases.json"
         if new_sha != old_sha and tc_path.is_file():
             tc_doc = dlc.read_json(tc_path)
             if isinstance(tc_doc, dict) and isinstance(tc_doc.get("derivedFrom"), dict):
-                if tc_doc["derivedFrom"].get("userStoriesSha256") == old_sha:
-                    tc_doc["derivedFrom"]["userStoriesSha256"] = new_sha
+                # Only ALM runtime fields were rewritten here, so a test-case set derived from the previous
+                # version (by raw file hash or by content hash) is still fresh. Re-point it at the *content*
+                # hash, which stays stable across future status/key/traceability updates.
+                if tc_doc["derivedFrom"].get("userStoriesSha256") in (old_sha, old_content_sha, new_sha) \
+                        and tc_doc["derivedFrom"].get("userStoriesSha256") != new_content_sha:
+                    tc_doc["derivedFrom"]["userStoriesSha256"] = new_content_sha
                     dlc.write_json(tc_path, tc_doc)
 
 
@@ -1312,6 +1502,20 @@ def set_approval_status(root: Path, status: str, deterministic: bool) -> list[st
     return touched
 
 
+def csv_sprint_value(label: str) -> str:
+    """CSV `Sprint` column: the Jira sprint container name ('Sprint N'), 'Product Backlog', or ''."""
+    if not label:
+        return ""
+    return "Product Backlog" if is_product_backlog(label) else sprint_short_name(label)
+
+
+def csv_story_points(story: dict[str, Any]) -> int | float | str:
+    sp = story_points(story)
+    if sp is None:
+        return ""
+    return int(sp) if float(sp).is_integer() else sp
+
+
 def write_jira_csv(stories: list[dict[str, Any]], csv_path: Path, project_key: str | None,
                    defects: list[dict[str, Any]] | None = None) -> Path:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1336,7 +1540,7 @@ def write_jira_csv(stories: list[dict[str, Any]], csv_path: Path, project_key: s
             linked_tcs = ", ".join(f"{t['id']}:{t.get('status', 'NOT_RUN')}" for t in (tr.get("testCases") or []) if isinstance(t, dict) and t.get("id"))
             linked_bugs = ", ".join(tr.get("defectRefs") or [])
             w.writerow(["Story", f"[{s['id']}] {s.get('title', '')}", desc, story_status(s), s.get("priority", "Medium"),
-                        story_points(s) if story_points(s) is not None else "", len(acs), sprint_label(s),
+                        csv_story_points(s), len(acs), csv_sprint_value(sprint_label(s)),
                         s.get("capabilityGroup", ""),
                         ", ".join(s.get("requirementRefs", [])), ", ".join(s.get("businessRuleRefs", [])),
                         ", ".join(s.get("legacyArtifactsReplaced", [])),
@@ -1358,7 +1562,7 @@ def write_jira_csv(stories: list[dict[str, Any]], csv_path: Path, project_key: s
             b_files = ", ".join(tr_b.get("targetSourceFiles") or [])
             b_tcs = ", ".join(f"{ft['id']}:{ft.get('status', 'FAIL')}" for ft in (bug.get("failingTestCases") or []) if isinstance(ft, dict) and ft.get("id"))
             w.writerow(["Bug", f"[{bug['id']}] {bug.get('title', '')}", b_desc, bug.get("status", "In Progress"),
-                        bug.get("priority", "High"), "", 0, bug.get("sprint", ""), bug.get("capabilityGroup", ""),
+                        bug.get("priority", "High"), "", 0, csv_sprint_value(str(bug.get("sprint") or "")), bug.get("capabilityGroup", ""),
                         ", ".join(tr_b.get("requirementRefs") or []), ", ".join(tr_b.get("businessRuleRefs") or []),
                         ", ".join(tr_b.get("legacySourceArtifacts") or []),
                         b_contracts, b_files, b_tcs, bug.get("storyRef", ""),
@@ -1412,6 +1616,56 @@ def traceability_bullet_lines(story: dict[str, Any]) -> list[str]:
 # ======================================================================================
 # Section 4 — Jira Cloud client (REST v3 + Agile 1.0)
 # ======================================================================================
+def adf_text_length(node: Any) -> int:
+    """Total characters of all `text` nodes in an ADF document (what Jira's 32,767-character description limit counts)."""
+    if isinstance(node, dict):
+        if node.get("type") == "text":
+            return len(str(node.get("text") or ""))
+        return sum(adf_text_length(c) for c in node.get("content") or [])
+    if isinstance(node, list):
+        return sum(adf_text_length(c) for c in node)
+    return 0
+
+
+def clamp_adf_document(doc: dict[str, Any], limit: int = JIRA_DESCRIPTION_MAX_CHARS) -> dict[str, Any]:
+    """Keep a Jira description under `limit` characters: drop trailing bullet-list items (last list first) until it fits,
+    then append a note pointing at backlog/user_stories.json for the full content."""
+    if adf_text_length(doc) <= limit:
+        return doc
+    note = {"type": "paragraph", "content": [{"type": "text", "text": "(Description truncated to fit Jira's 32k character limit — "
+                                                                       "the complete acceptance criteria and traceability matrix live in backlog/user_stories.json.)",
+                                              "marks": [{"type": "em"}]}]}
+    content = list(doc.get("content") or [])
+    budget = limit - adf_text_length(note)
+    while adf_text_length(content) > budget:
+        trimmed = False
+        for i in range(len(content) - 1, -1, -1):
+            blk = content[i]
+            if isinstance(blk, dict) and blk.get("type") == "bulletList" and len(blk.get("content") or []) > 1:
+                blk["content"] = blk["content"][:-1]
+                trimmed = True
+                break
+        if not trimmed:  # nothing left to trim structurally: hard-cut the longest remaining text node
+            longest: dict[str, Any] | None = None
+
+            def _walk(n: Any) -> None:
+                nonlocal longest
+                if isinstance(n, dict):
+                    if n.get("type") == "text" and (longest is None or len(str(n.get("text") or "")) > len(str(longest.get("text") or ""))):
+                        longest = n
+                    for c in n.get("content") or []:
+                        _walk(c)
+                elif isinstance(n, list):
+                    for c in n:
+                        _walk(c)
+            _walk(content)
+            if longest is None or len(str(longest.get("text") or "")) <= 32:
+                break
+            longest["text"] = str(longest["text"])[: max(16, len(str(longest["text"])) // 2)] + "…"
+    content.append(note)
+    return {**doc, "content": content}
+
+
 def to_adf_document(story: dict[str, Any]) -> dict[str, Any]:
     acs = story_acs(story)
     meta = (f"Sprint: {sprint_label(story) or 'n/a'} | Capability Group: {story.get('capabilityGroup') or 'SHARED'}"
@@ -1423,7 +1677,7 @@ def to_adf_document(story: dict[str, Any]) -> dict[str, Any]:
         meta += f" | Replaces: {', '.join(legacy)}"
     text = lambda t: {"type": "text", "text": t}  # noqa: E731
     tr_lines = traceability_bullet_lines(story)
-    return {
+    doc = {
         "type": "doc", "version": 1,
         "content": [
             {"type": "paragraph", "content": [{"type": "text", "text": f"[{story_type_label(story)}] ", "marks": [{"type": "strong"}]}, text(meta)]},
@@ -1439,6 +1693,7 @@ def to_adf_document(story: dict[str, Any]) -> dict[str, Any]:
             ]},
         ],
     }
+    return clamp_adf_document(doc)
 
 
 def to_bug_adf_document(bug: dict[str, Any]) -> dict[str, Any]:
@@ -1466,7 +1721,7 @@ def to_bug_adf_document(bug: dict[str, Any]) -> dict[str, Any]:
         f"Target Source Code Files: {', '.join(tr.get('targetSourceFiles') or []) or 'n/a'}",
         f"Failing Test Case IDs: {', '.join(tr.get('testCaseIds') or []) or 'n/a'}",
     ]
-    return {
+    return clamp_adf_document({
         "type": "doc", "version": 1,
         "content": [
             {"type": "paragraph", "content": [{"type": "text", "text": "[Stage 6 Automated Defect] ", "marks": [{"type": "strong"}]}, text(meta)]},
@@ -1481,7 +1736,42 @@ def to_bug_adf_document(bug: dict[str, Any]) -> dict[str, Any]:
                 {"type": "listItem", "content": [{"type": "paragraph", "content": [text(b)]}]} for b in tr_bullets
             ]},
         ],
+    })
+
+
+def deployment_comment_lines(story: dict[str, Any]) -> list[str]:
+    """Human-readable Stage 8 GDC deployment lines for a story (shared by the Jira ADF and ADO HTML comments)."""
+    dep = (story.get("traceability") or {}).get("gdcDeployment") or {}
+    return [
+        f"Deployment Verdict: {dep.get('verdict', 'UNKNOWN')}",
+        f"Abstraction Plane: {dep.get('abstractionPlane', 'gdc-fleet')}",
+        f"Target Environments: {', '.join(dep.get('targetEnvironments') or []) or 'n/a'}",
+        f"Rollout Wave: {dep.get('rolloutWave', 'n/a')} (capability group {story.get('capabilityGroup') or 'SHARED'})",
+    ]
+
+
+def deployment_comment_marker(story: dict[str, Any]) -> str:
+    """Stable first line used to detect an already-posted deployment comment (idempotent refresh)."""
+    dep = (story.get("traceability") or {}).get("gdcDeployment") or {}
+    return f"Stage 8 GDC Fleet Deployment — {dep.get('verdict', 'UNKNOWN')} (wave {dep.get('rolloutWave', 'n/a')})"
+
+
+def to_deployment_comment_adf(story: dict[str, Any]) -> dict[str, Any]:
+    text = lambda t: {"type": "text", "text": str(t)}  # noqa: E731
+    return {
+        "type": "doc", "version": 1,
+        "content": [
+            {"type": "heading", "attrs": {"level": 4}, "content": [text(deployment_comment_marker(story))]},
+            {"type": "bulletList", "content": [
+                {"type": "listItem", "content": [{"type": "paragraph", "content": [text(ln)]}]} for ln in deployment_comment_lines(story)
+            ]},
+        ],
     }
+
+
+def to_deployment_comment_html(story: dict[str, Any]) -> str:
+    return (f"<h4>{html.escape(deployment_comment_marker(story))}</h4><ul>"
+            + "".join(f"<li>{html.escape(ln)}</li>" for ln in deployment_comment_lines(story)) + "</ul>")
 
 
 def to_remediation_comment_adf(bug: dict[str, Any], comment: dict[str, Any]) -> dict[str, Any]:
@@ -1526,48 +1816,82 @@ def to_story_traceability_comment_adf(story: dict[str, Any]) -> dict[str, Any]:
 
 
 class JiraClient:
-    def __init__(self, url: str, email: str, token: str, project_key: str | None, board_id: str | None, issue_type: str = "Story"):
+    def __init__(self, url: str, email: str, token: str, project_key: str | None, board_id: str | None, issue_type: str = "Story",
+                 created_sprint_ids: set[int] | None = None):
         self.base = url.rstrip("/")
         self.headers = {"Authorization": basic_auth_header(email, token), "Accept": "application/json", "Content-Type": "application/json"}
         self.project_key = project_key or None
         self.board_id = board_id or None
         self.issue_type = issue_type
         self.errors: list[str] = []
+        # Sprints created by this tool (this run + previous runs recorded in backlog/jira_state.json#createdSprintIds).
+        # Only these may ever be deleted as empty orphans; foreign sprints are reported, never touched.
+        self.created_sprint_ids: set[int] = set(created_sprint_ids or ())
 
     # -- helpers ----------------------------------------------------------------------
     def _call(self, method: str, path: str, body: Any = None, timeout: int = 20) -> Any:
         _, data = http_json(method, f"{self.base}{path}", self.headers, body, timeout)
         return data
 
+    def _call_dict(self, method: str, path: str, body: Any = None, timeout: int = 20) -> dict[str, Any]:
+        data = self._call(method, path, body, timeout)
+        return data if isinstance(data, dict) else {}
+
     def _record(self, context: str, e: Exception) -> str:
         msg = f"{context}: {e}"
         self.errors.append(msg)
         return msg
 
+    @staticmethod
+    def _error_names_issue_type(e: HttpError) -> bool:
+        """True when a Jira create error is about the issue type (so trying another type can help)."""
+        body = (e.body or "").lower()
+        return e.status in (400, 404) and ("issuetype" in body or "issue type" in body)
+
     # -- discovery --------------------------------------------------------------------
     def myself(self) -> dict[str, Any]:
-        return self._call("GET", "/rest/api/3/myself", timeout=15) or {}
+        return self._call_dict("GET", "/rest/api/3/myself", timeout=15)
 
     def discover_project_and_board(self) -> None:
-        """Validate/auto-discover the project key (single-project sites) and the first board for that project."""
-        try:
-            data = self._call("GET", "/rest/api/3/project/search?maxResults=100", timeout=15) or {}
-            keys = [p.get("key") for p in data.get("values", []) if p.get("key")]
-            if self.project_key and self.project_key not in keys:
-                self.errors.append(f"Jira project key '{self.project_key}' not visible to this user (visible: {', '.join(keys) or 'none'}).")
-            elif not self.project_key:
-                if len(keys) == 1:
+        """Validate the configured project key directly (GET /project/{key}); auto-discover it only for single-project sites
+        (paging through /project/search); then find the first board for that project."""
+        if self.project_key:
+            if not JIRA_PROJECT_KEY_RE.match(self.project_key):
+                self.errors.append(f"Jira project key '{self.project_key}' is not a valid key (expected ^[A-Z][A-Z0-9_]+$).")
+                self.project_key = None
+            else:
+                try:
+                    proj = self._call_dict("GET", f"/rest/api/3/project/{self.project_key}", timeout=15)
+                    if not proj.get("key"):
+                        self.errors.append(f"Jira project '{self.project_key}' lookup returned no project.")
+                        self.project_key = None
+                except HttpError as e:
+                    self._record(f"Jira project '{self.project_key}' not accessible", e)
+                    self.project_key = None
+        else:
+            keys: list[str] = []
+            try:
+                start_at, page = 0, 0
+                while page < 100:
+                    data = self._call_dict("GET", f"/rest/api/3/project/search?maxResults=100&startAt={start_at}", timeout=15)
+                    values = data.get("values") or []
+                    keys += [p.get("key") for p in values if isinstance(p, dict) and p.get("key")]
+                    if data.get("isLast", True) or not values:
+                        break
+                    start_at += len(values)
+                    page += 1
+                if len(keys) == 1 and JIRA_PROJECT_KEY_RE.match(keys[0]):
                     self.project_key = keys[0]
                     dlc.info(f"Jira project auto-discovered: {self.project_key}")
                 else:
                     self.errors.append(f"Jira project key not given and could not be inferred (visible: {', '.join(keys) or 'none'}). Pass --jira-project-key or set JIRA_PROJECT_KEY.")
-        except HttpError as e:
-            self._record("Jira project discovery", e)
+            except HttpError as e:
+                self._record("Jira project discovery", e)
         if self.project_key and not self.board_id:
             try:
                 q = urllib.parse.urlencode({"projectKeyOrId": self.project_key})
-                data = self._call("GET", f"/rest/agile/1.0/board?{q}", timeout=15) or {}
-                boards = data.get("values", [])
+                data = self._call_dict("GET", f"/rest/agile/1.0/board?{q}", timeout=15)
+                boards = data.get("values") or []
                 if boards:
                     self.board_id = str(boards[0].get("id"))
                     dlc.info(f"Jira board auto-discovered: {self.board_id} ({boards[0].get('name', '')})")
@@ -1582,7 +1906,7 @@ class JiraClient:
         project: dict[str, Any] = {}
         if self.project_key:
             try:
-                project = self._call("GET", f"/rest/api/3/project/{self.project_key}", timeout=15) or {}
+                project = self._call_dict("GET", f"/rest/api/3/project/{self.project_key}", timeout=15)
             except HttpError as e:
                 self._record("Jira project lookup", e)
         return {"platform": "jira", "connected": bool(me.get("accountId")), "jiraUrl": self.base,
@@ -1592,33 +1916,97 @@ class JiraClient:
 
     # -- issues -----------------------------------------------------------------------
     def existing_issue_map(self) -> dict[str, str]:
-        """Map '[US-ID]' or '[BUG-ID]' summary prefixes to existing issue keys (idempotent upsert)."""
-        jql = urllib.parse.quote(f'project = "{self.project_key}" ORDER BY created ASC')
+        """Map '[US-ID]' / '[BUG-ID]' summary prefixes to existing issue keys (idempotent upsert).
+
+        Pages through the whole project: the enhanced `/rest/api/3/search/jql` endpoint (`nextPageToken`) first, then the
+        legacy `/rest/api/3/search` endpoint (`startAt` + `total`). The id prefix is matched client-side with
+        STORY_ID_PREFIX_RE because Jira's text search tokenises `[US-FUNC-01]` unpredictably (a narrowed `summary ~`
+        clause that silently matched nothing would create duplicates on every run)."""
         mapping: dict[str, str] = {}
-        last_error: Exception | None = None
-        for path in (f"/rest/api/3/search/jql?jql={jql}&fields=summary&maxResults=500", f"/rest/api/3/search?jql={jql}&fields=summary&maxResults=500"):
-            try:
-                data = self._call("GET", path, timeout=20) or {}
-            except HttpError as e:
-                last_error = e
-                continue
-            for issue in data.get("issues", []):
+        if not self.project_key or not JIRA_PROJECT_KEY_RE.match(self.project_key):
+            self.errors.append("Jira existing-issue lookup skipped: no valid project key.")
+            return mapping
+        jql = urllib.parse.quote(f'project = "{self.project_key}" ORDER BY created ASC')
+
+        def _absorb(issues: list[Any]) -> None:
+            for issue in issues:
+                if not isinstance(issue, dict):
+                    continue
                 m = STORY_ID_PREFIX_RE.match((issue.get("fields", {}).get("summary") or "").strip())
                 if m and issue.get("key"):
                     mapping.setdefault(m.group(1), issue["key"])
+
+        # 1. Enhanced search (Jira Cloud, token-based pagination)
+        try:
+            token: str | None = None
+            for _ in range(500):
+                path = f"/rest/api/3/search/jql?jql={jql}&fields=summary&maxResults=100" + (f"&nextPageToken={urllib.parse.quote(token)}" if token else "")
+                data = self._call_dict("GET", path, timeout=20)
+                _absorb(data.get("issues") or [])
+                token = data.get("nextPageToken")
+                if data.get("isLast", not token) or not token:
+                    return mapping
+            self.errors.append("Jira existing-issue lookup stopped after 500 pages (duplicates possible).")
             return mapping
-        if last_error:
-            self._record("Jira existing-issue lookup (duplicates possible)", last_error)
+        except HttpError as e_new:
+            last_error: Exception = e_new
+            mapping.clear()
+        # 2. Legacy search (offset-based pagination)
+        try:
+            start_at = 0
+            for _ in range(500):
+                data = self._call_dict("GET", f"/rest/api/3/search?jql={jql}&fields=summary&maxResults=100&startAt={start_at}", timeout=20)
+                issues = data.get("issues") or []
+                _absorb(issues)
+                start_at += len(issues)
+                total = int(data.get("total") or 0)
+                if not issues or start_at >= total:
+                    return mapping
+            self.errors.append("Jira existing-issue lookup stopped after 500 pages (duplicates possible).")
+            return mapping
+        except HttpError as e_old:
+            last_error = e_old
+        self._record("Jira existing-issue lookup (duplicates possible)", last_error)
         return mapping
 
     def add_comment(self, issue_key: str, adf_body: dict[str, Any]) -> str | None:
         """Post an ADF comment to `/rest/api/3/issue/{issue_key}/comment` and return the created comment ID."""
         try:
-            resp = self._call("POST", f"/rest/api/3/issue/{issue_key}/comment", {"body": adf_body}, timeout=15) or {}
+            resp = self._call_dict("POST", f"/rest/api/3/issue/{issue_key}/comment", {"body": adf_body}, timeout=15)
             return str(resp.get("id")) if resp.get("id") else "posted"
         except HttpError as e:
             self._record(f"Jira comment on {issue_key}", e)
             return None
+
+    def find_comment_id(self, issue_key: str, marker: str) -> str | None:
+        """Return the id of the first comment on `issue_key` whose text contains `marker` (best-effort, paged)."""
+        try:
+            start_at = 0
+            for _ in range(50):
+                data = self._call_dict("GET", f"/rest/api/3/issue/{issue_key}/comment?maxResults=100&startAt={start_at}", timeout=15)
+                comments = data.get("comments") or []
+                for c in comments:
+                    if isinstance(c, dict) and marker in json.dumps(c.get("body") or {}, ensure_ascii=False):
+                        return str(c.get("id")) if c.get("id") else None
+                start_at += len(comments)
+                if not comments or start_at >= int(data.get("total") or 0):
+                    break
+        except HttpError as e:
+            self._record(f"Jira list comments on {issue_key}", e)
+        return None
+
+    def upsert_comment(self, issue_key: str, marker: str, adf_body: dict[str, Any], known_id: str | None = None) -> str | None:
+        """Update the existing comment (by `known_id`, else by `marker`) or create a new one. Returns the comment id."""
+        cid = known_id or self.find_comment_id(issue_key, marker)
+        if cid and cid != "posted":
+            try:
+                self._call("PUT", f"/rest/api/3/issue/{issue_key}/comment/{cid}", {"body": adf_body}, timeout=15)
+                return cid
+            except HttpError as e:
+                if e.status != 404:
+                    self._record(f"Jira refresh comment {cid} on {issue_key}", e)
+                    return cid
+        return self.add_comment(issue_key, adf_body)
 
     def link_issue_to_story(self, bug_key: str, story_key: str) -> None:
         """Create a Jira issue link between `bug_key` and its parent `story_key` (best-effort)."""
@@ -1635,6 +2023,29 @@ class JiraClient:
             except HttpError:
                 continue
 
+    def _upsert_issue(self, key: str | None, fields: dict[str, Any], issue_types: tuple[str, ...]) -> tuple[str | None, dict[str, Any], str, str]:
+        """PUT the issue when `key` is known (a 404 means the key is stale -> create); otherwise POST a new issue.
+        `issue_types` are tried in order, but a later type is attempted only when the error names the issue type.
+        Returns (key, created_payload, operation, issue_type_used). Raises HttpError on failure."""
+        if key:
+            try:
+                self._call("PUT", f"/rest/api/3/issue/{key}", {"fields": fields})
+                return key, {}, "UPDATED_EXISTING", ""
+            except HttpError as e:
+                if e.status != 404:
+                    raise
+        first_err: HttpError | None = None
+        for i, type_name in enumerate(issue_types):
+            try:
+                created = self._call_dict("POST", "/rest/api/3/issue", {"fields": {**fields, "project": {"key": self.project_key}, "issuetype": {"name": type_name}}})
+                return created.get("key"), created, "CREATED_NEW", type_name
+            except HttpError as e:
+                first_err = first_err or e
+                if i + 1 < len(issue_types) and self._error_names_issue_type(e):
+                    continue
+                raise first_err from None
+        raise first_err or HttpError("POST", f"{self.base}/rest/api/3/issue", 0, "no issue type candidates")
+
     def upsert_stories(self, stories: list[dict[str, Any]]) -> list[dict[str, Any]]:
         existing = self.existing_issue_map()
         results: list[dict[str, Any]] = []
@@ -1644,28 +2055,19 @@ class JiraClient:
             key = existing.get(s["id"]) or s.get("jiraKey")
             entry = {"storyId": s["id"], "summary": summary, "sprint": sprint_label(s), "acCount": len(story_acs(s)), "liveSynced": False}
             try:
-                if key:
-                    try:
-                        self._call("PUT", f"/rest/api/3/issue/{key}", {"fields": fields})
-                        entry.update(key=key, operation="UPDATED_EXISTING", url=f"{self.base}/browse/{key}", liveSynced=True)
-                        s["jiraKey"] = key
-                        results.append(entry)
-                        continue
-                    except HttpError as e:
-                        if e.status != 404:
-                            raise
-                        key = None  # stale key -> create
-                created = self._call("POST", "/rest/api/3/issue", {"fields": {**fields, "project": {"key": self.project_key}, "issuetype": {"name": self.issue_type}}}) or {}
-                key = created.get("key")
+                key, created, op, _ = self._upsert_issue(key, fields, (self.issue_type,))
                 s["jiraKey"] = key
-                entry.update(key=key, id=created.get("id"), operation="CREATED_NEW", url=f"{self.base}/browse/{key}", liveSynced=True)
+                entry.update(key=key, operation=op, url=f"{self.base}/browse/{key}", liveSynced=True)
+                if created.get("id"):
+                    entry["id"] = created["id"]
             except HttpError as e:
                 entry["error"] = self._record(f"Jira upsert {s['id']}", e)
             results.append(entry)
         return results
 
     def upsert_defects(self, defects: list[dict[str, Any]], story_key_map: dict[str, str]) -> list[dict[str, Any]]:
-        """Create or update Stage 6 Bug issues (`issuetype: Bug`), link to parent Story, post fix-steps comments, and transition."""
+        """Create or update Stage 6 Bug issues (`issuetype: Bug`), link to parent Story, post fix-steps comments, and transition.
+        Issue-type fallback Bug -> Defect -> Issue only when Jira rejects the issue type; never falls back to the Story type."""
         if not defects:
             return []
         existing = self.existing_issue_map()
@@ -1682,32 +2084,14 @@ class JiraClient:
                 "sprint": bug.get("sprint", ""), "liveSynced": False, "commentsPosted": 0,
             }
             try:
-                if key:
-                    try:
-                        self._call("PUT", f"/rest/api/3/issue/{key}", {"fields": fields})
-                        entry.update(key=key, operation="UPDATED_EXISTING", url=f"{self.base}/browse/{key}", liveSynced=True)
-                        bug["jiraKey"] = key
-                    except HttpError as e:
-                        if e.status != 404:
-                            raise
-                        key = None
-                if not key:
-                    created = None
-                    last_err = None
-                    for type_candidate in ("Bug", "Defect", self.issue_type):
-                        try:
-                            created = self._call("POST", "/rest/api/3/issue", {
-                                "fields": {**fields, "project": {"key": self.project_key}, "issuetype": {"name": type_candidate}}
-                            }) or {}
-                            entry["issueType"] = type_candidate
-                            break
-                        except HttpError as e:
-                            last_err = e
-                    if created is None and last_err is not None:
-                        raise last_err
-                    key = (created or {}).get("key")
-                    bug["jiraKey"] = key
-                    entry.update(key=key, id=(created or {}).get("id"), operation="CREATED_NEW", url=f"{self.base}/browse/{key}", liveSynced=True)
+                key, created, op, type_used = self._upsert_issue(key, fields, ("Bug", "Defect", "Issue"))
+                bug["jiraKey"] = key
+                entry.update(key=key, operation=op, url=f"{self.base}/browse/{key}", liveSynced=True)
+                if type_used:
+                    entry["issueType"] = type_used
+                if created.get("id"):
+                    entry["id"] = created["id"]
+                if op == "CREATED_NEW":
                     parent_key = story_key_map.get(str(bug.get("storyRef") or ""))
                     if key and parent_key:
                         self.link_issue_to_story(key, parent_key)
@@ -1731,10 +2115,60 @@ class JiraClient:
             results.append(entry)
         return results
 
+    def post_deployment_comments(self, stories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Post (or refresh) one Stage 8 deployment comment per story that has `traceability.gdcDeployment`."""
+        existing: dict[str, str] | None = None
+        results: list[dict[str, Any]] = []
+        for s in stories:
+            dep = (s.get("traceability") or {}).get("gdcDeployment")
+            if not dep:
+                continue
+            key = s.get("jiraKey")
+            if not key and self.project_key:
+                if existing is None:
+                    existing = self.existing_issue_map()
+                key = existing.get(s["id"])
+                if key:
+                    s["jiraKey"] = key
+            entry: dict[str, Any] = {"storyId": s["id"], "key": key, "verdict": dep.get("verdict"), "liveSynced": False}
+            if not key:
+                entry["error"] = self._record(f"Jira deployment comment {s['id']}", ValueError("No Jira issue key found for story"))
+                results.append(entry)
+                continue
+            cid = self.upsert_comment(key, "Stage 8 GDC Fleet Deployment", to_deployment_comment_adf(s), known_id=dep.get("jiraCommentId"))
+            if cid:
+                dep["jiraCommentId"] = cid
+                entry.update(commentId=cid, liveSynced=True)
+            else:
+                entry["error"] = "comment not posted (see liveSyncErrors)"
+            results.append(entry)
+        return results
+
     # -- sprints ----------------------------------------------------------------------
+    @staticmethod
+    def _match_sprint(name: str, existing: list[dict[str, Any]], used: set[int]) -> dict[str, Any] | None:
+        """Exact (case-insensitive) name match first; only when no exact match exists fall back to `^Sprint N\\b`
+        (so 'Sprint 1' never matches 'Sprint 10')."""
+        want = name.strip().lower()
+        for ex in existing:
+            if ex.get("id") not in used and (ex.get("name") or "").strip().lower() == want:
+                return ex
+        m = SPRINT_LABEL_RE.match(name)
+        if not m:
+            return None
+        num_re = re.compile(rf"^\s*sprint\s*0*{int(m.group(1))}\b(?!\s*\d)", re.IGNORECASE)
+        for ex in existing:
+            if ex.get("id") not in used and num_re.match(ex.get("name") or ""):
+                return ex
+        return None
+
+    def _move_issues(self, path: str, keys: list[str]) -> None:
+        for i in range(0, len(keys), JIRA_BULK_ISSUE_MOVE_CHUNK):
+            self._call("POST", path, {"issues": keys[i:i + JIRA_BULK_ISSUE_MOVE_CHUNK]})
+
     def reconcile_sprints(self, issue_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Create/rename board sprints (<= 30 chars), assign Sprint N issues, move Product Backlog issues to the
-        backlog drawer, delete empty orphan future sprints."""
+        """Create/rename board sprints (<= 30 chars), assign Sprint N issues (<= 50 per request), move Product Backlog
+        issues to the backlog drawer, and delete empty orphan *future* sprints that this tool created (others are reported)."""
         if not self.board_id:
             self.errors.append("No Jira board id — sprint staging skipped.")
             return []
@@ -1752,56 +2186,76 @@ class JiraClient:
 
         existing: list[dict[str, Any]] = []
         try:
-            existing = (self._call("GET", f"/rest/agile/1.0/board/{self.board_id}/sprint?state=future,active") or {}).get("values", [])
+            start_at = 0
+            for _ in range(50):
+                data = self._call_dict("GET", f"/rest/agile/1.0/board/{self.board_id}/sprint?state=future,active&maxResults=50&startAt={start_at}")
+                values = [v for v in (data.get("values") or []) if isinstance(v, dict)]
+                existing += values
+                start_at += len(values)
+                if data.get("isLast", True) or not values:
+                    break
         except HttpError as e:
             self._record("Jira list board sprints", e)
 
         used: set[int] = set()
         out: list[dict[str, Any]] = []
         for name, info in sorted(wanted.items(), key=lambda kv: sprint_sort_key(kv[0])):
-            match = next((ex for ex in existing if ex.get("id") not in used and
-                          ((ex.get("name") or "").strip().lower() == name.lower() or name.lower() in (ex.get("name") or "").lower())), None)
+            match = self._match_sprint(name, existing, used)
             sprint_id: int | None = None
             try:
                 if match:
                     sprint_id = match["id"]
                     used.add(sprint_id)
-                    self._call("PUT", f"/rest/agile/1.0/sprint/{sprint_id}", {"name": name, "state": match.get("state", "future"), "goal": info["goal"]})
+                    patch = {k: v for k, v in (("name", name), ("goal", info["goal"]))
+                             if (match.get(k) or "") != v}
+                    if patch:  # partial update: never touch state or dates
+                        self._call("POST", f"/rest/agile/1.0/sprint/{sprint_id}", patch)
+                    op = "UPDATED_EXISTING" if patch else "REUSED_EXISTING"
                 else:
-                    created = self._call("POST", "/rest/agile/1.0/sprint", {"name": name, "originBoardId": int(self.board_id), "goal": info["goal"]}) or {}
+                    created = self._call_dict("POST", "/rest/agile/1.0/sprint", {"name": name, "originBoardId": int(self.board_id), "goal": info["goal"]})
                     sprint_id = created.get("id")
                     if sprint_id:
                         used.add(sprint_id)
-                self._call("POST", f"/rest/agile/1.0/sprint/{sprint_id}/issue", {"issues": info["keys"]})
-                out.append({"sprintId": sprint_id, "name": name, "goal": info["goal"], "assignedIssues": info["keys"], "liveSynced": True})
+                        self.created_sprint_ids.add(int(sprint_id))
+                    op = "CREATED_NEW"
+                if not sprint_id:
+                    raise ValueError("Jira did not return a sprint id")
+                self._move_issues(f"/rest/agile/1.0/sprint/{sprint_id}/issue", info["keys"])
+                out.append({"sprintId": sprint_id, "name": name, "goal": info["goal"], "operation": op, "assignedIssues": info["keys"], "liveSynced": True})
             except (HttpError, ValueError) as e:
                 out.append({"sprintId": sprint_id, "name": name, "assignedIssues": info["keys"], "liveSynced": False,
                             "error": self._record(f"Jira sprint '{name}'", e)})
 
         if backlog_keys:
             try:
-                self._call("POST", "/rest/agile/1.0/backlog/issue", {"issues": backlog_keys})
+                self._move_issues("/rest/agile/1.0/backlog/issue", backlog_keys)
                 out.append({"sprintId": "BACKLOG_DRAWER", "name": "Product Backlog", "assignedIssues": backlog_keys, "liveSynced": True})
             except HttpError as e:
                 out.append({"sprintId": "BACKLOG_DRAWER", "name": "Product Backlog", "assignedIssues": backlog_keys, "liveSynced": False,
                             "error": self._record("Jira move to backlog drawer", e)})
 
-        for ex in existing:  # orphan cleanup: delete empty future sprints we did not use
+        for ex in existing:  # orphan handling: empty future sprints we did not use
             if ex.get("id") in used or ex.get("state") != "future":
                 continue
             try:
-                total = (self._call("GET", f"/rest/agile/1.0/sprint/{ex['id']}/issue?maxResults=1", timeout=15) or {}).get("total", 0)
-                if total == 0:
+                total = self._call_dict("GET", f"/rest/agile/1.0/sprint/{ex['id']}/issue?maxResults=1", timeout=15).get("total", 0)
+                if total != 0:
+                    continue
+                if int(ex["id"]) in self.created_sprint_ids:
                     self._call("DELETE", f"/rest/agile/1.0/sprint/{ex['id']}", timeout=15)
+                    self.created_sprint_ids.discard(int(ex["id"]))
                     out.append({"sprintId": ex["id"], "name": ex.get("name"), "operation": "DELETED_EMPTY_ORPHAN", "liveSynced": True})
+                else:
+                    out.append({"sprintId": ex["id"], "name": ex.get("name"), "operation": "EMPTY_FUTURE_SPRINT_NOT_MANAGED_BY_DLC",
+                                "liveSynced": False, "note": "Left untouched — not created by alm_jira_ado_bridge.py; delete manually if unwanted."})
             except HttpError as e:
-                self._record(f"Jira orphan sprint cleanup ({ex.get('name')})", e)
+                self._record(f"Jira orphan sprint check ({ex.get('name')})", e)
         return out
 
     # -- issue status transitions (REST API v3) ---------------------------------------
     def _issue_status(self, key: str) -> tuple[str, str]:
         """Return (status_name, status_category_key) for a Jira issue."""
-        data = self._call("GET", f"/rest/api/3/issue/{key}?fields=status", timeout=15) or {}
+        data = self._call_dict("GET", f"/rest/api/3/issue/{key}?fields=status", timeout=15)
         st = (data.get("fields") or {}).get("status") or {}
         name = str(st.get("name") or "").strip()
         cat = str((st.get("statusCategory") or {}).get("key") or "").strip().lower()
@@ -1862,12 +2316,13 @@ class JiraClient:
                 entry["error"] = self._record(f"Jira transition {sid}", ValueError("No Jira issue key found for story"))
                 results.append(entry)
                 continue
+            transitions_url = f"{self.base}/rest/api/3/issue/{key}/transitions"
             try:
                 if refresh_description and s.get("title"):
                     try:
                         self._call("PUT", f"/rest/api/3/issue/{key}", {"fields": {"description": to_adf_document(s)}})
-                    except HttpError:
-                        pass
+                    except HttpError as e:
+                        self._record(f"Jira refresh description {key}", e)
                 cur_name, cur_cat = self._issue_status(key)
                 entry["previousStatus"] = cur_name
                 if self._status_matches(cur_name, cur_cat, target):
@@ -1875,7 +2330,7 @@ class JiraClient:
                     results.append(entry)
                     continue
 
-                tdata = self._call("GET", f"/rest/api/3/issue/{key}/transitions", timeout=15) or {}
+                tdata = self._call_dict("GET", f"/rest/api/3/issue/{key}/transitions", timeout=15)
                 transitions = tdata.get("transitions") or []
                 chosen = self._pick_transition(transitions, target)
 
@@ -1886,13 +2341,13 @@ class JiraClient:
                     if mid and mid.get("id"):
                         self._call("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": str(mid["id"])}})
                         hops.append(str((mid.get("to") or {}).get("name") or mid.get("name") or "In Progress"))
-                        tdata = self._call("GET", f"/rest/api/3/issue/{key}/transitions", timeout=15) or {}
+                        tdata = self._call_dict("GET", f"/rest/api/3/issue/{key}/transitions", timeout=15)
                         transitions = tdata.get("transitions") or []
                         chosen = self._pick_transition(transitions, target)
 
                 if chosen is None or not chosen.get("id"):
                     avail = ", ".join(f"{t.get('name')}->{(t.get('to') or {}).get('name')}" for t in transitions) or "none"
-                    raise HttpError(f"/rest/api/3/issue/{key}/transitions", 400,
+                    raise HttpError("POST", transitions_url, 400,
                                     f"No transition to '{target}' available from '{cur_name}' (available: {avail})")
 
                 self._call("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": str(chosen["id"])}})
@@ -1919,7 +2374,9 @@ def jira_state_document(stories: list[dict[str, Any]], client: JiraClient | None
                         errors: list[str], mode: str, deterministic: bool,
                         transition_results: list[dict[str, Any]] | None = None,
                         defects: list[dict[str, Any]] | None = None,
-                        defect_results: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+                        defect_results: list[dict[str, Any]] | None = None,
+                        deployment_results: list[dict[str, Any]] | None = None,
+                        created_sprint_ids: set[int] | None = None) -> dict[str, Any]:
     defects = defects or []
     return {
         "schemaVersion": dlc.SCHEMA_VERSION,
@@ -1928,6 +2385,7 @@ def jira_state_document(stories: list[dict[str, Any]], client: JiraClient | None
         "jiraUrl": client.base if client else None,
         "projectKey": (client.project_key if client else None) or project_key,
         "boardId": client.board_id if client else None,
+        "createdSprintIds": sorted(client.created_sprint_ids if client else (created_sprint_ids or set())),
         "sprintAlignmentApprovalStatus": approval,
         "syncedAtUtc": dlc.utc_now_iso(deterministic),
         "totalStories": len(stories),
@@ -1941,6 +2399,7 @@ def jira_state_document(stories: list[dict[str, Any]], client: JiraClient | None
         "liveSprintSyncResults": sprint_results,
         "liveTransitionResults": transition_results or [],
         "liveDefectSyncResults": defect_results or [],
+        "liveDeploymentCommentResults": deployment_results or [],
         "liveSyncErrors": errors,
         "issues": [{
             "key": s.get("jiraKey"), "storyId": s["id"], "status": story_status(s),
@@ -2045,6 +2504,7 @@ class AdoClient:
         project: dict[str, Any] = {}
         try:
             _, project = http_json("GET", self._url(f"/_apis/projects/{urllib.parse.quote(self.project, safe='')}", project_scoped=False), self.headers, timeout=15)
+            project = project if isinstance(project, dict) else {}
         except HttpError as e:
             self._record("ADO project lookup", e)
         return {"platform": "ado", "connected": bool(project.get("id")), "organizationUrl": self.org,
@@ -2062,18 +2522,58 @@ class AdoClient:
         except HttpError as e:
             self._record("ADO WIQL lookup (duplicates possible)", e)
             return mapping
-        ids = [str(w["id"]) for w in (data or {}).get("workItems", []) if w.get("id")]
+        data = data if isinstance(data, dict) else {}
+        ids = [str(w["id"]) for w in data.get("workItems", []) if isinstance(w, dict) and w.get("id")]
         for i in range(0, len(ids), 200):
             try:
                 _, batch = http_json("GET", self._url("/_apis/wit/workitems", ids=",".join(ids[i:i + 200]), fields="System.Title"), self.headers)
             except HttpError as e:
                 self._record("ADO work item batch read", e)
                 continue
-            for wi in (batch or {}).get("value", []):
+            batch = batch if isinstance(batch, dict) else {}
+            for wi in batch.get("value", []):
+                if not isinstance(wi, dict):
+                    continue
                 m = STORY_ID_PREFIX_RE.match((wi.get("fields", {}).get("System.Title") or "").strip())
-                if m:
+                if m and wi.get("id") is not None:
                     mapping.setdefault(m.group(1), int(wi["id"]))
         return mapping
+
+    @staticmethod
+    def _error_names_work_item_type(e: HttpError) -> bool:
+        """True when an ADO create error is about the work item type (VS402323 / 'work item type ... does not exist')."""
+        body = (e.body or "").lower()
+        return e.status in (400, 404) and ("vs402323" in body or "work item type" in body or "workitemtype" in body)
+
+    def _upsert_work_item(self, wid: int | None, ops: list[dict[str, Any]], work_item_types: tuple[str, ...]) -> tuple[int, dict[str, Any], str, str]:
+        """PATCH the work item when `wid` is known (404 -> stale id -> create); otherwise POST a new work item.
+        `work_item_types` are tried in order, but a later type is attempted only when the error names the work item type.
+        Returns (id, payload, operation, type_used). Raises HttpError / ValueError on failure."""
+        if wid:
+            try:
+                _, data = http_json("PATCH", self._url(f"/_apis/wit/workitems/{wid}"), self.patch_headers, ops)
+                data = data if isinstance(data, dict) else {}
+                return int(data.get("id") or wid), data, "UPDATED_EXISTING", ""
+            except HttpError as e:
+                if e.status != 404:
+                    raise
+        first_err: HttpError | None = None
+        for i, wtype in enumerate(work_item_types):
+            try:
+                _, data = http_json("POST", self._url(f"/_apis/wit/workitems/${urllib.parse.quote(wtype)}"), self.patch_headers, ops)
+                data = data if isinstance(data, dict) else {}
+                if data.get("id") is None:
+                    raise ValueError("Azure DevOps did not return a work item id")
+                return int(data["id"]), data, "CREATED_NEW", wtype
+            except HttpError as e:
+                first_err = first_err or e
+                if i + 1 < len(work_item_types) and self._error_names_work_item_type(e):
+                    continue
+                raise first_err from None
+        raise first_err or ValueError("no work item type candidates")
+
+    def _work_item_url(self, wid: int, data: dict[str, Any]) -> str:
+        return (((data.get("_links") or {}).get("html") or {}).get("href")) or f"{self.org}/{urllib.parse.quote(self.project)}/_workitems/edit/{wid}"
 
     def upsert_stories(self, stories: list[dict[str, Any]], iteration_paths: dict[str, str]) -> list[dict[str, Any]]:
         existing = self.existing_work_item_map()
@@ -2084,27 +2584,32 @@ class AdoClient:
             wid = existing.get(s["id"]) or s.get("adoWorkItemId")
             entry = {"storyId": s["id"], "iterationPath": path, "sprint": sprint_label(s), "acCount": len(story_acs(s)), "liveSynced": False}
             try:
-                if wid:
-                    try:
-                        _, data = http_json("PATCH", self._url(f"/_apis/wit/workitems/{wid}"), self.patch_headers, ops)
-                        entry.update(operation="UPDATED_EXISTING")
-                    except HttpError as e:
-                        if e.status != 404:
-                            raise
-                        wid = None
-                if not wid:
-                    _, data = http_json("POST", self._url(f"/_apis/wit/workitems/${urllib.parse.quote(self.work_item_type)}"), self.patch_headers, ops)
-                    entry.update(operation="CREATED_NEW")
-                wid = int((data or {}).get("id") or wid)
+                wid, data, op, _ = self._upsert_work_item(wid, ops, (self.work_item_type,))
                 s["adoWorkItemId"] = wid
-                entry.update(id=wid, url=((data or {}).get("_links", {}).get("html", {}).get("href")) or f"{self.org}/{urllib.parse.quote(self.project)}/_workitems/edit/{wid}", liveSynced=True)
+                entry.update(id=wid, operation=op, url=self._work_item_url(wid, data), liveSynced=True)
             except (HttpError, ValueError, TypeError) as e:
                 entry["error"] = self._record(f"ADO upsert {s['id']}", e)
             results.append(entry)
         return results
 
+    def add_history_comment(self, wid: int, history_html: str) -> bool:
+        """Append a discussion comment via `/fields/System.History`."""
+        http_json("PATCH", self._url(f"/_apis/wit/workitems/{wid}"), self.patch_headers,
+                  [{"op": "add", "path": "/fields/System.History", "value": history_html}])
+        return True
+
+    def has_comment_containing(self, wid: int, marker: str) -> bool:
+        """True when a discussion comment on work item `wid` already contains `marker` (best-effort)."""
+        try:
+            _, data = http_json("GET", self._url(f"/_apis/wit/workItems/{wid}/comments", **{"api-version": "7.1-preview.4"}), self.headers, timeout=15)
+        except HttpError:
+            return False
+        data = data if isinstance(data, dict) else {}
+        return any(isinstance(c, dict) and marker in str(c.get("text") or "") for c in data.get("comments") or [])
+
     def upsert_defects(self, defects: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Create/update Stage 6 Bug work items in Azure DevOps, append System.History fix comments, and transition."""
+        """Create/update Stage 6 Bug work items in Azure DevOps, append System.History fix comments, and transition.
+        Work-item-type fallback Bug -> Issue only when ADO rejects the type; never falls back to the User Story type."""
         if not defects:
             return []
         existing = self.existing_work_item_map()
@@ -2119,30 +2624,11 @@ class AdoClient:
                 "status": bug.get("status", "In Progress"), "liveSynced": False, "commentsPosted": 0,
             }
             try:
-                if wid:
-                    try:
-                        _, data = http_json("PATCH", self._url(f"/_apis/wit/workitems/{wid}"), self.patch_headers, ops)
-                        entry.update(operation="UPDATED_EXISTING")
-                    except HttpError as e:
-                        if e.status != 404:
-                            raise
-                        wid = None
-                if not wid:
-                    data = None
-                    last_err = None
-                    for wtype in ("Bug", "Issue", self.work_item_type):
-                        try:
-                            _, data = http_json("POST", self._url(f"/_apis/wit/workitems/${urllib.parse.quote(wtype)}"), self.patch_headers, ops)
-                            entry["workItemType"] = wtype
-                            entry["operation"] = "CREATED_NEW"
-                            break
-                        except HttpError as e:
-                            last_err = e
-                    if data is None and last_err is not None:
-                        raise last_err
-                wid = int((data or {}).get("id") or wid)
+                wid, data, op, type_used = self._upsert_work_item(wid, ops, ("Bug", "Issue"))
                 bug["adoWorkItemId"] = wid
-                entry.update(id=wid, url=((data or {}).get("_links", {}).get("html", {}).get("href")) or f"{self.org}/{urllib.parse.quote(self.project)}/_workitems/edit/{wid}", liveSynced=True)
+                entry.update(id=wid, operation=op, url=self._work_item_url(wid, data), liveSynced=True)
+                if type_used:
+                    entry["workItemType"] = type_used
 
                 # Post remediation steps comments via /fields/System.History
                 for c in bug.get("remediationComments") or []:
@@ -2154,8 +2640,7 @@ class AdoClient:
                             f"<p><strong>Steps Taken to Fix the Defect:</strong></p>{steps_html}"
                         )
                         try:
-                            http_json("PATCH", self._url(f"/_apis/wit/workitems/{wid}"), self.patch_headers,
-                                      [{"op": "add", "path": "/fields/System.History", "value": hist_html}])
+                            self.add_history_comment(wid, hist_html)
                             c["adoCommentSynced"] = True
                             entry["commentsPosted"] = int(entry.get("commentsPosted", 0)) + 1
                         except HttpError as e:
@@ -2167,6 +2652,39 @@ class AdoClient:
                     entry["transition"] = tr_res[0]
             except (HttpError, ValueError, TypeError) as e:
                 entry["error"] = self._record(f"ADO defect upsert {bid}", e)
+            results.append(entry)
+        return results
+
+    def post_deployment_comments(self, stories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Post one Stage 8 deployment comment per story (skipped when an identical marker comment already exists)."""
+        existing: dict[str, int] | None = None
+        results: list[dict[str, Any]] = []
+        for s in stories:
+            dep = (s.get("traceability") or {}).get("gdcDeployment")
+            if not dep:
+                continue
+            wid = s.get("adoWorkItemId")
+            if not wid:
+                if existing is None:
+                    existing = self.existing_work_item_map()
+                wid = existing.get(s["id"])
+                if wid:
+                    s["adoWorkItemId"] = wid
+            entry: dict[str, Any] = {"storyId": s["id"], "id": wid, "verdict": dep.get("verdict"), "liveSynced": False}
+            if not wid:
+                entry["error"] = self._record(f"ADO deployment comment {s['id']}", ValueError("No ADO work item ID found for story"))
+                results.append(entry)
+                continue
+            marker = deployment_comment_marker(s)
+            try:
+                if dep.get("adoCommentMarker") == marker or self.has_comment_containing(int(wid), marker):
+                    entry.update(operation="ALREADY_POSTED", liveSynced=True)
+                else:
+                    self.add_history_comment(int(wid), to_deployment_comment_html(s))
+                    entry.update(operation="POSTED", liveSynced=True)
+                dep["adoCommentMarker"] = marker
+            except (HttpError, ValueError) as e:
+                entry["error"] = self._record(f"ADO deployment comment {s['id']}", e)
             results.append(entry)
         return results
 
@@ -2214,14 +2732,15 @@ class AdoClient:
         existing: dict[str, dict[str, Any]] = {}
         try:
             _, tree = http_json("GET", self._url("/_apis/wit/classificationnodes/iterations", **{"$depth": "2"}), self.headers)
-            for child in (tree or {}).get("children", []) or []:
-                existing[str(child.get("name", "")).lower()] = child
+            for child in ((tree if isinstance(tree, dict) else {}).get("children") or []):
+                if isinstance(child, dict):
+                    existing[str(child.get("name", "")).lower()] = child
         except HttpError as e:
             self._record("ADO list iterations", e)
         team_iter_ids: set[str] = set()
         try:
             _, team = http_json("GET", self._url("/_apis/work/teamsettings/iterations"), self.headers)
-            team_iter_ids = {str(i.get("id")) for i in (team or {}).get("value", [])}
+            team_iter_ids = {str(i.get("id")) for i in (team if isinstance(team, dict) else {}).get("value", []) if isinstance(i, dict)}
         except HttpError as e:
             self._record("ADO list team iterations", e)
 
@@ -2234,7 +2753,7 @@ class AdoClient:
                 else:
                     _, node = http_json("POST", self._url("/_apis/wit/classificationnodes/iterations"), self.headers, {"name": name})
                     entry["operation"] = "CREATED_NEW"
-                identifier = (node or {}).get("identifier")
+                identifier = (node if isinstance(node, dict) else {}).get("identifier")
                 entry["identifier"] = identifier
                 if identifier and identifier not in team_iter_ids:
                     http_json("POST", self._url("/_apis/work/teamsettings/iterations"), self.headers, {"id": identifier})
@@ -2250,7 +2769,8 @@ def ado_state_document(stories: list[dict[str, Any]], org_url: str | None, proje
                        work_items: list[dict[str, Any]], iterations: list[dict[str, Any]], errors: list[str], mode: str,
                        deterministic: bool, transition_results: list[dict[str, Any]] | None = None,
                        defects: list[dict[str, Any]] | None = None,
-                       defect_results: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+                       defect_results: list[dict[str, Any]] | None = None,
+                       deployment_results: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     root = project or "<ADO_PROJECT>"
     defects = defects or []
     return {
@@ -2271,6 +2791,7 @@ def ado_state_document(stories: list[dict[str, Any]], org_url: str | None, proje
         "liveIterationResults": iterations,
         "liveTransitionResults": transition_results or [],
         "liveDefectSyncResults": defect_results or [],
+        "liveDeploymentCommentResults": deployment_results or [],
         "liveSyncErrors": errors,
         "localPayload": [{
             "storyId": s["id"], "status": story_status(s),
@@ -2305,23 +2826,27 @@ def resolve_platform(arg: str | None, root: Path) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Stage 3 Gate 3 audit + idempotent Jira / Azure DevOps backlog, defect & status transition bridge (v4).")
+    p = argparse.ArgumentParser(
+        description="Stage 3 Gate 3 audit + idempotent Jira / Azure DevOps backlog, defect & status transition bridge (v4). "
+                    "All local artefacts are written to <PROJECT_ROOT>/backlog/. Exit codes: 0 ok, 1 gate/audit failure "
+                    "(or not connected for test-connection), 2 live sync had errors (see the state file's liveSyncErrors).")
     p.add_argument("--action", default="sync-stories",
                    choices=["test-connection", "audit", "sync-stories", "sync-sprints", "set-approval", "export-csv",
                             "transition-stories", "sync-status-from-eval", "sync-deployment-status", "select-groups"])
     p.add_argument("--platform", default=None, choices=["jira", "ado", "azure-devops", "both", "none"],
                    help="Default: specs/target_stack.json#almPlatform, else none.")
     dlc.add_project_root_arg(p)
-    p.add_argument("--output-dir", default="backlog", help="Relative to project root (default backlog).")
     p.add_argument("--approved", "--approve-sprint-plan", dest="approved", action="store_true",
-                   help="Human approved the sprint alignment (required by sync-sprints).")
+                   help="Human approved the sprint alignment (required by, and only honoured for, --action sync-sprints).")
     p.add_argument("--set-approval", choices=list(APPROVAL_STATES), default=None, help="Status for --action set-approval.")
     p.add_argument("--select-groups", default=None,
                    help="Comma-separated Capability Group IDs (e.g. 'GRP-01,GRP-02') or 'ALL' to take all capability groupings forward.")
     p.add_argument("--select-all-groups", action="store_true",
                    help="Convenience alias for --select-groups ALL (schedule all capability groupings across Release 1 Sprints 1..N).")
     p.add_argument("--sprint-capacity-points", type=int, default=None,
-                   help="Target story-point velocity capacity per sprint (default: target_stack.json#sprintCapacityPoints or 21 SP). Large capability groups automatically span multiple sprints (Sprint 1..N).")
+                   help="Target story-point velocity capacity per sprint (default: target_stack.json#sprintCapacityPoints or 21 SP; "
+                        "minimum 8; 0 = unlimited, i.e. no capacity-based sprint splitting). Large capability groups automatically "
+                        "span multiple sprints (Sprint 1..N).")
     p.add_argument("--target-status", default=None,
                    help="Target story status for --action transition-stories ('To Do', 'In Progress', or 'Done').")
     p.add_argument("--scope", choices=["all", "active-sprints"], default="all",
@@ -2333,15 +2858,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--allow-partial-coverage", action="store_true", help="Downgrade REQ coverage gaps from FAIL to WARN.")
     p.add_argument("--offline", action="store_true", help="Never touch the network (also DLC_OFFLINE_MODE=1).")
     p.add_argument("--deterministic", action="store_true", help="Fixed timestamps for golden comparisons.")
-    p.add_argument("--jira-url", default=None)
-    p.add_argument("--jira-email", default=None)
-    p.add_argument("--jira-token", default=None)
-    p.add_argument("--jira-project-key", "--jira-project", dest="jira_project_key", default=None)
-    p.add_argument("--jira-board-id", default=None)
-    p.add_argument("--jira-issue-type", default=None)
-    p.add_argument("--ado-org-url", default=None)
-    p.add_argument("--ado-project", default=None)
-    p.add_argument("--ado-pat", default=None)
+    p.add_argument("--jira-url", default=None, help="Overrides JIRA_URL (the API token is read from JIRA_API_TOKEN only).")
+    p.add_argument("--jira-email", default=None, help="Overrides JIRA_EMAIL.")
+    p.add_argument("--jira-project-key", "--jira-project", dest="jira_project_key", default=None, help="Overrides JIRA_PROJECT_KEY.")
+    p.add_argument("--jira-board-id", default=None, help="Overrides JIRA_BOARD_ID.")
+    p.add_argument("--jira-issue-type", default=None, help="Overrides JIRA_ISSUE_TYPE (default Story).")
+    p.add_argument("--ado-org-url", default=None, help="Overrides ADO_ORG_URL (the PAT is read from ADO_PAT only).")
+    p.add_argument("--ado-project", default=None, help="Overrides ADO_PROJECT.")
     return p
 
 
@@ -2359,28 +2882,545 @@ def resolve_sprint_capacity(args: argparse.Namespace, root: Path) -> int:
     return 21
 
 
-def jira_client_from(args: argparse.Namespace, offline: bool) -> tuple[JiraClient | None, str]:
+def jira_client_from(args: argparse.Namespace, offline: bool, created_sprint_ids: set[int] | None = None) -> tuple[JiraClient | None, str]:
     url = args.jira_url or os.environ.get("JIRA_URL", "")
     email = args.jira_email or os.environ.get("JIRA_EMAIL", "")
-    token = args.jira_token or os.environ.get("JIRA_API_TOKEN", "")
+    token = os.environ.get("JIRA_API_TOKEN", "")
     key = args.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or None
     if offline:
         return None, "offline mode requested"
     if not (url and email and token) or "your-domain" in url:
         return None, "JIRA_URL / JIRA_EMAIL / JIRA_API_TOKEN not set"
     return JiraClient(url, email, token, key, args.jira_board_id or os.environ.get("JIRA_BOARD_ID") or None,
-                      args.jira_issue_type or os.environ.get("JIRA_ISSUE_TYPE", "Story")), ""
+                      args.jira_issue_type or os.environ.get("JIRA_ISSUE_TYPE", "Story"),
+                      created_sprint_ids=created_sprint_ids), ""
 
 
 def ado_client_from(args: argparse.Namespace, offline: bool) -> tuple[AdoClient | None, str]:
     org = args.ado_org_url or os.environ.get("ADO_ORG_URL", "")
     project = args.ado_project or os.environ.get("ADO_PROJECT", "")
-    pat = args.ado_pat or os.environ.get("ADO_PAT", "")
+    pat = os.environ.get("ADO_PAT", "")
     if offline:
         return None, "offline mode requested"
     if not (org and project and pat):
         return None, "ADO_ORG_URL / ADO_PROJECT / ADO_PAT not set"
     return AdoClient(org, project, pat, os.environ.get("ADO_WORK_ITEM_TYPE", "User Story")), ""
+
+
+def validate_story_identity(stories: list[dict[str, Any]]) -> None:
+    """Every story needs 'id' and 'title' (docs/ARCHITECTURE.md §4.5) — shared by audit, select-groups and all sync actions."""
+    for s in stories:
+        if not isinstance(s, dict) or not str(s.get("id") or "").strip() or "title" not in s:
+            raise dlc.GateFailure("Every story in backlog/user_stories.json needs 'id' and 'title' (docs/ARCHITECTURE.md §4.5).")
+
+
+def refresh_story_defect_refs(stories: list[dict[str, Any]], defects: list[dict[str, Any]]) -> None:
+    """Re-render `traceability.defectRefs` after a live sync so freshly assigned Jira keys appear (no file I/O)."""
+    for s in stories:
+        tr = s.get("traceability")
+        if not isinstance(tr, dict):
+            continue
+        tr["defectRefs"] = [
+            f"{b['id']} ({b.get('status', 'In Progress')}" + (f", Jira: {b['jiraKey']}" if b.get("jiraKey") else "") + ")"
+            for b in defects if isinstance(b, dict) and b.get("storyRef") == s.get("id")
+        ]
+
+
+class ActionContext:
+    """Everything one CLI action needs; local artefacts are persisted exactly once by `finalize_local_artifacts`."""
+
+    def __init__(self, args: argparse.Namespace, root: Path, platform: str, offline: bool) -> None:
+        self.args = args
+        self.root = root
+        self.platform = platform
+        self.offline = offline
+        self.deterministic: bool = bool(args.deterministic)
+        self.out_dir: Path = root / BACKLOG_DIR
+        self.jira_key_hint: str | None = args.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or None
+        self.stories: list[dict[str, Any]] = []
+        self.defects: list[dict[str, Any]] = []
+        self.defects_computed: bool = False       # True once sync_defects_from_eval ran (defects.{json,md} must be written)
+        self.audit: dict[str, Any] = {}
+        self.approval: str = "PENDING_HUMAN_APPROVAL"
+        self.project_wide: dict[str, list[str]] = {}
+        self.live_summary: dict[str, Any] = {}
+        self.all_errors: list[str] = []
+
+    # -- previous state files ---------------------------------------------------------
+    def previous_state(self, name: str) -> dict[str, Any]:
+        p = self.out_dir / name
+        if not p.is_file():
+            return {}
+        try:
+            doc = dlc.read_json(p)
+        except (dlc.GateFailure, SystemExit):
+            dlc.warn(f"{p} is not valid JSON — previous live-sync pointers ignored.")
+            return {}
+        return doc if isinstance(doc, dict) else {}
+
+    def previous_created_sprint_ids(self) -> set[int]:
+        out: set[int] = set()
+        for v in self.previous_state("jira_state.json").get("createdSprintIds") or []:
+            try:
+                out.add(int(v))
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    # -- shared enrichment ------------------------------------------------------------
+    def enrich(self) -> None:
+        """Run story traceability enrichment exactly once per action (after statuses / defects are final)."""
+        self.project_wide = enrich_story_traceability(self.root, self.stories, self.defects)
+        refresh_defect_traceability(self.defects, self.stories)
+
+    # -- final persistence ------------------------------------------------------------
+    def finalize_local_artifacts(self, *, write_csv: bool, update_md: bool, md_update_sprints: bool = False,
+                                 extra_summary: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Persist user_stories.json (+ test_cases sha), user_stories.md, defects.{json,md}, jira_import.csv and
+        sprint_plan.json — once, at the very end of an action. Returns the sprint plan summary."""
+        refresh_story_defect_refs(self.stories, self.defects)
+        persist_stories_metadata(self.root, self.stories, self.deterministic)
+        if update_md:
+            update_markdown_story_statuses(self.root, self.stories, update_sprints=md_update_sprints)
+        if self.defects_computed or self.defects:
+            # Per-iteration archive copies are written only when defects were (re)derived from Stage 6 evidence.
+            write_defects_artifacts(self.root, self.defects, self.deterministic,
+                                    current_eval_iteration(self.root) if self.defects_computed else None)
+        if write_csv:
+            write_jira_csv(self.stories, self.out_dir / "jira_import.csv", self.jira_key_hint, self.defects)
+        summary = build_sprint_plan_summary(self.stories, self.audit, self.approval, self.platform, self.deterministic)
+        summary["totalDefects"] = len(self.defects)
+        summary["openDefects"] = sum(1 for d in self.defects if d.get("status") != "Done")
+        summary["resolvedDefects"] = sum(1 for d in self.defects if d.get("status") == "Done")
+        if self.project_wide:
+            summary["projectWideTraceability"] = self.project_wide
+        if extra_summary:
+            summary.update(extra_summary)
+        summary.update(self.live_summary)
+        write_sprint_plan_json(self.out_dir / "sprint_plan.json", summary)
+        return summary
+
+
+# -- Jira / ADO phases (shared by sync-stories, sync-sprints, transition-stories, sync-status-from-eval, sync-deployment-status)
+def run_jira_phase(ctx: ActionContext, phase: str, target_by_id: dict[str, str]) -> None:
+    """phase: 'sync' (upsert + sprints + transitions + defects) | 'transition' (transitions + defects) | 'deployment' (comments).
+    Writes backlog/jira_state.json and records a summary under ctx.live_summary['jira']."""
+    out_dir, platform, args = ctx.out_dir, ctx.platform, ctx.args
+    wants_jira = platform in ("jira", "both")
+    prev = ctx.previous_state("jira_state.json")
+    if not wants_jira and (phase == "sync" or not prev):
+        return  # nothing to refresh
+    client, reason = jira_client_from(args, ctx.offline, ctx.previous_created_sprint_ids()) if wants_jira else (None, "platform not jira")
+    issue_results: list[dict[str, Any]] = [] if phase == "sync" else list(prev.get("liveSyncResults") or [])
+    sprint_results: list[dict[str, Any]] = [] if phase == "sync" else list(prev.get("liveSprintSyncResults") or [])
+    transition_results: list[dict[str, Any]] = []
+    defect_results: list[dict[str, Any]] = []
+    deployment_results: list[dict[str, Any]] = []
+    mode = "OFFLINE_EXPORT_ONLY"
+    if client is None:
+        if wants_jira:
+            what = "export" if phase == "sync" else "update"
+            print(f"[dlc] Jira: offline {what} only ({reason}) — nothing was pushed to Jira; local backlog artefacts updated.")
+    else:
+        try:
+            client.myself()
+            client.discover_project_and_board()
+            if phase == "sync":
+                if client.project_key:
+                    issue_results = client.upsert_stories(ctx.stories)
+                    mode = "LIVE_REST_API_V3"
+                    sprint_results = client.reconcile_sprints(issue_results)
+                    if target_by_id:
+                        transition_results = client.transition_stories(ctx.stories, target_by_id)
+            elif phase == "transition":
+                transition_results = client.transition_stories(ctx.stories, target_by_id,
+                                                               refresh_description=(args.action == "sync-status-from-eval"))
+            elif phase == "deployment":
+                deployment_results = client.post_deployment_comments(ctx.stories)
+            if ctx.defects and phase in ("sync", "transition"):
+                story_key_map = {s["id"]: str(s["jiraKey"]) for s in ctx.stories if s.get("jiraKey")}
+                defect_results = client.upsert_defects(ctx.defects, story_key_map)
+            if phase != "sync":
+                live_any = (any(r.get("liveTransitioned") for r in transition_results)
+                            or any(d.get("liveSynced") for d in defect_results)
+                            or any(d.get("liveSynced") for d in deployment_results))
+                mode = "LIVE_REST_API_V3" if live_any else "LIVE_SYNC_FAILED"
+        except HttpError as e:
+            client.errors.append(f"Jira live {phase} aborted: {e}")
+            if phase != "sync":
+                mode = "LIVE_SYNC_FAILED"
+        if client.errors:
+            if phase == "sync":
+                mode = mode if issue_results else "LIVE_SYNC_FAILED"
+            for err in client.errors:
+                print(f"[dlc][jira][error] {err}", file=sys.stderr)
+        ctx.all_errors += client.errors
+    errors = client.errors if client else ([reason] if wants_jira else [])
+    state = jira_state_document(ctx.stories, client, ctx.jira_key_hint or prev.get("projectKey"), ctx.approval, ctx.audit,
+                                issue_results, sprint_results, errors, mode, ctx.deterministic,
+                                transition_results=transition_results, defects=ctx.defects, defect_results=defect_results,
+                                deployment_results=deployment_results,
+                                created_sprint_ids=ctx.previous_created_sprint_ids())
+    dlc.write_json(out_dir / "jira_state.json", state)
+    ctx.live_summary["jira"] = {
+        "mode": mode, "projectKey": state["projectKey"], "boardId": state["boardId"],
+        "issuesSynced": sum(1 for r in issue_results if r.get("liveSynced")),
+        "sprintsSynced": sum(1 for r in sprint_results if r.get("liveSynced")),
+        "issuesTransitioned": sum(1 for r in transition_results if r.get("liveTransitioned")),
+        "defectsSynced": sum(1 for d in defect_results if d.get("liveSynced")),
+        "deploymentCommentsSynced": sum(1 for d in deployment_results if d.get("liveSynced")),
+        "errors": len(state["liveSyncErrors"]),
+    }
+    print(f"[dlc] Jira state ({mode}) -> {out_dir / 'jira_state.json'}")
+
+
+def run_ado_phase(ctx: ActionContext, phase: str, target_by_id: dict[str, str]) -> None:
+    """Azure DevOps counterpart of run_jira_phase; writes backlog/azure_devops_state.json."""
+    out_dir, platform, args = ctx.out_dir, ctx.platform, ctx.args
+    wants_ado = platform in ("ado", "both")
+    prev = ctx.previous_state("azure_devops_state.json")
+    if not wants_ado and (phase == "sync" or not prev):
+        return
+    client, reason = ado_client_from(args, ctx.offline) if wants_ado else (None, "platform not ado")
+    work_items: list[dict[str, Any]] = [] if phase == "sync" else list(prev.get("liveSyncResults") or [])
+    iterations: list[dict[str, Any]] = [] if phase == "sync" else list(prev.get("liveIterationResults") or [])
+    transition_results: list[dict[str, Any]] = []
+    defect_results: list[dict[str, Any]] = []
+    deployment_results: list[dict[str, Any]] = []
+    mode = "OFFLINE_EXPORT_ONLY"
+    org = client.org if client else (args.ado_org_url or os.environ.get("ADO_ORG_URL") or prev.get("organizationUrl") or None)
+    project = client.project if client else (args.ado_project or os.environ.get("ADO_PROJECT") or prev.get("project") or None)
+    if client is None:
+        if wants_ado:
+            what = "export" if phase == "sync" else "update"
+            print(f"[dlc] ADO: offline {what} only ({reason}) — nothing was pushed to Azure DevOps; local backlog artefacts updated.")
+    else:
+        if phase == "sync":
+            sprint_names = sorted({sprint_short_name(sprint_label(s)) for s in ctx.stories if sprint_label(s) and not is_product_backlog(sprint_label(s))}, key=sprint_sort_key)
+            iterations = client.ensure_iterations(sprint_names)
+            ok_iterations = {i["name"] for i in iterations if i.get("liveSynced")}
+            paths = {s["id"]: (client.iteration_path_for(sprint_label(s)) if sprint_short_name(sprint_label(s)) in ok_iterations or is_product_backlog(sprint_label(s))
+                               else client.iteration_root()) for s in ctx.stories}
+            work_items = client.upsert_stories(ctx.stories, paths)
+            if target_by_id:
+                transition_results = client.transition_stories(ctx.stories, target_by_id)
+        elif phase == "transition":
+            transition_results = client.transition_stories(ctx.stories, target_by_id)
+        elif phase == "deployment":
+            deployment_results = client.post_deployment_comments(ctx.stories)
+        if ctx.defects and phase in ("sync", "transition"):
+            defect_results = client.upsert_defects(ctx.defects)
+        if phase == "sync":
+            mode = "LIVE_REST_API_V7_1" if any(w.get("liveSynced") for w in work_items) else "LIVE_SYNC_FAILED"
+        else:
+            live_any = (any(r.get("liveTransitioned") for r in transition_results)
+                        or any(d.get("liveSynced") for d in defect_results)
+                        or any(d.get("liveSynced") for d in deployment_results))
+            mode = "LIVE_REST_API_V7_1" if live_any else "LIVE_SYNC_FAILED"
+        for err in client.errors:
+            print(f"[dlc][ado][error] {err}", file=sys.stderr)
+        ctx.all_errors += client.errors
+    errors = client.errors if client else ([reason] if wants_ado else [])
+    state = ado_state_document(ctx.stories, org, project, ctx.approval, ctx.audit, work_items, iterations, errors, mode,
+                               ctx.deterministic, transition_results=transition_results, defects=ctx.defects,
+                               defect_results=defect_results, deployment_results=deployment_results)
+    dlc.write_json(out_dir / "azure_devops_state.json", state)
+    ctx.live_summary["azureDevOps"] = {
+        "mode": mode, "project": project,
+        "workItemsSynced": sum(1 for w in work_items if w.get("liveSynced")),
+        "iterationsSynced": sum(1 for i in iterations if i.get("liveSynced")),
+        "workItemsTransitioned": sum(1 for r in transition_results if r.get("liveTransitioned")),
+        "defectsSynced": sum(1 for d in defect_results if d.get("liveSynced")),
+        "deploymentCommentsSynced": sum(1 for d in deployment_results if d.get("liveSynced")),
+        "errors": len(state["liveSyncErrors"]),
+    }
+    print(f"[dlc] Azure DevOps state ({mode}) -> {out_dir / 'azure_devops_state.json'}")
+
+
+def run_live_phases(ctx: ActionContext, phase: str, target_by_id: dict[str, str]) -> None:
+    run_jira_phase(ctx, phase, target_by_id)
+    run_ado_phase(ctx, phase, target_by_id)
+    if ctx.platform == "none" and phase == "sync":
+        print("[dlc] No ALM platform selected — local artefacts only (set --platform or specs/target_stack.json#almPlatform).")
+
+
+def live_errors_exit(ctx: ActionContext, what: str) -> int:
+    if ctx.all_errors:
+        print(f"[dlc][warn] {len(ctx.all_errors)} live {what} error(s) recorded in the state file(s); the live sync is incomplete.", file=sys.stderr)
+        return 2
+    return 0
+
+
+# -- actions ---------------------------------------------------------------------------
+def action_test_connection(ctx: ActionContext) -> int:
+    """Exit 0 only when every selected platform is connected AND reported no errors."""
+    report: dict[str, Any] = {"platform": ctx.platform, "offline": ctx.offline, "results": []}
+    for name, factory in (("jira", jira_client_from), ("ado", ado_client_from)):
+        if ctx.platform not in (name, "both"):
+            continue
+        client, reason = factory(ctx.args, ctx.offline)
+        if client is None:
+            report["results"].append({"platform": name, "connected": False, "reason": reason})
+            continue
+        try:
+            report["results"].append(client.test_connection())
+        except HttpError as e:
+            report["results"].append({"platform": name, "connected": False, "error": str(e), "errors": client.errors + [str(e)]})
+    if ctx.platform == "none":
+        report["results"].append({"platform": "none", "connected": False, "reason": "no ALM platform selected (--platform or specs/target_stack.json#almPlatform)"})
+    ok = bool(report["results"]) and all(r.get("connected") and not r.get("errors") for r in report["results"])
+    report["ok"] = ok
+    print(json.dumps(report, indent=2))
+    return 0 if ok else 1
+
+
+def action_set_approval(ctx: ActionContext) -> int:
+    args = ctx.args
+    if not args.set_approval:
+        raise dlc.GateFailure("--action set-approval requires --set-approval <STATUS>.")
+    if args.set_approval != "PENDING_HUMAN_APPROVAL":
+        stories = dlc.load_stories(ctx.root)
+        validate_story_identity(stories)
+        audit = audit_backlog(ctx.root, stories, args.allow_partial_coverage)
+        print_audit(audit)
+        if not audit["passed"]:
+            raise dlc.GateFailure(f"Cannot mark sprint plan {args.set_approval}: Gate 3 audit failed (see [FAIL] lines).")
+    record_gate3_ledger_approval(ctx.root, args.set_approval, ctx.deterministic)
+    touched = set_approval_status(ctx.root, args.set_approval, ctx.deterministic)
+    print(json.dumps({"approvalStatus": args.set_approval, "updated": touched}, indent=2))
+    return 0
+
+
+def record_gate3_ledger_approval(root: Path, status: str, deterministic: bool) -> None:
+    """Mirror a Stage 3 approval into the human gate ledger (`specs/gate_approvals.json#gates.gate_3_backlog`).
+
+    * `APPROVED_BY_USER` (non-autonomous runs): refuse to self-approve within the 8-second human-turn boundary after
+      the gate was staged (`readyAtEpoch`), then record `APPROVED_BY_USER`.
+    * `PRE_APPROVED_BY_USER`: record `PRE_APPROVED_AUTONOMOUS` when a ledger already exists.
+    `gate_tracker.py --action approve --gate gate_3_backlog` keeps sprint_plan.{md,json} in sync the other way round."""
+    if status == "APPROVED_BY_USER" and not dlc.is_autonomous_or_golden(root, deterministic=deterministic):
+        ga = dlc.load_gate_approvals(root)
+        g3 = (ga.get("gates") or {}).get("gate_3_backlog") or {}
+        if g3.get("readyAtEpoch") is not None:
+            elapsed = time.time() - float(g3["readyAtEpoch"])
+            if elapsed < 8.0:
+                raise dlc.GateFailure(
+                    f"Refusing to self-approve gate_3_backlog ({elapsed:.1f}s after staging < 8s human-turn boundary)!\n"
+                    "  Present stories + sprint plan to the user, END YOUR TURN, and wait for human approval before calling set-approval."
+                )
+        now_iso = dlc.utc_now_iso(False)
+        ga.setdefault("gates", {})["gate_3_backlog"] = {
+            "gateId": "gate_3_backlog",
+            "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
+            "status": "APPROVED_BY_USER",
+            "readyAtUtc": g3.get("readyAtUtc") or now_iso,
+            "readyAtEpoch": g3.get("readyAtEpoch"),
+            "approvedAtUtc": now_iso,
+            "userResponse": "Approved via alm_jira_ado_bridge.py --action set-approval",
+            "summary": g3.get("summary") or "Stage 3 backlog & sprint alignment approved by human.",
+        }
+        dlc.write_json(dlc.gate_approvals_path(root), ga)
+    elif status == "PRE_APPROVED_BY_USER" and dlc.gate_approvals_path(root).exists():
+        ga = dlc.load_gate_approvals(root)
+        now_iso = dlc.utc_now_iso(deterministic)
+        ga.setdefault("gates", {})["gate_3_backlog"] = {
+            "gateId": "gate_3_backlog",
+            "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
+            "status": "PRE_APPROVED_AUTONOMOUS",
+            "readyAtUtc": now_iso,
+            "readyAtEpoch": None,
+            "approvedAtUtc": now_iso,
+            "userResponse": "Pre-approved via --autonomous mode",
+            "summary": "Stage 3 backlog pre-approved in autonomous mode.",
+        }
+        dlc.write_json(dlc.gate_approvals_path(root), ga)
+
+
+def action_select_groups(ctx: ActionContext) -> int:
+    """Update specs/target_stack.json#selectedCapabilityGroups and re-pack stories into Sprint 1..N / Product Backlog."""
+    args, root = ctx.args, ctx.root
+    if getattr(args, "select_all_groups", False) and not args.select_groups:
+        args.select_groups = "ALL"
+    if not args.select_groups:
+        raise dlc.GateFailure("--action select-groups requires --select-groups <GRP-01,GRP-02|ALL> (or --select-all-groups).")
+    raw_tokens = [t.strip().upper() for t in args.select_groups.split(",") if t.strip()]
+    if not raw_tokens:
+        raise dlc.GateFailure("--select-groups cannot be empty.")
+    select_all = "ALL" in raw_tokens or "*" in raw_tokens
+    selected_list = ["ALL"] if select_all else sorted(dict.fromkeys(raw_tokens))
+    cap_points = resolve_sprint_capacity(args, root)
+
+    stack_p = root / "specs" / "target_stack.json"
+    if stack_p.is_file():
+        stack_doc = dlc.read_json(stack_p)
+        if isinstance(stack_doc, dict):
+            stack_doc["selectedCapabilityGroups"] = selected_list
+            if args.sprint_capacity_points is not None:
+                stack_doc["sprintCapacityPoints"] = cap_points
+            dlc.write_json(stack_p, stack_doc)
+
+    ctx.stories = dlc.load_stories(root)  # same loader / normalised ACs as audit (GateFailure when Stage 3 has not authored it)
+    validate_story_identity(ctx.stories)
+    ctx.defects = load_defects(root)
+    ordered_groups: list[str] = []
+    for s in ctx.stories:
+        cg = str(s.get("capabilityGroup") or "").strip().upper()
+        if cg and cg != "SHARED" and cg not in ordered_groups:
+            ordered_groups.append(cg)
+    req_groups = ordered_groups if select_all else selected_list
+    eff_set, topo_ordered = dlc.resolve_group_closure(root, req_groups)
+    effective_groups = [g for g in topo_ordered if g in set(ordered_groups) or g in eff_set]
+    for g in ordered_groups:
+        if (select_all or g in eff_set) and g not in effective_groups:
+            effective_groups.append(g)
+    auto_included_prereqs = [] if select_all else [g for g in effective_groups if g not in set(selected_list)]
+
+    before = {s["id"]: sprint_label(s) for s in ctx.stories}
+    group_sprints = pack_stories_into_sprints(ctx.stories, effective_groups, select_all, selected_list, cap_points)
+    moved = {sid: (before[sid], sprint_label(s)) for s in ctx.stories for sid in [s["id"]] if before[sid] != sprint_label(s)}
+    ctx.enrich()
+    ctx.audit = audit_backlog(root, ctx.stories, args.allow_partial_coverage)
+    print_audit(ctx.audit)
+    ctx.approval = current_approval_status(root)
+    ctx.finalize_local_artifacts(write_csv=True, update_md=True, md_update_sprints=bool(moved))
+    print(json.dumps({
+        "selectedCapabilityGroups": selected_list,
+        "effectiveCapabilityGroups": ["ALL"] if select_all else effective_groups,
+        "autoIncludedPrerequisiteGroups": auto_included_prereqs,
+        "sprintCapacityPoints": cap_points,
+        "groupSprintAllocation": group_sprints,
+        "allGroupsSelected": select_all,
+        "storiesMoved": {sid: {"from": frm, "to": to} for sid, (frm, to) in moved.items()},
+        "auditPassed": ctx.audit["passed"],
+    }, indent=2))
+    return 0
+
+
+def action_sync_deployment_status(ctx: ActionContext) -> int:
+    """Stage 8: record GDC deployment traceability on every story (requires deploy/deployment_eval_report.json) and
+    post / refresh one deployment comment per story on the live board when credentials are configured."""
+    root = ctx.root
+    dep_eval_p = dlc.require_file(root / "deploy" / "deployment_eval_report.json",
+                                  "Stage 8 (09/scripts/run_gdc_fleet_deploy_and_verify.py)")
+    dep_doc = dlc.read_json(dep_eval_p)
+    if not isinstance(dep_doc, dict):
+        raise dlc.GateFailure(f"{dep_eval_p} is not a JSON object.")
+    ctx.enrich()  # attaches traceability.gdcDeployment to every story
+    run_live_phases(ctx, "deployment", {})
+    dep_summary = dep_doc.get("summary") or {}
+    ctx.finalize_local_artifacts(write_csv=True, update_md=True, extra_summary={
+        "gdcDeployment": {"verdict": dep_summary.get("verdict", "UNKNOWN"),
+                          "targetEnvironments": list(dep_doc.get("targetEnvironments") or []),
+                          "rolloutWaves": len(dep_doc.get("rolloutWaves") or [])},
+    })
+    print(json.dumps({
+        "action": "sync-deployment-status",
+        "storiesUpdated": sum(1 for s in ctx.stories if (s.get("traceability") or {}).get("gdcDeployment")),
+        "deploymentVerdict": dep_summary.get("verdict", "UNKNOWN"),
+        **ctx.live_summary,
+    }, indent=2))
+    return live_errors_exit(ctx, "deployment comment")
+
+
+def action_transition(ctx: ActionContext) -> int:
+    """transition-stories (explicit target) and sync-status-from-eval (derived from Stage 6 evidence)."""
+    args, root = ctx.args, ctx.root
+    target_by_id: dict[str, str] = {}
+    now_iso = dlc.utc_now_iso(ctx.deterministic)
+    if args.action == "transition-stories":
+        if not args.target_status:
+            raise dlc.GateFailure("--action transition-stories requires --target-status ('To Do', 'In Progress', or 'Done').")
+        target = normalise_story_status(args.target_status, strict=True)
+        explicit_ids = {x.strip() for x in (args.story_ids or "").split(",") if x.strip()}
+        for s in ctx.stories:
+            sid = s["id"]
+            if explicit_ids and sid not in explicit_ids:
+                continue
+            if not explicit_ids and args.scope == "active-sprints" and is_product_backlog(sprint_label(s)):
+                continue
+            if args.only_from_todo and story_status(s) != "To Do":
+                continue
+            prev = story_status(s)
+            s["status"] = target
+            s["statusReason"] = f"Transitioned from '{prev}' to '{target}' via transition-stories ({args.scope})"
+            s["statusUpdatedAtUtc"] = now_iso
+            target_by_id[sid] = target
+            print(f"[dlc][status] {sid}: {prev} -> {target}")
+    else:
+        # 1. Create/update Stage 6 defects (`BUG-01..N`) from failing tests & record fix-steps comments when fixed
+        ctx.defects = sync_defects_from_eval(root, ctx.stories, ctx.deterministic)
+        ctx.defects_computed = True
+        # 2. Recompute story statuses ('To Do' / 'In Progress' / 'Done')
+        computed = compute_story_statuses_from_eval(root, ctx.stories)
+        for s in ctx.stories:
+            sid = s["id"]
+            info = computed.get(sid)
+            if not info:
+                continue
+            prev = story_status(s)
+            target = info["status"]
+            s["status"] = target
+            s["statusReason"] = info["reason"]
+            s["statusUpdatedAtUtc"] = now_iso
+            target_by_id[sid] = target
+            print(f"[dlc][status] {sid}: {prev} -> {target} ({info['reason']})")
+    # 3. End-to-end traceability on all stories (test statuses & linked BUG-* defects) — once, after statuses are final
+    ctx.enrich()
+    run_live_phases(ctx, "transition", target_by_id)
+    summary = ctx.finalize_local_artifacts(write_csv=True, update_md=True)
+    print(json.dumps({
+        "action": args.action,
+        "storyStatusCounts": story_status_counts(ctx.stories),
+        "transitionedStories": len(target_by_id),
+        "totalDefects": len(ctx.defects),
+        "openDefects": summary["openDefects"],
+        "resolvedDefects": summary["resolvedDefects"],
+        **ctx.live_summary,
+    }, indent=2))
+    return live_errors_exit(ctx, "transition")
+
+
+def action_sync(ctx: ActionContext) -> int:
+    """sync-stories (stage the board before Gate 3) and sync-sprints --approved (after Gate 3)."""
+    args, root = ctx.args, ctx.root
+    if not ctx.audit["passed"]:
+        raise dlc.GateFailure("Gate 3 audit failed — sync blocked. Fix the [FAIL] items (or pass --allow-partial-coverage for REQ gaps only).")
+    if args.action == "sync-sprints":
+        if not args.approved:
+            raise dlc.GateFailure("--action sync-sprints requires --approved (human Gate 3 approval).")
+        dlc.require_gate_approved(root, "gate_3_backlog", "Stage 3 (alm_jira_ado_bridge.py --action sync-sprints)", deterministic=ctx.deterministic)
+        if ctx.approval == "PENDING_HUMAN_APPROVAL":
+            ctx.approval = "APPROVED_BY_USER"
+            set_approval_status(root, ctx.approval, ctx.deterministic)
+    elif args.approved:
+        dlc.warn("--approved is only honoured by --action sync-sprints; ignored for sync-stories.")
+
+    # If Stage 6 eval_results.json already exists, sync defects and infer story statuses if still in To Do
+    if (root / "test" / "eval_results.json").is_file():
+        ctx.defects = sync_defects_from_eval(root, ctx.stories, ctx.deterministic)
+        ctx.defects_computed = True
+        if all(story_status(s) == "To Do" for s in ctx.stories):
+            computed = compute_story_statuses_from_eval(root, ctx.stories)
+            now_iso = dlc.utc_now_iso(ctx.deterministic)
+            for s in ctx.stories:
+                info = computed.get(s["id"])
+                if info:
+                    s["status"] = info["status"]
+                    s["statusReason"] = info["reason"]
+                    s["statusUpdatedAtUtc"] = now_iso
+    ctx.enrich()
+    target_by_id_sync = {s["id"]: story_status(s) for s in ctx.stories if story_status(s) != "To Do"}
+    run_live_phases(ctx, "sync", target_by_id_sync)
+    summary = ctx.finalize_local_artifacts(write_csv=True, update_md=True)
+    print(json.dumps({k: v for k, v in summary.items() if k not in ("coverage", "projectWideTraceability")}, indent=2))
+    if args.action == "sync-stories" and ctx.audit["passed"] and ctx.approval == "PENDING_HUMAN_APPROVAL":
+        dlc.mark_gate_awaiting_human(
+            root,
+            "gate_3_backlog",
+            summary="Stage 3 User Stories & Sprint Plan staged on ALM board. Present stories + sprint plan + board links to user and STOP for Gate 3 approval before Stage 4.",
+            deterministic=ctx.deterministic,
+        )
+    return live_errors_exit(ctx, "sync")
 
 
 def main() -> int:
@@ -2389,488 +3429,55 @@ def main() -> int:
     load_env_files(root)
     offline = args.offline or bool(os.environ.get("DLC_OFFLINE_MODE"))
     platform = resolve_platform(args.platform, root)
-    out_dir = dlc.project_path(root, args.output_dir)
-    deterministic = args.deterministic
+    ctx = ActionContext(args, root, platform, offline)
 
-    # ---- test-connection (no project artefacts needed) -------------------------------
+    # ---- actions that do not need the audited backlog ------------------------------
     if args.action == "test-connection":
-        report: dict[str, Any] = {"platform": platform, "offline": offline, "results": []}
-        for name, factory in (("jira", jira_client_from), ("ado", ado_client_from)):
-            if platform not in (name, "both"):
-                continue
-            client, reason = factory(args, offline)
-            if client is None:
-                report["results"].append({"platform": name, "connected": False, "reason": reason})
-                continue
-            try:
-                report["results"].append(client.test_connection())
-            except HttpError as e:
-                report["results"].append({"platform": name, "connected": False, "error": str(e)})
-        if platform == "none":
-            report["results"].append({"platform": "none", "connected": False, "reason": "no ALM platform selected (--platform or specs/target_stack.json#almPlatform)"})
-        print(json.dumps(report, indent=2))
-        return 0 if report["results"] and all(r.get("connected") for r in report["results"]) else 1
+        return action_test_connection(ctx)
 
     # Enforce Gate 2 (Spec approval) before Stage 3 backlog authoring/staging actions
     if args.action in ("audit", "sync-stories", "sync-sprints", "set-approval", "select-groups", "export-csv"):
-        dlc.require_gate_approved(root, "gate_2_spec", f"Stage 3 (03-story-and-sprint-planner / {args.action})", deterministic=deterministic)
+        dlc.require_gate_approved(root, "gate_2_spec", f"Stage 3 (03-story-and-sprint-planner / {args.action})", deterministic=ctx.deterministic)
 
-    # ---- set-approval -----------------------------------------------------------------
     if args.action == "set-approval":
-        if not args.set_approval:
-            raise dlc.GateFailure("--action set-approval requires --set-approval <STATUS>.")
-        if args.set_approval != "PENDING_HUMAN_APPROVAL":
-            stories = dlc.load_stories(root)
-            audit = audit_backlog(root, stories, args.allow_partial_coverage)
-            print_audit(audit)
-            if not audit["passed"]:
-                raise dlc.GateFailure(f"Cannot mark sprint plan {args.set_approval}: Gate 3 audit failed (see [FAIL] lines).")
-        if args.set_approval == "APPROVED_BY_USER" and not dlc.is_autonomous_or_golden(root, deterministic=deterministic):
-            import time as _time
-            ga = dlc.load_gate_approvals(root)
-            g3 = (ga.get("gates") or {}).get("gate_3_backlog") or {}
-            if g3.get("readyAtEpoch") is not None:
-                elapsed = _time.time() - float(g3["readyAtEpoch"])
-                if elapsed < 8.0:
-                    raise dlc.GateFailure(
-                        f"Refusing to self-approve gate_3_backlog ({elapsed:.1f}s after staging < 8s human-turn boundary)!\n"
-                        "  Present stories + sprint plan to the user, END YOUR TURN, and wait for human approval before calling set-approval."
-                    )
-            now_iso = dlc.utc_now_iso(False)
-            ga.setdefault("gates", {})["gate_3_backlog"] = {
-                "gateId": "gate_3_backlog",
-                "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
-                "status": "APPROVED_BY_USER",
-                "readyAtUtc": g3.get("readyAtUtc") or now_iso,
-                "readyAtEpoch": g3.get("readyAtEpoch"),
-                "approvedAtUtc": now_iso,
-                "userResponse": "Approved via alm_jira_ado_bridge.py --action set-approval",
-                "summary": g3.get("summary") or "Stage 3 backlog & sprint alignment approved by human.",
-            }
-            dlc.write_json(dlc.gate_approvals_path(root), ga)
-        elif args.set_approval == "PRE_APPROVED_BY_USER" and dlc.gate_approvals_path(root).exists():
-            ga = dlc.load_gate_approvals(root)
-            now_iso = dlc.utc_now_iso(deterministic)
-            ga.setdefault("gates", {})["gate_3_backlog"] = {
-                "gateId": "gate_3_backlog",
-                "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
-                "status": "PRE_APPROVED_AUTONOMOUS",
-                "readyAtUtc": now_iso,
-                "readyAtEpoch": None,
-                "approvedAtUtc": now_iso,
-                "userResponse": "Pre-approved via --autonomous mode",
-                "summary": "Stage 3 backlog pre-approved in autonomous mode.",
-            }
-            dlc.write_json(dlc.gate_approvals_path(root), ga)
-        touched = set_approval_status(root, args.set_approval, deterministic)
-        print(json.dumps({"approvalStatus": args.set_approval, "updated": touched}, indent=2))
-        return 0
-
-    # ---- select-groups (update selectedCapabilityGroups & re-align sprints by group + capacity) --
+        return action_set_approval(ctx)
     if args.action == "select-groups":
-        if getattr(args, "select_all_groups", False) and not args.select_groups:
-            args.select_groups = "ALL"
-        if not args.select_groups:
-            raise dlc.GateFailure("--action select-groups requires --select-groups <GRP-01,GRP-02|ALL> (or --select-all-groups).")
-        raw_tokens = [t.strip().upper() for t in args.select_groups.split(",") if t.strip()]
-        if not raw_tokens:
-            raise dlc.GateFailure("--select-groups cannot be empty.")
-        select_all = "ALL" in raw_tokens or "*" in raw_tokens
-        selected_list = ["ALL"] if select_all else sorted(dict.fromkeys(raw_tokens))
-        cap_points = resolve_sprint_capacity(args, root)
-
-        stack_p = root / "specs" / "target_stack.json"
-        if stack_p.is_file():
-            stack_doc = dlc.read_json(stack_p)
-            if isinstance(stack_doc, dict):
-                stack_doc["selectedCapabilityGroups"] = selected_list
-                if args.sprint_capacity_points is not None:
-                    stack_doc["sprintCapacityPoints"] = cap_points
-                dlc.write_json(stack_p, stack_doc)
-
-        stories_p = root / "backlog" / "user_stories.json"
-        effective_groups: list[str] = []
-        auto_included_prereqs: list[str] = []
-        group_sprints: dict[str, list[str]] = {}
-        if stories_p.is_file():
-            stories_doc = dlc.read_json(stories_p)
-            stories_list = stories_doc.get("stories", []) if isinstance(stories_doc, dict) else []
-            ordered_groups: list[str] = []
-            for s in stories_list:
-                cg = str(s.get("capabilityGroup") or "").strip().upper()
-                if cg and cg != "SHARED" and cg not in ordered_groups:
-                    ordered_groups.append(cg)
-            req_groups = ordered_groups if select_all else selected_list
-            eff_set, topo_ordered = dlc.resolve_group_closure(root, req_groups)
-            effective_groups = [g for g in topo_ordered if g in set(ordered_groups) or g in eff_set]
-            for g in ordered_groups:
-                if (select_all or g in eff_set) and g not in effective_groups:
-                    effective_groups.append(g)
-            if not select_all:
-                auto_included_prereqs = [g for g in effective_groups if g not in set(selected_list)]
-
-            group_sprints = pack_stories_into_sprints(stories_list, effective_groups, select_all, selected_list, cap_points)
-            enrich_story_traceability(root, stories_list)
-            persist_stories_metadata(root, stories_list, deterministic)
-            audit = audit_backlog(root, stories_list, args.allow_partial_coverage)
-            approval = current_approval_status(root)
-            summary = build_sprint_plan_summary(stories_list, audit, approval, platform, deterministic)
-            write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
-        print(json.dumps({
-            "selectedCapabilityGroups": selected_list,
-            "effectiveCapabilityGroups": ["ALL"] if select_all else effective_groups,
-            "autoIncludedPrerequisiteGroups": auto_included_prereqs,
-            "sprintCapacityPoints": cap_points,
-            "groupSprintAllocation": group_sprints,
-            "allGroupsSelected": select_all,
-        }, indent=2))
-        return 0
+        return action_select_groups(ctx)
 
     # ---- everything else needs stories + audit ---------------------------------------
-    stories = dlc.load_stories(root)  # GateFailure if Stage 3 has not authored backlog/user_stories.json
-    for s in stories:
-        if "id" not in s or "title" not in s:
-            raise dlc.GateFailure("Every story in backlog/user_stories.json needs 'id' and 'title' (docs/ARCHITECTURE.md §4.5).")
-    defects = load_defects(root)
-    enrich_story_traceability(root, stories, defects)
-    audit = audit_backlog(root, stories, args.allow_partial_coverage)
-    print_audit(audit)
-    approval = current_approval_status(root)
+    ctx.stories = dlc.load_stories(root)  # GateFailure if Stage 3 has not authored backlog/user_stories.json
+    validate_story_identity(ctx.stories)
+    ctx.defects = load_defects(root)
+    ctx.audit = audit_backlog(root, ctx.stories, args.allow_partial_coverage)
+    print_audit(ctx.audit)
+    ctx.approval = current_approval_status(root)
 
     if args.action == "audit":
-        persist_stories_metadata(root, stories, deterministic)
-        summary = build_sprint_plan_summary(stories, audit, approval, platform, deterministic)
-        write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
-        print(f"[dlc] sprint plan summary -> {out_dir / 'sprint_plan.json'}")
-        if audit["passed"] and approval == "PENDING_HUMAN_APPROVAL":
+        ctx.enrich()
+        ctx.finalize_local_artifacts(write_csv=False, update_md=False)
+        print(f"[dlc] sprint plan summary -> {ctx.out_dir / 'sprint_plan.json'}")
+        if ctx.audit["passed"] and ctx.approval == "PENDING_HUMAN_APPROVAL":
             dlc.mark_gate_awaiting_human(
                 root,
                 "gate_3_backlog",
                 summary="Stage 3 User Stories & Sprint Plan audited. Sync stories to board (`--action sync-stories`), present stories + sprint plan to user, and STOP for Gate 3 approval.",
-                deterministic=deterministic,
+                deterministic=ctx.deterministic,
             )
-        return 0 if audit["passed"] else 1
+        return 0 if ctx.audit["passed"] else 1
 
-    jira_key_hint = args.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or None
     if args.action == "export-csv":
-        persist_stories_metadata(root, stories, deterministic)
-        path = write_jira_csv(stories, out_dir / "jira_import.csv", jira_key_hint, defects)
-        print(f"[dlc] Jira CSV export -> {path}" + ("" if audit["passed"] else "  (audit FAILED — fix before syncing)"))
-        return 0
+        ctx.enrich()
+        ctx.finalize_local_artifacts(write_csv=True, update_md=False)
+        print(f"[dlc] Jira CSV export -> {ctx.out_dir / 'jira_import.csv'}" + ("" if ctx.audit["passed"] else "  (audit FAILED — fix before syncing)"))
+        return 0 if ctx.audit["passed"] else 1
 
     if args.action == "sync-deployment-status":
-        persist_stories_metadata(root, stories, deterministic)
-        update_markdown_story_statuses(root, stories)
-        write_jira_csv(stories, out_dir / "jira_import.csv", jira_key_hint, defects)
-        dep_eval_p = root / "deploy" / "deployment_eval_report.json"
-        dep_summary = dlc.read_json(dep_eval_p).get("summary", {}) if dep_eval_p.is_file() else {}
-        print(json.dumps({
-            "action": "sync-deployment-status",
-            "storiesUpdated": len(stories),
-            "deploymentVerdict": dep_summary.get("verdict", "UNKNOWN"),
-        }, indent=2))
-        return 0
+        return action_sync_deployment_status(ctx)
 
-    # ---- transition-stories / sync-status-from-eval -----------------------------------
     if args.action in ("transition-stories", "sync-status-from-eval"):
-        target_by_id: dict[str, str] = {}
-        now_iso = dlc.utc_now_iso(deterministic)
-        if args.action == "transition-stories":
-            if not args.target_status:
-                raise dlc.GateFailure("--action transition-stories requires --target-status ('To Do', 'In Progress', or 'Done').")
-            target = normalise_story_status(args.target_status, strict=True)
-            explicit_ids = {x.strip() for x in (args.story_ids or "").split(",") if x.strip()}
-            for s in stories:
-                sid = s["id"]
-                if explicit_ids and sid not in explicit_ids:
-                    continue
-                if not explicit_ids and args.scope == "active-sprints" and is_product_backlog(sprint_label(s)):
-                    continue
-                if args.only_from_todo and story_status(s) != "To Do":
-                    continue
-                prev = story_status(s)
-                s["status"] = target
-                s["statusReason"] = f"Transitioned from '{prev}' to '{target}' via transition-stories ({args.scope})"
-                s["statusUpdatedAtUtc"] = now_iso
-                target_by_id[sid] = target
-                print(f"[dlc][status] {sid}: {prev} -> {target}")
-        else:
-            # 1. Create/update Stage 6 defects (`BUG-01..N`) from failing tests & record fix-steps comments when fixed
-            defects = sync_defects_from_eval(root, stories, deterministic)
-            # 2. Recompute story statuses ('To Do' / 'In Progress' / 'Done')
-            computed = compute_story_statuses_from_eval(root, stories)
-            for s in stories:
-                sid = s["id"]
-                info = computed.get(sid)
-                if not info:
-                    continue
-                prev = story_status(s)
-                target = info["status"]
-                s["status"] = target
-                s["statusReason"] = info["reason"]
-                s["statusUpdatedAtUtc"] = now_iso
-                target_by_id[sid] = target
-                print(f"[dlc][status] {sid}: {prev} -> {target} ({info['reason']})")
-            # 3. Refresh end-to-end traceability on all stories (including test statuses & linked BUG-* defects)
-            enrich_story_traceability(root, stories, defects)
+        return action_transition(ctx)
 
-        persist_stories_metadata(root, stories, deterministic)
-        update_markdown_story_statuses(root, stories)
-        write_jira_csv(stories, out_dir / "jira_import.csv", jira_key_hint, defects)
-
-        all_errors: list[str] = []
-        live_summary: dict[str, Any] = {}
-
-        if platform in ("jira", "both") or (out_dir / "jira_state.json").is_file():
-            client, reason = jira_client_from(args, offline) if platform in ("jira", "both") else (None, "platform not jira")
-            transition_results: list[dict[str, Any]] = []
-            defect_results: list[dict[str, Any]] = []
-            prev_jira = dlc.read_json(out_dir / "jira_state.json") if (out_dir / "jira_state.json").is_file() else {}
-            issue_results = prev_jira.get("liveSyncResults", []) if isinstance(prev_jira, dict) else []
-            sprint_results = prev_jira.get("liveSprintSyncResults", []) if isinstance(prev_jira, dict) else []
-            mode = "OFFLINE_EXPORT_ONLY"
-            if client is None:
-                if platform in ("jira", "both"):
-                    print(f"[dlc] Jira transition: offline update only ({reason}) — local backlog & defect statuses updated.")
-            else:
-                try:
-                    client.myself()
-                    client.discover_project_and_board()
-                    transition_results = client.transition_stories(
-                        stories, target_by_id,
-                        refresh_description=(args.action == "sync-status-from-eval"),
-                    )
-                    if defects:
-                        story_key_map = {s["id"]: str(s["jiraKey"]) for s in stories if s.get("jiraKey")}
-                        defect_results = client.upsert_defects(defects, story_key_map)
-                    mode = "LIVE_REST_API_V3" if (any(r.get("liveTransitioned") for r in transition_results) or any(d.get("liveSynced") for d in defect_results)) else "LIVE_SYNC_FAILED"
-                except HttpError as e:
-                    client.errors.append(f"Jira live status transition aborted: {e}")
-                    mode = "LIVE_SYNC_FAILED"
-                for err in client.errors:
-                    print(f"[dlc][jira][error] {err}", file=sys.stderr)
-                all_errors += client.errors
-            if defects:
-                write_defects_artifacts(root, defects, deterministic)
-                enrich_story_traceability(root, stories, defects)
-            persist_stories_metadata(root, stories, deterministic)
-            state = jira_state_document(
-                stories, client, jira_key_hint or (prev_jira.get("projectKey") if isinstance(prev_jira, dict) else None),
-                approval, audit, issue_results, sprint_results,
-                client.errors if client else ([reason] if platform in ("jira", "both") else []),
-                mode, deterministic, transition_results=transition_results,
-                defects=defects, defect_results=defect_results,
-            )
-            dlc.write_json(out_dir / "jira_state.json", state)
-            live_summary["jira"] = {
-                "mode": mode, "projectKey": state["projectKey"], "boardId": state["boardId"],
-                "issuesSynced": sum(1 for r in issue_results if r.get("liveSynced")),
-                "sprintsSynced": sum(1 for r in sprint_results if r.get("liveSynced")),
-                "issuesTransitioned": sum(1 for r in transition_results if r.get("liveTransitioned")),
-                "defectsSynced": sum(1 for d in defect_results if d.get("liveSynced")),
-                "errors": len(state["liveSyncErrors"]),
-            }
-
-        if platform in ("ado", "both") or (out_dir / "azure_devops_state.json").is_file():
-            client_a, reason = ado_client_from(args, offline) if platform in ("ado", "both") else (None, "platform not ado")
-            transition_results_a: list[dict[str, Any]] = []
-            defect_results_a: list[dict[str, Any]] = []
-            prev_ado = dlc.read_json(out_dir / "azure_devops_state.json") if (out_dir / "azure_devops_state.json").is_file() else {}
-            work_items = prev_ado.get("liveSyncResults", []) if isinstance(prev_ado, dict) else []
-            iterations = prev_ado.get("liveIterationResults", []) if isinstance(prev_ado, dict) else []
-            mode = "OFFLINE_EXPORT_ONLY"
-            org = client_a.org if client_a else (args.ado_org_url or os.environ.get("ADO_ORG_URL") or (prev_ado.get("organizationUrl") if isinstance(prev_ado, dict) else None))
-            project = client_a.project if client_a else (args.ado_project or os.environ.get("ADO_PROJECT") or (prev_ado.get("project") if isinstance(prev_ado, dict) else None))
-            if client_a is None:
-                if platform in ("ado", "both"):
-                    print(f"[dlc] ADO transition: offline update only ({reason}) — local backlog & defect statuses updated.")
-            else:
-                transition_results_a = client_a.transition_stories(stories, target_by_id)
-                if defects:
-                    defect_results_a = client_a.upsert_defects(defects)
-                mode = "LIVE_REST_API_V7_1" if (any(r.get("liveTransitioned") for r in transition_results_a) or any(d.get("liveSynced") for d in defect_results_a)) else "LIVE_SYNC_FAILED"
-                for err in client_a.errors:
-                    print(f"[dlc][ado][error] {err}", file=sys.stderr)
-                all_errors += client_a.errors
-            if defects:
-                write_defects_artifacts(root, defects, deterministic)
-                enrich_story_traceability(root, stories, defects)
-            persist_stories_metadata(root, stories, deterministic)
-            state_a = ado_state_document(
-                stories, org, project, approval, audit, work_items, iterations,
-                client_a.errors if client_a else ([reason] if platform in ("ado", "both") else []),
-                mode, deterministic, transition_results=transition_results_a,
-                defects=defects, defect_results=defect_results_a,
-            )
-            dlc.write_json(out_dir / "azure_devops_state.json", state_a)
-            live_summary["azureDevOps"] = {
-                "mode": mode, "project": project,
-                "workItemsSynced": sum(1 for w in work_items if w.get("liveSynced")),
-                "iterationsSynced": sum(1 for i in iterations if i.get("liveSynced")),
-                "workItemsTransitioned": sum(1 for r in transition_results_a if r.get("liveTransitioned")),
-                "defectsSynced": sum(1 for d in defect_results_a if d.get("liveSynced")),
-                "errors": len(state_a["liveSyncErrors"]),
-            }
-
-        summary = build_sprint_plan_summary(stories, audit, approval, platform, deterministic)
-        summary["totalDefects"] = len(defects)
-        summary["openDefects"] = sum(1 for d in defects if d.get("status") != "Done")
-        summary["resolvedDefects"] = sum(1 for d in defects if d.get("status") == "Done")
-        summary.update(live_summary)
-        write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
-        print(json.dumps({
-            "action": args.action,
-            "storyStatusCounts": story_status_counts(stories),
-            "transitionedStories": len(target_by_id),
-            "totalDefects": len(defects),
-            "openDefects": summary["openDefects"],
-            "resolvedDefects": summary["resolvedDefects"],
-            **live_summary,
-        }, indent=2))
-        if all_errors:
-            print(f"[dlc][warn] {len(all_errors)} live transition error(s) recorded in the state file(s).", file=sys.stderr)
-            return 2
-        return 0
-
-    # sync-stories / sync-sprints
-    if not audit["passed"]:
-        raise dlc.GateFailure("Gate 3 audit failed — sync blocked. Fix the [FAIL] items (or pass --allow-partial-coverage for REQ gaps only).")
-    if args.action == "sync-sprints":
-        if not args.approved:
-            raise dlc.GateFailure("--action sync-sprints requires --approved (human Gate 3 approval).")
-        dlc.require_gate_approved(root, "gate_3_backlog", "Stage 3 (alm_jira_ado_bridge.py --action sync-sprints)", deterministic=deterministic)
-        if approval == "PENDING_HUMAN_APPROVAL":
-            approval = "APPROVED_BY_USER"
-            set_approval_status(root, approval, deterministic)
-    elif args.approved and approval == "PENDING_HUMAN_APPROVAL":
-        approval = "APPROVED_BY_USER"
-        set_approval_status(root, approval, deterministic)
-
-    # If Stage 6 eval_results.json already exists, sync defects and infer story statuses if still in To Do
-    if (root / "test" / "eval_results.json").is_file():
-        defects = sync_defects_from_eval(root, stories, deterministic)
-        if all(story_status(s) == "To Do" for s in stories):
-            computed = compute_story_statuses_from_eval(root, stories)
-            now_iso = dlc.utc_now_iso(deterministic)
-            for s in stories:
-                info = computed.get(s["id"])
-                if info:
-                    s["status"] = info["status"]
-                    s["statusReason"] = info["reason"]
-                    s["statusUpdatedAtUtc"] = now_iso
-        enrich_story_traceability(root, stories, defects)
-        update_markdown_story_statuses(root, stories)
-
-    target_by_id_sync = {s["id"]: story_status(s) for s in stories if story_status(s) != "To Do"}
-
-    all_errors = []
-    live_summary = {}
-    write_jira_csv(stories, out_dir / "jira_import.csv", jira_key_hint, defects)
-
-    if platform in ("jira", "both"):
-        client, reason = jira_client_from(args, offline)
-        issue_results: list[dict[str, Any]] = []
-        sprint_results: list[dict[str, Any]] = []
-        transition_results_j: list[dict[str, Any]] = []
-        defect_results_j: list[dict[str, Any]] = []
-        mode = "OFFLINE_EXPORT_ONLY"
-        if client is None:
-            print(f"[dlc] Jira: offline export only ({reason}) — nothing was pushed to Jira.")
-        else:
-            try:
-                client.myself()
-                client.discover_project_and_board()
-                if client.project_key:
-                    issue_results = client.upsert_stories(stories)
-                    mode = "LIVE_REST_API_V3"
-                    sprint_results = client.reconcile_sprints(issue_results)
-                    if target_by_id_sync:
-                        transition_results_j = client.transition_stories(stories, target_by_id_sync)
-                    if defects:
-                        story_key_map = {s["id"]: str(s["jiraKey"]) for s in stories if s.get("jiraKey")}
-                        defect_results_j = client.upsert_defects(defects, story_key_map)
-            except HttpError as e:
-                client.errors.append(f"Jira live sync aborted: {e}")
-            if client.errors:
-                mode = mode if issue_results else "LIVE_SYNC_FAILED"
-                for err in client.errors:
-                    print(f"[dlc][jira][error] {err}", file=sys.stderr)
-            all_errors += client.errors
-        state = jira_state_document(stories, client, jira_key_hint, approval, audit, issue_results, sprint_results,
-                                    client.errors if client else [reason], mode, deterministic,
-                                    transition_results=transition_results_j,
-                                    defects=defects, defect_results=defect_results_j)
-        dlc.write_json(out_dir / "jira_state.json", state)
-        live_summary["jira"] = {"mode": mode, "projectKey": state["projectKey"], "boardId": state["boardId"],
-                                "issuesSynced": sum(1 for r in issue_results if r.get("liveSynced")),
-                                "sprintsSynced": sum(1 for r in sprint_results if r.get("liveSynced")),
-                                "issuesTransitioned": sum(1 for r in transition_results_j if r.get("liveTransitioned")),
-                                "defectsSynced": sum(1 for d in defect_results_j if d.get("liveSynced")),
-                                "errors": len(state["liveSyncErrors"])}
-        print(f"[dlc] Jira state ({mode}) -> {out_dir / 'jira_state.json'}")
-
-    if platform in ("ado", "both"):
-        client_a, reason = ado_client_from(args, offline)
-        work_items: list[dict[str, Any]] = []
-        iterations: list[dict[str, Any]] = []
-        transition_results_ado: list[dict[str, Any]] = []
-        defect_results_ado: list[dict[str, Any]] = []
-        mode = "OFFLINE_EXPORT_ONLY"
-        org = client_a.org if client_a else (args.ado_org_url or os.environ.get("ADO_ORG_URL") or None)
-        project = client_a.project if client_a else (args.ado_project or os.environ.get("ADO_PROJECT") or None)
-        if client_a is None:
-            print(f"ADO: offline export only (no credentials) — {reason}; nothing was pushed to Azure DevOps.")
-        else:
-            sprint_names = sorted({sprint_short_name(sprint_label(s)) for s in stories if sprint_label(s) and not is_product_backlog(sprint_label(s))}, key=sprint_sort_key)
-            iterations = client_a.ensure_iterations(sprint_names)
-            ok_iterations = {i["name"] for i in iterations if i.get("liveSynced")}
-            paths = {s["id"]: (client_a.iteration_path_for(sprint_label(s)) if sprint_short_name(sprint_label(s)) in ok_iterations or is_product_backlog(sprint_label(s))
-                               else client_a.iteration_root()) for s in stories}
-            work_items = client_a.upsert_stories(stories, paths)
-            if target_by_id_sync:
-                transition_results_ado = client_a.transition_stories(stories, target_by_id_sync)
-            if defects:
-                defect_results_ado = client_a.upsert_defects(defects)
-            mode = "LIVE_REST_API_V7_1" if any(w.get("liveSynced") for w in work_items) else "LIVE_SYNC_FAILED"
-            for err in client_a.errors:
-                print(f"[dlc][ado][error] {err}", file=sys.stderr)
-            all_errors += client_a.errors
-        state = ado_state_document(stories, org, project, approval, audit, work_items, iterations,
-                                   client_a.errors if client_a else [reason], mode, deterministic,
-                                   transition_results=transition_results_ado,
-                                   defects=defects, defect_results=defect_results_ado)
-        dlc.write_json(out_dir / "azure_devops_state.json", state)
-        live_summary["azureDevOps"] = {"mode": mode, "project": project,
-                                       "workItemsSynced": sum(1 for w in work_items if w.get("liveSynced")),
-                                       "iterationsSynced": sum(1 for i in iterations if i.get("liveSynced")),
-                                       "workItemsTransitioned": sum(1 for r in transition_results_ado if r.get("liveTransitioned")),
-                                       "defectsSynced": sum(1 for d in defect_results_ado if d.get("liveSynced")),
-                                       "errors": len(state["liveSyncErrors"])}
-        print(f"[dlc] Azure DevOps state ({mode}) -> {out_dir / 'azure_devops_state.json'}")
-
-    if platform == "none":
-        print("[dlc] No ALM platform selected — local artefacts only (set --platform or specs/target_stack.json#almPlatform).")
-
-    persist_stories_metadata(root, stories, deterministic)
-
-    summary = build_sprint_plan_summary(stories, audit, approval, platform, deterministic)
-    summary["totalDefects"] = len(defects)
-    summary["openDefects"] = sum(1 for d in defects if d.get("status") != "Done")
-    summary["resolvedDefects"] = sum(1 for d in defects if d.get("status") == "Done")
-    summary.update(live_summary)
-    write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
-    print(json.dumps({k: v for k, v in summary.items() if k != "coverage"}, indent=2))
-    if args.action == "sync-stories" and audit["passed"] and approval == "PENDING_HUMAN_APPROVAL":
-        dlc.mark_gate_awaiting_human(
-            root,
-            "gate_3_backlog",
-            summary="Stage 3 User Stories & Sprint Plan staged on ALM board. Present stories + sprint plan + board links to user and STOP for Gate 3 approval before Stage 4.",
-            deterministic=deterministic,
-        )
-    if all_errors:
-        print(f"[dlc][warn] {len(all_errors)} live sync error(s) recorded in the state file(s); the live sync is incomplete.", file=sys.stderr)
-        return 2
-    return 0
+    return action_sync(ctx)  # sync-stories / sync-sprints
 
 
 if __name__ == "__main__":

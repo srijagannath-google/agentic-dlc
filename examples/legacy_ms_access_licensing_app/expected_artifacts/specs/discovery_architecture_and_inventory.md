@@ -208,7 +208,7 @@ Terminal states: `ISSUED`, `REJECTED`. Initial state: `DRAFT` (an application st
 | Group ID | Group Name | Grouping Dimension | Capabilities | Prerequisite Groups / Shared | Legacy Artefacts / Source Scope | Notes |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | GRP-01 | Buyer Self-Service Intake & Surety Bond Portal | `functional` | `CAP-02, CAP-04, CAP-08` | `Shared Foundation (pre-req for all)` | `Form_frmBusinessLicenseApplication.txt`, `tblBusinessLicenseFiles.xsd`, `qryBusinessLicenseFiles.sql` | Core buyer/application intake & shared status history |
-| GRP-02 | Forestry Division Adjudication, Registry & Card Issuance | `business-unit` | `CAP-01, CAP-03, CAP-05, CAP-06` | `GRP-01` | `Form_frmBusinessLicenseNewApplications.txt`, `Form_frmBusinessLicenseNewApplicationDetail.txt`, `Form_frmBusinessLicenseApplicantSelection.txt`, `Report_rptBusinessLicenseAgentCardLabels.txt` | Internal Licensing Compliance staff review, issuance & registry management (depends on GRP-01 intake) |
+| GRP-02 | Licensing Operations Adjudication, Registry & Card Issuance | `business-unit` | `CAP-01, CAP-03, CAP-05, CAP-06` | `GRP-01` | `Form_frmBusinessLicenseNewApplications.txt`, `Form_frmBusinessLicenseNewApplicationDetail.txt`, `Form_frmBusinessLicenseApplicantSelection.txt`, `Report_rptBusinessLicenseAgentCardLabels.txt` | Internal Licensing Compliance staff review, issuance & registry management (depends on GRP-01 intake) |
 | GRP-03 | Quarterly Volume Fee Reporting & Compliance | `functional` | `CAP-07` | `GRP-01, GRP-02` | Harvest-fee form family (`BusinessLicensingAccessDatabaseOverview.docx`) | Quarterly 4 % purchase fee calculation & reporting on issued licences |
 
 ---

@@ -4,19 +4,29 @@
   "title": "specs/gate_approvals.json (Machine-enforced Human Gate Ledger across Stages 0..8)",
   "type": "object",
   "required": ["schemaVersion", "gates"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": { "type": "string", "const": "4.0" },
+    "initializedAtUtc": { "type": ["string", "null"] },
     "gates": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
         "required": ["gateId", "stage", "status"],
+        "additionalProperties": false,
         "properties": {
           "gateId": { "type": "string" },
           "stage": { "type": "string" },
           "status": {
             "type": "string",
-            "enum": ["NOT_STARTED", "AWAITING_HUMAN_REVIEW", "APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"]
+            "enum": [
+              "PENDING",
+              "NOT_STARTED",
+              "AWAITING_HUMAN_REVIEW",
+              "APPROVED_BY_USER",
+              "PRE_APPROVED_AUTONOMOUS",
+              "AUTONOMOUS_DEFAULT"
+            ]
           },
           "readyAtUtc": { "type": ["string", "null"] },
           "readyAtEpoch": { "type": ["number", "null"] },

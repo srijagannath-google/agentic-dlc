@@ -48,7 +48,7 @@ Acceptance Criteria (8):
 - [EDGE / BOUNDARY] GIVEN a Commercial Buyer on step 3 who already added Marcus Lee born 1988-07-02 WHEN they add ""marcus"" ""LEE"" born 1988-07-02 again THEN the existing record is re-used and the notice reads ""Marcus Lee is already on this roster"" with exactly one Marcus Lee row
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: Form_frmBusinessLicenseApplication.txt (cmdAddAgent/cmdAssignAgent/cmdRemoveAgent/cmdDeleteAgent handlers), Form_frmBusinessLicenseNewApplicationDetail.txt (same handlers + removal letter), licence-agent bridge and assignment-history tables
 - Requirements & Business Rules: REQ-FUNC-03, REQ-FUNC-09, REQ-ENH-03 | Rules: BR-02, BR-05, BR-06, BR-07 | Workflow Transitions: n/a
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events
@@ -83,7 +83,7 @@ Acceptance Criteria (6):
 - [POSITIVE] GIVEN Licensing Staff on the Review queue with the filter set to Draft WHEN they open the draft application of Acme Commercial Services THEN the review view shows status ""Draft — not yet submitted"" and no decision controls
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: Form_frmBusinessLicenseNewApplications.txt, Form_frmBusinessLicenseNewApplicationDetail.txt, Form_frmBusinessLicenseApplicantSelection.txt (search/list)
 - Requirements & Business Rules: REQ-FUNC-05, REQ-ENH-01 | Rules: n/a | Workflow Transitions: n/a
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events
@@ -101,7 +101,7 @@ Acceptance Criteria (6):
 - [NEGATIVE — WORKFLOW PREREQUISITE GATE] GIVEN Licensing Staff reviewing a draft application WHEN they look for the Print certificate control THEN no print control is rendered
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: Form_frmBusinessLicenseApplication.txt (cmdPreviewReport, cmdAgentCardsSingle), Report_rptBusinessLicenseAgentCardLabels.txt, card-printed update query
 - Requirements & Business Rules: REQ-FUNC-06, REQ-FUNC-08 | Rules: BR-01, BR-02, BR-06 | Workflow Transitions: SUBMITTED->ISSUED
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events
@@ -136,7 +136,7 @@ Acceptance Criteria (6):
 - [NEGATIVE — ROLE VISIBILITY] GIVEN a Commercial Buyer in the portal WHEN they look for the Buyers or Agents registry tabs THEN neither tab is rendered
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: Form_frmBusinessLicenseApplicantSelection.txt (search handlers, cmdDeleteApplicant_Click), Form_frmBusinessLicenseApplication.txt (cmdSearch/cmdReset/cmdDeleteAgent), agent-information form (referenced)
 - Requirements & Business Rules: REQ-FUNC-10 | Rules: BR-06, BR-08 | Workflow Transitions: n/a
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events
@@ -152,7 +152,7 @@ Acceptance Criteria (4):
 - [POSITIVE — INTERACTIVE COMPLETENESS] GIVEN a Commercial Buyer viewing an application with no documents WHEN the documents section renders THEN it shows the sentence ""No documents attached yet."" instead of an empty table
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: tblBusinessLicenseFiles.xsd, qryBusinessLicenseFiles.sql, uploaded-files sub-form (referenced)
 - Requirements & Business Rules: REQ-FUNC-11 | Rules: n/a | Workflow Transitions: n/a
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events
@@ -170,7 +170,7 @@ Acceptance Criteria (6):
 - [NEGATIVE — ROLE VISIBILITY] GIVEN a Commercial Buyer viewing the draft application of Acme Commercial Services WHEN they look for the Record report control THEN no fee-report controls are rendered because the licence is not issued
 
 End-to-End Traceability Matrix:
-- Capability Group: GRP-02 — Forestry Division Adjudication, Registry & Card Issuance
+- Capability Group: GRP-02 — Licensing Operations Adjudication, Registry & Card Issuance
 - Legacy / Input Source Artifacts: volume-fee form family (overview document)
 - Requirements & Business Rules: REQ-FUNC-13, REQ-ENH-05 | Rules: BR-03 | Workflow Transitions: n/a
 - Architecture & Design Contracts: APIs: GET /health, GET /api/applications, POST /api/applications, GET /api/applications/{applicationId}, PUT /api/applications/{applicationId}, POST /api/applications/{applicationId}/submit | DB Tables: commercial_buyers, license_applications, field_agents, agent_assignments, supporting_documents, quarterly_fee_reports, audit_events

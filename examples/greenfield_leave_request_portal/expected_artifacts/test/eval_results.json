@@ -1,7 +1,7 @@
 {
   "schemaVersion": "4.0",
-  "evaluatedAtUtc": "2026-10-29T23:53:15Z",
-  "iteration": 7,
+  "evaluatedAtUtc": "1970-01-01T00:00:00Z",
+  "iteration": 1,
   "runtime": {
     "browser": "chrome-headless",
     "browserBinary": "/usr/bin/google-chrome",
@@ -9,9 +9,123 @@
     "backendError": "",
     "uiEntry": "http://127.0.0.1:8766/",
     "backendKind": "python-stdlib-http",
-    "browserStatesReached": 110
+    "browserStatesReached": 113
   },
   "results": [
+    {
+      "id": "TC-UI-INTERACT-TAB-01",
+      "category": "Interact",
+      "title": "Mutual tab exclusivity & layout switching: 'My requests' (my-requests) shows its panel and hides all sibling panels",
+      "expected": "Clicking tab 'My requests' ([data-testid=tab-my-requests]) sets aria-selected='true', renders [data-testid=panel-my-requests] with a non-zero bounding box, and hides all sibling tab panels ([data-testid=panel-policy-guide]).",
+      "runtime": "browser",
+      "optional": false,
+      "storyRef": null,
+      "acRef": null,
+      "status": "PASS",
+      "durationMs": 829,
+      "failedStep": null,
+      "message": "5 step(s) passed",
+      "actual": "",
+      "stepLog": [
+        {
+          "index": 0,
+          "action": "goto",
+          "selector": "",
+          "ok": true,
+          "actual": "harness already loaded http://127.0.0.1:46221/",
+          "ms": 0
+        },
+        {
+          "index": 1,
+          "action": "click",
+          "selector": "[data-testid=tab-my-requests]",
+          "ok": true,
+          "actual": "bbox=89x21 dom delta=0",
+          "ms": 60
+        },
+        {
+          "index": 2,
+          "action": "expectAttribute",
+          "selector": "[data-testid=tab-my-requests]",
+          "ok": true,
+          "actual": "aria-selected=\"true\"",
+          "ms": 0
+        },
+        {
+          "index": 3,
+          "action": "expectVisible",
+          "selector": "[data-testid=panel-my-requests]",
+          "ok": true,
+          "actual": "visible",
+          "ms": 0
+        },
+        {
+          "index": 4,
+          "action": "expectHidden",
+          "selector": "[data-testid=panel-policy-guide]",
+          "ok": true,
+          "actual": "hidden",
+          "ms": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-UI-INTERACT-TAB-02",
+      "category": "Interact",
+      "title": "Mutual tab exclusivity & layout switching: 'Policy & rules guide' (policy-guide) shows its panel and hides all sibling panels",
+      "expected": "Clicking tab 'Policy & rules guide' ([data-testid=tab-policy-guide]) sets aria-selected='true', renders [data-testid=panel-policy-guide] with a non-zero bounding box, and hides all sibling tab panels ([data-testid=panel-my-requests]).",
+      "runtime": "browser",
+      "optional": false,
+      "storyRef": null,
+      "acRef": null,
+      "status": "PASS",
+      "durationMs": 852,
+      "failedStep": null,
+      "message": "5 step(s) passed",
+      "actual": "",
+      "stepLog": [
+        {
+          "index": 0,
+          "action": "goto",
+          "selector": "",
+          "ok": true,
+          "actual": "harness already loaded http://127.0.0.1:46221/",
+          "ms": 0
+        },
+        {
+          "index": 1,
+          "action": "click",
+          "selector": "[data-testid=tab-policy-guide]",
+          "ok": true,
+          "actual": "bbox=133x21 dom delta=0",
+          "ms": 60
+        },
+        {
+          "index": 2,
+          "action": "expectAttribute",
+          "selector": "[data-testid=tab-policy-guide]",
+          "ok": true,
+          "actual": "aria-selected=\"true\"",
+          "ms": 0
+        },
+        {
+          "index": 3,
+          "action": "expectVisible",
+          "selector": "[data-testid=panel-policy-guide]",
+          "ok": true,
+          "actual": "visible",
+          "ms": 0
+        },
+        {
+          "index": 4,
+          "action": "expectHidden",
+          "selector": "[data-testid=panel-my-requests]",
+          "ok": true,
+          "actual": "hidden",
+          "ms": 0
+        }
+      ]
+    },
     {
       "id": "TC-POS-01",
       "category": "Positive",
@@ -22,7 +136,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 639,
+      "durationMs": 1042,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -32,7 +146,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-01.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -48,7 +162,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -88,7 +202,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -119,7 +233,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 459,
+      "durationMs": 934,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -129,7 +243,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-01.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -145,7 +259,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -193,7 +307,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=102",
+          "actual": "bbox=111x42 dom delta=102",
           "ms": 60
         },
         {
@@ -224,7 +338,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 475,
+      "durationMs": 1042,
       "failedStep": null,
       "message": "9 step(s) passed",
       "actual": "",
@@ -234,7 +348,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-02.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -250,7 +364,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -290,7 +404,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=92",
+          "actual": "bbox=111x42 dom delta=92",
           "ms": 60
         },
         {
@@ -313,7 +427,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 482,
+      "durationMs": 1111,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -323,7 +437,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-02.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -347,7 +461,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -395,7 +509,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -419,7 +533,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=2",
+          "actual": "bbox=111x42 dom delta=2",
           "ms": 60
         },
         {
@@ -442,7 +556,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 459,
+      "durationMs": 1761,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -452,7 +566,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-01.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -468,7 +582,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -516,7 +630,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=1077",
+          "actual": "bbox=111x42 dom delta=1077",
           "ms": 60
         },
         {
@@ -547,7 +661,7 @@
       "storyRef": "US-FUNC-01",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 407,
+      "durationMs": 1331,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -557,7 +671,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-01.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -604,7 +718,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 432,
+      "durationMs": 1614,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -614,7 +728,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-02.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -630,7 +744,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -669,7 +783,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 447,
+      "durationMs": 1402,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -679,7 +793,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-02.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -695,7 +809,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -734,7 +848,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 427,
+      "durationMs": 1294,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -744,7 +858,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-03.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -760,7 +874,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -791,7 +905,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 427,
+      "durationMs": 1413,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -801,7 +915,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-04.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -817,7 +931,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -848,7 +962,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 436,
+      "durationMs": 1500,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -858,7 +972,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-03.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -874,7 +988,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -953,7 +1067,7 @@
       "storyRef": "US-FUNC-02",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 432,
+      "durationMs": 1448,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -963,7 +1077,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-04.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -979,7 +1093,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -1026,7 +1140,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 456,
+      "durationMs": 1815,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -1036,7 +1150,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-05.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1052,7 +1166,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -1092,7 +1206,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -1108,7 +1222,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -1139,7 +1253,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 495,
+      "durationMs": 1804,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -1149,7 +1263,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-03.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1165,7 +1279,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -1205,7 +1319,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=578",
+          "actual": "bbox=111x42 dom delta=578",
           "ms": 60
         },
         {
@@ -1221,7 +1335,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=0",
+          "actual": "bbox=151x42 dom delta=0",
           "ms": 60
         },
         {
@@ -1252,7 +1366,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 476,
+      "durationMs": 1970,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -1262,7 +1376,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-04.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1278,7 +1392,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -1318,7 +1432,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -1326,7 +1440,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=0",
+          "actual": "bbox=151x42 dom delta=0",
           "ms": 60
         },
         {
@@ -1365,7 +1479,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 486,
+      "durationMs": 2025,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -1375,7 +1489,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-05.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1391,7 +1505,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -1431,7 +1545,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -1439,7 +1553,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=0",
+          "actual": "bbox=151x42 dom delta=0",
           "ms": 60
         },
         {
@@ -1470,7 +1584,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 459,
+      "durationMs": 1914,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -1480,7 +1594,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-05.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1496,7 +1610,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -1536,7 +1650,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=576",
+          "actual": "bbox=111x42 dom delta=576",
           "ms": 60
         },
         {
@@ -1544,7 +1658,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -1567,7 +1681,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 492,
+      "durationMs": 1723,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -1577,7 +1691,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-06.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1593,7 +1707,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -1633,7 +1747,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=578",
+          "actual": "bbox=111x42 dom delta=578",
           "ms": 60
         },
         {
@@ -1641,7 +1755,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -1664,7 +1778,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-07",
       "status": "PASS",
-      "durationMs": 488,
+      "durationMs": 1789,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -1674,7 +1788,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-06.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1690,7 +1804,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -1730,7 +1844,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=578",
+          "actual": "bbox=111x42 dom delta=578",
           "ms": 60
         },
         {
@@ -1738,7 +1852,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=0",
+          "actual": "bbox=151x42 dom delta=0",
           "ms": 60
         },
         {
@@ -1777,7 +1891,7 @@
       "storyRef": "US-FUNC-03",
       "acRef": "AC-08",
       "status": "PASS",
-      "durationMs": 499,
+      "durationMs": 2036,
       "failedStep": null,
       "message": "13 step(s) passed",
       "actual": "",
@@ -1787,7 +1901,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-02.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1803,7 +1917,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -1843,7 +1957,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -1859,7 +1973,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -1898,7 +2012,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 491,
+      "durationMs": 1723,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -1908,7 +2022,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-07.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -1924,7 +2038,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -1964,7 +2078,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -1980,7 +2094,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -2003,7 +2117,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 504,
+      "durationMs": 1968,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -2013,7 +2127,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-08.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2029,7 +2143,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -2069,7 +2183,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -2085,7 +2199,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -2101,7 +2215,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -2132,7 +2246,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 439,
+      "durationMs": 1497,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -2142,7 +2256,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-03.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2158,7 +2272,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=396",
+          "actual": "bbox=0x0 dom delta=396",
           "ms": 60
         },
         {
@@ -2197,7 +2311,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 494,
+      "durationMs": 1476,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -2207,7 +2321,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-04.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2223,7 +2337,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=368",
+          "actual": "bbox=0x0 dom delta=368",
           "ms": 60
         },
         {
@@ -2262,7 +2376,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 540,
+      "durationMs": 1922,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -2272,7 +2386,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-05.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2288,7 +2402,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -2328,7 +2442,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -2344,7 +2458,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -2391,7 +2505,7 @@
       "storyRef": "US-FUNC-04",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 544,
+      "durationMs": 2032,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -2401,7 +2515,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-03.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2417,7 +2531,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -2457,7 +2571,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -2473,7 +2587,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -2520,7 +2634,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 424,
+      "durationMs": 1501,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -2530,7 +2644,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-09.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2593,7 +2707,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 575,
+      "durationMs": 2274,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -2603,7 +2717,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-10.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2619,7 +2733,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -2659,7 +2773,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -2675,7 +2789,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -2707,7 +2821,7 @@
           "action": "click",
           "selector": "[data-testid=return-btn]",
           "ok": true,
-          "actual": "dom delta=-418",
+          "actual": "bbox=0x0 dom delta=-418",
           "ms": 60
         },
         {
@@ -2754,7 +2868,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 423,
+      "durationMs": 1417,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -2764,7 +2878,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-06.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2811,7 +2925,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 436,
+      "durationMs": 1480,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -2821,7 +2935,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-04.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2837,7 +2951,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=368",
+          "actual": "bbox=0x0 dom delta=368",
           "ms": 60
         },
         {
@@ -2868,7 +2982,7 @@
       "storyRef": "US-FUNC-05",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 468,
+      "durationMs": 1497,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -2878,7 +2992,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-EDGE-07.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2894,7 +3008,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=396",
+          "actual": "bbox=0x0 dom delta=396",
           "ms": 60
         },
         {
@@ -2902,7 +3016,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=78",
+          "actual": "bbox=129x42 dom delta=78",
           "ms": 60
         },
         {
@@ -2925,7 +3039,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 540,
+      "durationMs": 1911,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -2935,7 +3049,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-11.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -2951,7 +3065,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -2991,7 +3105,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -3007,7 +3121,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=85",
           "ms": 60
         },
         {
@@ -3031,7 +3145,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-310",
+          "actual": "bbox=0x0 dom delta=-310",
           "ms": 60
         },
         {
@@ -3039,7 +3153,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:32Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:32Z Submitted → Approved · Morgan Lee (Manager) · 2026-10-29T23:52:33Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:33Z · PAY-471D08",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:22:38Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:22:38Z Submitted → Approved · Morgan Lee (Manager) · 2026-11-05T16:22:38Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:22:38Z · PAY-0E8FF1",
           "ms": 0
         },
         {
@@ -3062,7 +3176,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 563,
+      "durationMs": 2404,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -3072,7 +3186,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-12.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3088,7 +3202,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -3128,7 +3242,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -3144,7 +3258,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -3168,7 +3282,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -3200,7 +3314,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-106",
+          "actual": "bbox=0x0 dom delta=-106",
           "ms": 60
         },
         {
@@ -3223,7 +3337,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 570,
+      "durationMs": 2215,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -3233,7 +3347,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-06.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3249,7 +3363,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -3289,7 +3403,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -3305,7 +3419,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -3329,7 +3443,7 @@
           "action": "click",
           "selector": "[data-testid=return-btn]",
           "ok": true,
-          "actual": "dom delta=66",
+          "actual": "bbox=182x42 dom delta=66",
           "ms": 60
         },
         {
@@ -3361,7 +3475,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-83",
+          "actual": "bbox=0x0 dom delta=-83",
           "ms": 60
         },
         {
@@ -3384,7 +3498,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 544,
+      "durationMs": 2145,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -3394,7 +3508,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-13.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3410,7 +3524,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -3450,7 +3564,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -3466,7 +3580,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -3498,7 +3612,7 @@
           "action": "click",
           "selector": "[data-testid=return-btn]",
           "ok": true,
-          "actual": "dom delta=-418",
+          "actual": "bbox=0x0 dom delta=-418",
           "ms": 60
         },
         {
@@ -3529,7 +3643,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 541,
+      "durationMs": 2166,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -3539,7 +3653,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-07.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3555,7 +3669,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -3595,7 +3709,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -3611,7 +3725,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=23",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -3651,7 +3765,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-83",
+          "actual": "bbox=0x0 dom delta=-83",
           "ms": 60
         },
         {
@@ -3674,7 +3788,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 459,
+      "durationMs": 1495,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -3684,7 +3798,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-07.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3723,7 +3837,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-07",
       "status": "PASS",
-      "durationMs": 516,
+      "durationMs": 1966,
       "failedStep": null,
       "message": "12 step(s) passed",
       "actual": "",
@@ -3733,7 +3847,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-08.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3749,7 +3863,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -3789,7 +3903,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -3836,7 +3950,7 @@
       "storyRef": "US-FUNC-06",
       "acRef": "AC-08",
       "status": "PASS",
-      "durationMs": 443,
+      "durationMs": 1655,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -3846,7 +3960,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-05.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3870,7 +3984,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1006]",
           "ok": true,
-          "actual": "dom delta=471",
+          "actual": "bbox=0x0 dom delta=471",
           "ms": 60
         },
         {
@@ -3886,7 +4000,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-293",
+          "actual": "bbox=0x0 dom delta=-293",
           "ms": 60
         },
         {
@@ -3917,7 +4031,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 412,
+      "durationMs": 1329,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -3927,7 +4041,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-14.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -3974,7 +4088,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 555,
+      "durationMs": 2283,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -3984,7 +4098,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-15.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4000,7 +4114,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4040,7 +4154,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -4056,7 +4170,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=13",
+          "actual": "bbox=0x0 dom delta=23",
           "ms": 60
         },
         {
@@ -4080,7 +4194,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -4104,7 +4218,7 @@
           "action": "click",
           "selector": "[data-testid=certify-btn]",
           "ok": true,
-          "actual": "dom delta=-316",
+          "actual": "bbox=0x0 dom delta=-316",
           "ms": 60
         },
         {
@@ -4112,7 +4226,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:37Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:37Z Submitted → Manager approved · Morgan Lee (Manager) · 2026-10-29T23:52:37Z Manager approved → Approved · Priya Nair (HR Certifier) · 2026-10-29T23:52:37Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:37Z · PAY-BF187F",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:22:55Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:22:55Z Submitted → Manager approved · Morgan Lee (Manager) · 2026-11-05T16:22:56Z Manager approved → Approved · Priya Nair (HR Certifier) · 2026-11-05T16:22:56Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:22:56Z · PAY-07382F",
           "ms": 0
         },
         {
@@ -4135,7 +4249,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 579,
+      "durationMs": 2487,
       "failedStep": null,
       "message": "21 step(s) passed",
       "actual": "",
@@ -4145,7 +4259,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-08.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4161,7 +4275,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4201,7 +4315,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -4217,7 +4331,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -4241,7 +4355,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -4265,7 +4379,7 @@
           "action": "click",
           "selector": "[data-testid=return-btn]",
           "ok": true,
-          "actual": "dom delta=66",
+          "actual": "bbox=182x42 dom delta=66",
           "ms": 60
         },
         {
@@ -4297,7 +4411,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -4320,7 +4434,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 565,
+      "durationMs": 2419,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -4330,7 +4444,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-16.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4346,7 +4460,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4386,7 +4500,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -4402,7 +4516,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -4426,7 +4540,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -4458,7 +4572,7 @@
           "action": "click",
           "selector": "[data-testid=return-btn]",
           "ok": true,
-          "actual": "dom delta=-422",
+          "actual": "bbox=0x0 dom delta=-422",
           "ms": 60
         },
         {
@@ -4489,7 +4603,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 854,
+      "durationMs": 2626,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -4499,7 +4613,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-09.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4515,7 +4629,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4555,7 +4669,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -4571,7 +4685,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -4595,7 +4709,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -4643,7 +4757,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -4666,7 +4780,7 @@
       "storyRef": "US-FUNC-07",
       "acRef": "AC-06",
       "status": "PASS",
-      "durationMs": 560,
+      "durationMs": 2305,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -4676,7 +4790,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-10.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4692,7 +4806,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4732,7 +4846,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -4748,7 +4862,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -4796,7 +4910,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -4819,7 +4933,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 570,
+      "durationMs": 2475,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -4829,7 +4943,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-17.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -4845,7 +4959,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -4885,7 +4999,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -4901,7 +5015,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -4925,7 +5039,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-310",
+          "actual": "bbox=0x0 dom delta=-310",
           "ms": 60
         },
         {
@@ -4949,7 +5063,7 @@
           "action": "expectText",
           "selector": "[data-testid=posting-outcome]",
           "ok": true,
-          "actual": "Accepted by payroll — reference PAY-F96E93",
+          "actual": "Accepted by payroll — reference PAY-48B9CF",
           "ms": 0
         },
         {
@@ -4957,7 +5071,7 @@
           "action": "expectText",
           "selector": "[data-testid=posting-outcome]",
           "ok": true,
-          "actual": "Accepted by payroll — reference PAY-F96E93",
+          "actual": "Accepted by payroll — reference PAY-48B9CF",
           "ms": 0
         },
         {
@@ -4980,7 +5094,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 439,
+      "durationMs": 1713,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -4990,7 +5104,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-09.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5014,7 +5128,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=563",
+          "actual": "bbox=0x0 dom delta=563",
           "ms": 60
         },
         {
@@ -5037,7 +5151,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 427,
+      "durationMs": 1560,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -5047,7 +5161,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-11.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5094,7 +5208,7 @@
       "storyRef": "US-FUNC-08",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 436,
+      "durationMs": 1571,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -5104,7 +5218,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-06.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5128,7 +5242,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=497",
+          "actual": "bbox=0x0 dom delta=497",
           "ms": 60
         },
         {
@@ -5159,7 +5273,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 575,
+      "durationMs": 2289,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -5169,7 +5283,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-18.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5185,7 +5299,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -5225,7 +5339,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -5241,7 +5355,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -5265,7 +5379,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:42Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:42Z",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:15Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:15Z",
           "ms": 0
         },
         {
@@ -5273,7 +5387,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:42Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:42Z",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:15Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:15Z",
           "ms": 0
         },
         {
@@ -5289,7 +5403,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -5312,7 +5426,7 @@
       "storyRef": "US-FUNC-09",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 536,
+      "durationMs": 2195,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -5322,7 +5436,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-19.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5338,7 +5452,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -5378,7 +5492,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -5394,7 +5508,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -5418,7 +5532,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-310",
+          "actual": "bbox=0x0 dom delta=-310",
           "ms": 60
         },
         {
@@ -5426,7 +5540,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Submitted → Approved · Morgan Lee (Manager) · 2026-10-29T23:52:43Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:43Z · PAY-5178E3",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Submitted → Approved · Morgan Lee (Manager) · 2026-11-05T16:23:18Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:23:18Z · PAY-C179B7",
           "ms": 0
         },
         {
@@ -5434,7 +5548,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Submitted → Approved · Morgan Lee (Manager) · 2026-10-29T23:52:43Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:43Z · PAY-5178E3",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Submitted → Approved · Morgan Lee (Manager) · 2026-11-05T16:23:18Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:23:18Z · PAY-C179B7",
           "ms": 0
         },
         {
@@ -5442,7 +5556,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Submitted → Approved · Morgan Lee (Manager) · 2026-10-29T23:52:43Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:43Z · PAY-5178E3",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Submitted → Approved · Morgan Lee (Manager) · 2026-11-05T16:23:18Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:23:18Z · PAY-C179B7",
           "ms": 0
         },
         {
@@ -5450,7 +5564,7 @@
           "action": "expectText",
           "selector": "[data-testid=audit-log]",
           "ok": true,
-          "actual": "— → Draft · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Draft → Submitted · Alex Rivera (Employee) · 2026-10-29T23:52:43Z Submitted → Approved · Morgan Lee (Manager) · 2026-10-29T23:52:43Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-10-29T23:52:43Z · PAY-5178E3",
+          "actual": "— → Draft · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Draft → Submitted · Alex Rivera (Employee) · 2026-11-05T16:23:17Z Submitted → Approved · Morgan Lee (Manager) · 2026-11-05T16:23:18Z Approved → Posted to payroll · Payroll Integration (Payroll Integration) · 2026-11-05T16:23:18Z · PAY-C179B7",
           "ms": 0
         }
       ]
@@ -5468,7 +5582,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 4
+      "durationMs": 9
     },
     {
       "id": "TC-EDGE-08",
@@ -5483,7 +5597,7 @@
       "failedStep": null,
       "message": "3 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 10
     },
     {
       "id": "TC-STATE-12",
@@ -5498,7 +5612,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 9
     },
     {
       "id": "TC-STATE-13",
@@ -5513,7 +5627,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 5
     },
     {
       "id": "TC-NEG-11",
@@ -5528,7 +5642,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 8
     },
     {
       "id": "TC-STATE-14",
@@ -5543,7 +5657,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 10
     },
     {
       "id": "TC-POS-20",
@@ -5555,7 +5669,7 @@
       "storyRef": "US-TECH-01",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 474,
+      "durationMs": 1783,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -5565,7 +5679,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-20.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5581,7 +5695,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -5621,7 +5735,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -5684,9 +5798,9 @@
       "storyRef": "US-TECH-02",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 430,
+      "durationMs": 1783,
       "failedStep": null,
-      "message": "5 step(s) passed",
+      "message": "6 step(s) passed",
       "actual": "",
       "stepLog": [
         {
@@ -5694,15 +5808,15 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-21.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
           "index": 1,
           "action": "setRole",
-          "selector": "Manager",
+          "selector": "Employee",
           "ok": true,
-          "actual": "role-switcher select -> Manager",
+          "actual": "role-switcher select -> Employee",
           "ms": 60
         },
         {
@@ -5710,11 +5824,19 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1006]",
           "ok": true,
-          "actual": "dom delta=676",
+          "actual": "bbox=0x0 dom delta=455",
           "ms": 60
         },
         {
           "index": 3,
+          "action": "setRole",
+          "selector": "Manager",
+          "ok": true,
+          "actual": "role-switcher select -> Manager",
+          "ms": 60
+        },
+        {
+          "index": 4,
           "action": "expectText",
           "selector": "[data-testid=request-employee]",
           "ok": true,
@@ -5722,7 +5844,7 @@
           "ms": 0
         },
         {
-          "index": 4,
+          "index": 5,
           "action": "expectNoVisibleTextMatching",
           "selector": "EMP-\\d{5}",
           "ok": true,
@@ -5744,7 +5866,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 4
     },
     {
       "id": "TC-NEG-13",
@@ -5759,7 +5881,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 4
     },
     {
       "id": "TC-POS-22",
@@ -5774,7 +5896,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "id": "TC-EDGE-09",
@@ -5789,7 +5911,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 3
+      "durationMs": 9
     },
     {
       "id": "TC-POS-23",
@@ -5801,7 +5923,7 @@
       "storyRef": "US-TECH-03",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 396,
+      "durationMs": 1479,
       "failedStep": null,
       "message": "3 step(s) passed",
       "actual": "",
@@ -5811,7 +5933,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-23.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5842,7 +5964,7 @@
       "storyRef": "US-TECH-03",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 450,
+      "durationMs": 1670,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -5852,7 +5974,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-24.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5868,7 +5990,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -5891,7 +6013,7 @@
       "storyRef": "US-TECH-03",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 498,
+      "durationMs": 2306,
       "failedStep": null,
       "message": "11 step(s) passed",
       "actual": "",
@@ -5901,7 +6023,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-25.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -5917,7 +6039,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=67",
+          "actual": "bbox=129x42 dom delta=67",
           "ms": 60
         },
         {
@@ -5957,7 +6079,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=578",
+          "actual": "bbox=111x42 dom delta=578",
           "ms": 60
         },
         {
@@ -5965,7 +6087,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=0",
+          "actual": "bbox=151x42 dom delta=0",
           "ms": 60
         },
         {
@@ -5996,7 +6118,7 @@
       "storyRef": "US-TECH-03",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 568,
+      "durationMs": 2180,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -6006,7 +6128,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-26.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6022,7 +6144,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6062,7 +6184,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -6078,7 +6200,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -6118,7 +6240,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -6141,7 +6263,7 @@
       "storyRef": "US-TECH-03",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 483,
+      "durationMs": 1088,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -6151,7 +6273,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-07.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6198,7 +6320,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-01",
       "status": "PASS",
-      "durationMs": 468,
+      "durationMs": 1332,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -6208,7 +6330,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-27.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6224,7 +6346,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6247,7 +6369,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-02",
       "status": "PASS",
-      "durationMs": 459,
+      "durationMs": 1166,
       "failedStep": null,
       "message": "5 step(s) passed",
       "actual": "",
@@ -6257,7 +6379,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-28.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6273,7 +6395,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6304,7 +6426,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-03",
       "status": "PASS",
-      "durationMs": 423,
+      "durationMs": 916,
       "failedStep": null,
       "message": "2 step(s) passed",
       "actual": "",
@@ -6314,7 +6436,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-POS-29.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6337,7 +6459,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-04",
       "status": "PASS",
-      "durationMs": 495,
+      "durationMs": 1364,
       "failedStep": null,
       "message": "8 step(s) passed",
       "actual": "",
@@ -6347,7 +6469,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-NEG-14.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6363,7 +6485,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -6418,7 +6540,7 @@
       "storyRef": "US-TECH-04",
       "acRef": "AC-05",
       "status": "PASS",
-      "durationMs": 419,
+      "durationMs": 1079,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -6428,7 +6550,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-UI-INTERACT-08.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6494,7 +6616,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 5
     },
     {
       "id": "TC-POS-31",
@@ -6524,7 +6646,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-NEG-15",
@@ -6539,7 +6661,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 3
     },
     {
       "id": "TC-POS-33",
@@ -6554,7 +6676,7 @@
       "failedStep": null,
       "message": "2 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 5
     },
     {
       "id": "TC-STATE-15",
@@ -6566,7 +6688,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 547,
+      "durationMs": 1520,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -6576,7 +6698,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-15.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6592,7 +6714,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6632,7 +6754,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -6680,7 +6802,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -6703,7 +6825,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 555,
+      "durationMs": 1578,
       "failedStep": null,
       "message": "18 step(s) passed",
       "actual": "",
@@ -6713,7 +6835,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-16.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6729,7 +6851,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6769,7 +6891,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -6841,7 +6963,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -6864,7 +6986,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 619,
+      "durationMs": 1381,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -6874,7 +6996,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-17.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -6890,7 +7012,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -6930,7 +7052,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -6978,7 +7100,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -7001,7 +7123,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 563,
+      "durationMs": 1572,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -7011,7 +7133,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-18.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7027,7 +7149,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7067,7 +7189,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -7115,7 +7237,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -7138,7 +7260,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 584,
+      "durationMs": 1504,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -7148,7 +7270,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-19.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7164,7 +7286,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7204,7 +7326,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -7220,7 +7342,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -7260,7 +7382,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -7283,7 +7405,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 612,
+      "durationMs": 1585,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -7293,7 +7415,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-20.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7309,7 +7431,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7349,7 +7471,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -7365,7 +7487,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -7413,7 +7535,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -7436,7 +7558,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 576,
+      "durationMs": 1665,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -7446,7 +7568,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-21.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7462,7 +7584,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7502,7 +7624,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -7518,7 +7640,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -7566,7 +7688,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -7589,7 +7711,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 599,
+      "durationMs": 1743,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -7599,7 +7721,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-22.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7615,7 +7737,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7655,7 +7777,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -7671,7 +7793,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -7695,7 +7817,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -7735,7 +7857,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -7758,7 +7880,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 619,
+      "durationMs": 1795,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -7768,7 +7890,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-23.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7784,7 +7906,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -7824,7 +7946,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -7840,7 +7962,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -7864,7 +7986,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -7912,7 +8034,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -7935,7 +8057,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 635,
+      "durationMs": 1809,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -7945,7 +8067,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-24.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -7961,7 +8083,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -8001,7 +8123,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -8017,7 +8139,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -8041,7 +8163,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -8089,7 +8211,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -8112,7 +8234,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 475,
+      "durationMs": 953,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -8122,7 +8244,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-25.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8138,7 +8260,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -8177,7 +8299,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 467,
+      "durationMs": 1092,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -8187,7 +8309,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-26.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8203,7 +8325,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -8250,7 +8372,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 479,
+      "durationMs": 1099,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -8260,7 +8382,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-27.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8276,7 +8398,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -8347,7 +8469,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 458,
+      "durationMs": 1089,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -8357,7 +8479,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-28.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8373,7 +8495,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -8420,7 +8542,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 477,
+      "durationMs": 1109,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -8430,7 +8552,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-29.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8446,7 +8568,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -8485,7 +8607,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 606,
+      "durationMs": 1017,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -8495,7 +8617,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-30.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8511,7 +8633,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8550,7 +8672,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 516,
+      "durationMs": 1065,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -8560,7 +8682,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-31.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8576,7 +8698,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8623,7 +8745,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 488,
+      "durationMs": 1154,
       "failedStep": null,
       "message": "10 step(s) passed",
       "actual": "",
@@ -8633,7 +8755,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-32.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8649,7 +8771,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8720,7 +8842,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 504,
+      "durationMs": 1079,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -8730,7 +8852,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-33.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8746,7 +8868,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8793,7 +8915,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 487,
+      "durationMs": 1077,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -8803,7 +8925,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-34.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8819,7 +8941,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8866,7 +8988,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 484,
+      "durationMs": 953,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -8876,7 +8998,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-35.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8892,7 +9014,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1001]",
           "ok": true,
-          "actual": "dom delta=716",
+          "actual": "bbox=0x0 dom delta=716",
           "ms": 60
         },
         {
@@ -8931,7 +9053,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 661,
+      "durationMs": 1119,
       "failedStep": null,
       "message": "13 step(s) passed",
       "actual": "",
@@ -8941,7 +9063,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-36.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -8957,7 +9079,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -8997,7 +9119,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9013,7 +9135,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9052,7 +9174,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 607,
+      "durationMs": 1344,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -9062,7 +9184,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-37.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9078,7 +9200,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9118,7 +9240,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9134,7 +9256,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9181,7 +9303,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 549,
+      "durationMs": 1329,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -9191,7 +9313,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-38.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9207,7 +9329,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9247,7 +9369,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9263,7 +9385,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9334,7 +9456,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 556,
+      "durationMs": 1246,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -9344,7 +9466,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-39.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9360,7 +9482,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9400,7 +9522,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9416,7 +9538,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9463,7 +9585,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 570,
+      "durationMs": 1272,
       "failedStep": null,
       "message": "14 step(s) passed",
       "actual": "",
@@ -9473,7 +9595,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-40.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9489,7 +9611,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9529,7 +9651,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9545,7 +9667,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9592,7 +9714,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 575,
+      "durationMs": 1187,
       "failedStep": null,
       "message": "13 step(s) passed",
       "actual": "",
@@ -9602,7 +9724,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-41.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9618,7 +9740,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9658,7 +9780,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9674,7 +9796,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -9713,7 +9835,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 644,
+      "durationMs": 1481,
       "failedStep": null,
       "message": "16 step(s) passed",
       "actual": "",
@@ -9723,7 +9845,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-42.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9739,7 +9861,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9779,7 +9901,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -9795,7 +9917,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -9835,7 +9957,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -9858,7 +9980,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 614,
+      "durationMs": 1768,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -9868,7 +9990,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-43.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -9884,7 +10006,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -9924,7 +10046,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -9940,7 +10062,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -9964,7 +10086,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -10004,7 +10126,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -10027,7 +10149,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 637,
+      "durationMs": 1693,
       "failedStep": null,
       "message": "19 step(s) passed",
       "actual": "",
@@ -10037,7 +10159,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-44.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10053,7 +10175,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -10093,7 +10215,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -10109,7 +10231,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -10133,7 +10255,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -10173,7 +10295,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -10196,7 +10318,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 475,
+      "durationMs": 1155,
       "failedStep": null,
       "message": "6 step(s) passed",
       "actual": "",
@@ -10206,7 +10328,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-45.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10222,7 +10344,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -10261,7 +10383,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 418,
+      "durationMs": 903,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -10271,7 +10393,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-46.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10310,7 +10432,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 599,
+      "durationMs": 1323,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -10320,7 +10442,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-47.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10336,7 +10458,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -10376,7 +10498,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -10424,7 +10546,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -10447,7 +10569,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 644,
+      "durationMs": 1888,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -10457,7 +10579,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-48.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10473,7 +10595,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -10513,7 +10635,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -10529,7 +10651,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -10553,7 +10675,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -10601,7 +10723,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -10624,7 +10746,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 464,
+      "durationMs": 1095,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -10634,7 +10756,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-49.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10650,7 +10772,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -10697,7 +10819,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 611,
+      "durationMs": 1339,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -10707,7 +10829,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-50.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10723,7 +10845,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -10763,7 +10885,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -10811,7 +10933,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -10834,7 +10956,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 440,
+      "durationMs": 853,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -10844,7 +10966,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-51.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10883,7 +11005,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 585,
+      "durationMs": 1373,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -10893,7 +11015,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-52.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -10909,7 +11031,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -10949,7 +11071,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -10997,7 +11119,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -11020,7 +11142,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 695,
+      "durationMs": 1589,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -11030,7 +11152,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-53.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11046,7 +11168,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11086,7 +11208,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -11102,7 +11224,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -11150,7 +11272,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -11173,7 +11295,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 536,
+      "durationMs": 1029,
       "failedStep": null,
       "message": "7 step(s) passed",
       "actual": "",
@@ -11183,7 +11305,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-54.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11199,7 +11321,7 @@
           "action": "click",
           "selector": "[data-testid=open-LR-1002]",
           "ok": true,
-          "actual": "dom delta=465",
+          "actual": "bbox=0x0 dom delta=465",
           "ms": 60
         },
         {
@@ -11246,7 +11368,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 633,
+      "durationMs": 1369,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -11256,7 +11378,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-55.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11272,7 +11394,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11312,7 +11434,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -11360,7 +11482,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -11383,7 +11505,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 437,
+      "durationMs": 892,
       "failedStep": null,
       "message": "4 step(s) passed",
       "actual": "",
@@ -11393,7 +11515,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-56.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11432,7 +11554,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 632,
+      "durationMs": 1361,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -11442,7 +11564,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-57.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11458,7 +11580,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11498,7 +11620,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -11546,7 +11668,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
@@ -11569,7 +11691,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 664,
+      "durationMs": 1558,
       "failedStep": null,
       "message": "17 step(s) passed",
       "actual": "",
@@ -11579,7 +11701,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-58.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11595,7 +11717,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11635,7 +11757,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -11651,7 +11773,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -11699,7 +11821,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-82",
+          "actual": "bbox=0x0 dom delta=-82",
           "ms": 60
         },
         {
@@ -11722,7 +11844,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 675,
+      "durationMs": 1789,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -11732,7 +11854,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-59.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11748,7 +11870,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11788,7 +11910,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -11804,7 +11926,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=12",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -11828,7 +11950,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -11876,7 +11998,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -11899,7 +12021,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 674,
+      "durationMs": 1805,
       "failedStep": null,
       "message": "20 step(s) passed",
       "actual": "",
@@ -11909,7 +12031,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-60.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -11925,7 +12047,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -11965,7 +12087,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=581",
+          "actual": "bbox=111x42 dom delta=581",
           "ms": 60
         },
         {
@@ -11981,7 +12103,7 @@
           "action": "click",
           "selector": "[data-testid=submit-btn]",
           "ok": true,
-          "actual": "dom delta=22",
+          "actual": "bbox=0x0 dom delta=22",
           "ms": 60
         },
         {
@@ -12005,7 +12127,7 @@
           "action": "click",
           "selector": "[data-testid=approve-btn]",
           "ok": true,
-          "actual": "dom delta=-457",
+          "actual": "bbox=0x0 dom delta=-457",
           "ms": 60
         },
         {
@@ -12053,7 +12175,7 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-105",
+          "actual": "bbox=0x0 dom delta=-105",
           "ms": 60
         },
         {
@@ -12076,7 +12198,7 @@
       "storyRef": null,
       "acRef": null,
       "status": "PASS",
-      "durationMs": 601,
+      "durationMs": 1915,
       "failedStep": null,
       "message": "15 step(s) passed",
       "actual": "",
@@ -12086,7 +12208,7 @@
           "action": "goto",
           "selector": "",
           "ok": true,
-          "actual": "harness already loaded file:///tmp/dlc-eval-68iqj6xw/harness-TC-STATE-61.html",
+          "actual": "harness already loaded http://127.0.0.1:46221/",
           "ms": 0
         },
         {
@@ -12102,7 +12224,7 @@
           "action": "click",
           "selector": "[data-testid=new-request-btn]",
           "ok": true,
-          "actual": "dom delta=68",
+          "actual": "bbox=129x42 dom delta=68",
           "ms": 60
         },
         {
@@ -12142,7 +12264,7 @@
           "action": "click",
           "selector": "[data-testid=save-draft-btn]",
           "ok": true,
-          "actual": "dom delta=579",
+          "actual": "bbox=111x42 dom delta=579",
           "ms": 60
         },
         {
@@ -12190,11 +12312,156 @@
           "action": "click",
           "selector": "[data-testid=withdraw-btn]",
           "ok": true,
-          "actual": "dom delta=-50",
+          "actual": "bbox=0x0 dom delta=-50",
           "ms": 60
         },
         {
           "index": 14,
+          "action": "expectText",
+          "selector": "[data-testid=request-status]",
+          "ok": true,
+          "actual": "Withdrawn",
+          "ms": 0
+        }
+      ]
+    },
+    {
+      "id": "TC-POS-JOURNEY-01",
+      "category": "Positive",
+      "title": "Default landing persona (Employee) entry-to-submit journey without setRole override",
+      "expected": "Starting from a fresh goto('ui') without calling setRole, the default landing persona ('Employee') sees the initial state ('DRAFT'), steps through any multi-step wizard, clicks 'Submit', and transitions the record to 'SUBMITTED'.",
+      "runtime": "browser",
+      "optional": false,
+      "storyRef": null,
+      "acRef": null,
+      "status": "PASS",
+      "durationMs": 1434,
+      "failedStep": null,
+      "message": "16 step(s) passed",
+      "actual": "",
+      "stepLog": [
+        {
+          "index": 0,
+          "action": "goto",
+          "selector": "",
+          "ok": true,
+          "actual": "harness already loaded http://127.0.0.1:46221/",
+          "ms": 0
+        },
+        {
+          "index": 1,
+          "action": "expectVisible",
+          "selector": "[data-testid=new-request-btn]",
+          "ok": true,
+          "actual": "visible",
+          "ms": 0
+        },
+        {
+          "index": 2,
+          "action": "click",
+          "selector": "[data-testid=new-request-btn]",
+          "ok": true,
+          "actual": "bbox=129x42 dom delta=68",
+          "ms": 60
+        },
+        {
+          "index": 3,
+          "action": "expectVisible",
+          "selector": "[data-testid=request-form]",
+          "ok": true,
+          "actual": "visible",
+          "ms": 0
+        },
+        {
+          "index": 4,
+          "action": "fill",
+          "selector": "[data-testid=leave-type]",
+          "ok": true,
+          "actual": "",
+          "ms": 0
+        },
+        {
+          "index": 5,
+          "action": "fill",
+          "selector": "[data-testid=start-date]",
+          "ok": true,
+          "actual": "value=2033-08-14",
+          "ms": 0
+        },
+        {
+          "index": 6,
+          "action": "fill",
+          "selector": "[data-testid=end-date]",
+          "ok": true,
+          "actual": "value=2033-08-14",
+          "ms": 0
+        },
+        {
+          "index": 7,
+          "action": "fill",
+          "selector": "[data-testid=hours]",
+          "ok": true,
+          "actual": "value=1",
+          "ms": 0
+        },
+        {
+          "index": 8,
+          "action": "click",
+          "selector": "[data-testid=save-draft-btn]",
+          "ok": true,
+          "actual": "bbox=111x42 dom delta=581",
+          "ms": 60
+        },
+        {
+          "index": 9,
+          "action": "expectText",
+          "selector": "[data-testid=request-status]",
+          "ok": true,
+          "actual": "Draft",
+          "ms": 0
+        },
+        {
+          "index": 10,
+          "action": "expectVisible",
+          "selector": "[data-testid=submit-btn]",
+          "ok": true,
+          "actual": "visible",
+          "ms": 0
+        },
+        {
+          "index": 11,
+          "action": "expectEnabled",
+          "selector": "[data-testid=submit-btn]",
+          "ok": true,
+          "actual": "enabled",
+          "ms": 0
+        },
+        {
+          "index": 12,
+          "action": "click",
+          "selector": "[data-testid=submit-btn]",
+          "ok": true,
+          "actual": "bbox=0x0 dom delta=22",
+          "ms": 60
+        },
+        {
+          "index": 13,
+          "action": "expectText",
+          "selector": "[data-testid=request-status]",
+          "ok": true,
+          "actual": "Submitted",
+          "ms": 0
+        },
+        {
+          "index": 14,
+          "action": "click",
+          "selector": "[data-testid=withdraw-btn]",
+          "ok": true,
+          "actual": "bbox=0x0 dom delta=-82",
+          "ms": 60
+        },
+        {
+          "index": 15,
           "action": "expectText",
           "selector": "[data-testid=request-status]",
           "ok": true,
@@ -12216,7 +12483,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-02",
@@ -12231,7 +12498,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-03",
@@ -12246,7 +12513,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-04",
@@ -12261,7 +12528,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 4
+      "durationMs": 5
     },
     {
       "id": "TC-API-05",
@@ -12276,7 +12543,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "TC-API-06",
@@ -12291,7 +12558,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-07",
@@ -12306,7 +12573,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "TC-API-08",
@@ -12321,7 +12588,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 3
     },
     {
       "id": "TC-API-09",
@@ -12336,7 +12603,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 4
     },
     {
       "id": "TC-API-10",
@@ -12351,7 +12618,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 4
+      "durationMs": 7
     },
     {
       "id": "TC-API-11",
@@ -12366,7 +12633,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 2
+      "durationMs": 4
     },
     {
       "id": "TC-API-12",
@@ -12381,7 +12648,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 4
+      "durationMs": 8
     },
     {
       "id": "TC-API-13",
@@ -12411,7 +12678,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-15",
@@ -12426,7 +12693,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-API-16",
@@ -12456,7 +12723,7 @@
       "failedStep": null,
       "message": "1 http step(s) passed",
       "actual": "",
-      "durationMs": 1
+      "durationMs": 2
     },
     {
       "id": "TC-UI-INTERACT-01",
@@ -12515,6 +12782,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -12580,10 +12848,12 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "2 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "2 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     },
     {
@@ -12643,6 +12913,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -12708,10 +12979,12 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "2 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "2 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     },
     {
@@ -12721,7 +12994,7 @@
       "expected": "None of the 37 schema identifiers appears in rendered visible text (attributes such as data-testid are allowed).",
       "runtime": "static",
       "optional": false,
-      "durationMs": 11,
+      "durationMs": 12,
       "failedStep": null,
       "storyRef": null,
       "acRef": null,
@@ -12771,6 +13044,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -12836,10 +13110,12 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "2 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "2 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     },
     {
@@ -12899,6 +13175,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -12964,10 +13241,12 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "2 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "2 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     },
     {
@@ -12977,7 +13256,7 @@
       "expected": "No UUIDs, raw numeric primary keys labelled as ids, legacy object/file names, 'parity'/'TODO' notes, SQL or API paths are visible.",
       "runtime": "static",
       "optional": false,
-      "durationMs": 30,
+      "durationMs": 34,
       "failedStep": null,
       "storyRef": null,
       "acRef": null,
@@ -13027,6 +13306,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -13092,10 +13372,12 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "10 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "10 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     },
     {
@@ -13105,7 +13387,7 @@
       "expected": "Sensitive identifiers listed in spec Pillar 2 render only in their masked form.",
       "runtime": "static",
       "optional": false,
-      "durationMs": 5,
+      "durationMs": 8,
       "failedStep": null,
       "storyRef": null,
       "acRef": null,
@@ -13155,6 +13437,7 @@
         "browser:TC-POS-27",
         "browser:TC-POS-28",
         "browser:TC-POS-29",
+        "browser:TC-POS-JOURNEY-01",
         "browser:TC-STATE-01",
         "browser:TC-STATE-02",
         "browser:TC-STATE-03",
@@ -13220,16 +13503,18 @@
         "browser:TC-UI-INTERACT-06",
         "browser:TC-UI-INTERACT-07",
         "browser:TC-UI-INTERACT-08",
+        "browser:TC-UI-INTERACT-TAB-01",
+        "browser:TC-UI-INTERACT-TAB-02",
         "static:uiEntry source"
       ],
       "status": "PASS",
-      "message": "3 static step(s) passed over 111 rendered/static text corpus(es)",
+      "message": "3 static step(s) passed over 114 rendered/static text corpus(es)",
       "actual": ""
     }
   ],
   "summary": {
-    "total": 148,
-    "pass": 148,
+    "total": 151,
+    "pass": 151,
     "fail": 0,
     "notRun": 0,
     "error": 0,
@@ -13238,7 +13523,7 @@
     "optionalNonPassing": 0
   },
   "leakage": {
-    "tokensScanned": 69,
+    "tokensScanned": 66,
     "hits": [],
     "warnings": [],
     "sourcesScanned": [
@@ -13287,6 +13572,7 @@
       "browser:TC-POS-27",
       "browser:TC-POS-28",
       "browser:TC-POS-29",
+      "browser:TC-POS-JOURNEY-01",
       "browser:TC-STATE-01",
       "browser:TC-STATE-02",
       "browser:TC-STATE-03",
@@ -13352,11 +13638,13 @@
       "browser:TC-UI-INTERACT-06",
       "browser:TC-UI-INTERACT-07",
       "browser:TC-UI-INTERACT-08",
+      "browser:TC-UI-INTERACT-TAB-01",
+      "browser:TC-UI-INTERACT-TAB-02",
       "static:uiEntry source"
     ]
   },
   "interactivity": {
-    "controls": 77,
+    "controls": 80,
     "unwired": []
   },
   "a11y": {
@@ -13368,10 +13656,35 @@
       "[data-testid=submit-btn]"
     ],
     "primaryTc": "TC-POS-01",
-    "tabsVisible": 0,
+    "tabsVisible": 2,
     "inputsVisibleMaxPerContainer": 4,
     "inputsWorstContainer": "[data-testid=request-form]",
     "mainMaxWidth": "800px"
   },
-  "guardrailReviewStatus": "NOT_REQUIRED"
+  "screenshots": [
+    {
+      "label": "Initial landing view (1440x900)",
+      "path": "test/.snapshots/iter-1/screenshots/landing-initial.png",
+      "kind": "landing"
+    },
+    {
+      "label": "Tab 1: [data-testid=tab-my-requests] -> #panel-my-requests",
+      "path": "test/.snapshots/iter-1/screenshots/tab-01-tab-my-requests.png",
+      "kind": "tab"
+    },
+    {
+      "label": "Tab 2: [data-testid=tab-policy-guide] -> #panel-policy-guide",
+      "path": "test/.snapshots/iter-1/screenshots/tab-02-tab-policy-guide.png",
+      "kind": "tab"
+    }
+  ],
+  "guardrailReviewStatus": "NOT_REQUIRED",
+  "guardrail": {
+    "status": "CLEAR",
+    "baseline": "iter-0",
+    "pendingHunks": [],
+    "approvedNow": [],
+    "flaggedHunksInDiff": 0,
+    "stateFile": "test/.guardrail_state.json"
+  }
 }
