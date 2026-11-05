@@ -166,6 +166,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_3_backlog", "Stage 4A (04-solution-architect / extract_contracts.py)")
     inv = dlc.load_inventory(root)
     legacy = inv.get("inputScenario") == "SCENARIO_LEGACY_APP"
     stack = dlc.load_target_stack(root)
@@ -666,6 +667,12 @@ def main() -> int:
             print(f"  ✗ {f}")
         print(f"[dlc] Gate 4a contracts: {'PASS' if not fails else 'FAIL'} — {len(tables)} tables, {len(api['paths'])} operations, "
               f"{len(api['enums'])} enum values; index -> design/.contracts_index.json")
+        if not fails:
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_4_design_and_tests",
+                summary="Stage 4A Multi-Perspective Architecture Suite & Solution Design contracts validated. Once Stage 4B Test Plan is also validated, present design/ & test/ deliverables to user and STOP for Gate 4A/4B approval before Stage 5 Build.",
+            )
     return 0 if not fails else 1
 
 

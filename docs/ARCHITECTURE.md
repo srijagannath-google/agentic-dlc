@@ -49,6 +49,8 @@ agentic-dlc/
 │   ├── workflow_chain_of_custody.md     # state machine extraction / ask-don't-assume / derivation rules
 │   └── gdc_multicloud_guardrails.md     # GDC Fleet multi-cloud & on-prem portability guardrails
 ├── schemas/                             # JSON schemas / canonical shapes for every machine artefact
+│   ├── project_setup.schema.json        # Stage 0 connection & ADO/Jira project selection
+│   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger (gate_0_setup .. gate_7_packaging)
 │   ├── input_inventory.schema.json
 │   ├── target_stack.schema.json
 │   ├── spec_rubric.json                 # the 100-pt rubric the LLM judge scores against
@@ -61,7 +63,8 @@ agentic-dlc/
 ├── agents/*.md                          # 7 subagents (generic)
 ├── skills/0X-*/SKILL.md (+ resources/, scripts/)
 ├── scripts/
-│   ├── dlc_common.py                    # shared helpers (project root, json io, md parsing, state machine)
+│   ├── dlc_common.py                    # shared helpers (project root, json io, md parsing, state machine, gate ledger)
+│   ├── gate_tracker.py                  # CLI for human gate status & anti-self-approval gate unlocking
 │   ├── lint_domain_neutrality.py        # CI check: no domain literals outside examples/
 │   ├── run_agentic_dlc_pipeline.py      # VERIFY-ONLY orchestrator: runs gates in order, never generates
 │   └── verify_golden_projects.py        # runs the verify pipeline over examples/*/expected_artifacts
@@ -76,6 +79,8 @@ agentic-dlc/
 <PROJECT_ROOT>/
 ├── resources/{inputs,design_references,policies_and_statutes,shared_services}/
 ├── specs/
+│   ├── project_setup.json               # Stage 0 (script)   — schemas/project_setup.schema.json
+│   ├── gate_approvals.json              # All gates (script) — schemas/gate_approvals.schema.json
 │   ├── input_inventory.json             # Stage 1 (script)   — schemas/input_inventory.schema.json
 │   ├── discovery_architecture_and_inventory.md  # Stage 1 (LLM)
 │   ├── target_stack.json                # Gate 1 (LLM, from user answers) — schemas/target_stack.schema.json
@@ -128,7 +133,10 @@ agentic-dlc/
 
 ## 4. Machine artefact contracts
 
-### 4.1 `specs/input_inventory.json` (Stage 1 script — after asking the user where the input source is located)
+### 4.0 `specs/project_setup.json` & `specs/gate_approvals.json` (Stage 0 Setup & Machine-Enforced Human Gates)
+Stage 0 (`00-setup-and-connection/scripts/setup_project_connection.py`) verifies ADO/Jira connectivity, lists available Azure DevOps Projects (`list-ado-projects`) and Git Repositories (`list-ado-repos`), records the user's chosen ADO Project and repository/input source in `specs/project_setup.json`, and initializes `specs/gate_approvals.json` (`gate_0_setup = AWAITING_HUMAN_REVIEW`). Every downstream stage script calls `dlc_common.require_gate_approved(...)` at startup and `dlc_common.mark_gate_awaiting_human(...)` upon completion, and `scripts/gate_tracker.py --action approve` enforces an anti-self-approval turn-boundary cooldown plus a verbatim `--user-response` quote before unlocking the next stage.
+
+### 4.1 `specs/input_inventory.json` (Stage 1 script — after Gate 0 human approval)
 Before running `01/scripts/scan_input_sources.py`, `discovery-architect` confirms the input source location with the user (`<PROJECT_ROOT>/resources/inputs/`, an external local directory via `--input-dir`, an Azure DevOps repository via `--ado-repo`, or a Git repository via `--git-repo`).
 ```json
 {

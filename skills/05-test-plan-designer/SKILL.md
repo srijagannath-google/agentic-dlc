@@ -75,10 +75,14 @@ python3 <PLUGIN>/skills/05-test-plan-designer/scripts/validate_test_cases.py --p
 ```
 Every AC has a TC, every TC has non-empty steps, selectors are `[data-testid=…]`, schema valid.
 
-### 5. Hand over
-Stage 5 (`06-coding-agent`) implements the declared selectors; Stage 6 executes this file unchanged.
+### 5. Mandatory STOP at Gate 4A/4B (`gate_4_design_and_tests`) — Wait for Human Architecture & Test Plan Approval
+`validate_test_cases.py` stamps `gate_4_design_and_tests = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 5 (`06-coding-agent`).
+1. Present `test/test_plan.md` and `test/test_cases.json` (alongside the Stage 4A architecture suite) to the user for review.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 5 (`06-coding-agent`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human explicitly approves Gate 4A/4B**, run `gate_tracker.py --action approve --gate gate_4_design_and_tests --user-response "<verbatim user approval quote>"` before invoking `06-coding-agent`.
 
 ## Do not
+- Start Stage 4B before `gate_3_backlog` is `APPROVED_BY_USER`, or auto-start Stage 5 before `gate_4_design_and_tests` is `APPROVED_BY_USER`.
 - Write tests from a canned list of screens; every TC traces to an AC, a table row or a contract operation.
 - Weaken a derived `TC-STATE-*` or leak test because the UI "doesn't have that yet" — that is the point.
 - Put domain literals in the plugin; project-specific values live only in the project's `test/`.

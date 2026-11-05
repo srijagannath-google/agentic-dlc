@@ -83,6 +83,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_3_backlog", "Stage 4B (05-test-plan-designer / derive_test_cases.py)", deterministic=args.deterministic)
     inv = dlc.load_inventory(root)
     legacy = inv.get("inputScenario") == "SCENARIO_LEGACY_APP"
     stories = dlc.load_stories(root)

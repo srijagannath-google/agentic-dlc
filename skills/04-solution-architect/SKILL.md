@@ -78,3 +78,13 @@ Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§
 python3 <PLUGIN>/skills/04-solution-architect/scripts/extract_contracts.py --project-root "<PROJECT_ROOT>"
 ```
 Validates all 7 perspective artifacts + `architecture_design.md` + `solution_design.md`, renders all 7 SVG/PNG diagram pairs in `design/diagrams/`, and extracts `src/contracts/openapi.yaml` and `src/db/schema.sql`. Fix any reported issues and re-run until PASS.
+
+### 4. Mandatory STOP at Gate 4A/4B (`gate_4_design_and_tests`) — Wait for Human Architecture & Test Plan Approval
+`extract_contracts.py` (together with Stage 4B `validate_test_cases.py`) stamps `gate_4_design_and_tests = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 5 (`check_testid_contract.py` & `validate_build.py`).
+1. Once both Stage 4A (`design/*`) and Stage 4B (`test/test_plan.md` & `test/test_cases.json`) pass validation, present the 7-perspective architecture portfolio (`design/architecture_design.md`), `design/solution_design.md`, and `test/test_plan.md` to the user.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 5 (`06-coding-agent`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human explicitly approves Gate 4A/4B**, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_4_design_and_tests --user-response "<verbatim user approval quote>"
+   ```
+   and then proceed to `06-coding-agent`.

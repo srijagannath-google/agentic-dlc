@@ -35,6 +35,7 @@ Write-Host "[1/5] Removing any stale global rules/skills..."
 $StalePaths = @(
   (Join-Path $GeminiConfig "plugins\agentic-dlc"),
   (Join-Path $GeminiConfig "rules\AGENTS.md"),
+  (Join-Path $GeminiConfig "skills\00-setup-and-connection"),
   (Join-Path $GeminiConfig "skills\01-discovery-and-grouping"),
   (Join-Path $GeminiConfig "skills\02-spec-architect-and-judge"),
   (Join-Path $GeminiConfig "skills\03-story-and-sprint-planner"),

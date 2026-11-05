@@ -67,6 +67,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_6_eval", "Stage 7 (08-container-and-gdc-packager / validate_gdc_packaging.py)")
     inv = dlc.load_inventory(root)
     legacy = inv.get("inputScenario") == "SCENARIO_LEGACY_APP"
     stack = dlc.load_target_stack(root)
@@ -293,6 +294,12 @@ def main() -> int:
             f"{len(container_infos)} container(s), {len(overlay_infos)} GDC provider overlay(s) ({', '.join(target_envs)}), "
             f"{pc_info['constraintCount']} Policy Controller constraint(s), {authz_count} Service Mesh policy(ies)"
         )
+        if not fails:
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_7_packaging",
+                summary="Stage 7 Cloud-Agnostic OCI Containers & GDC Multi-Cloud KRM Packaging validated. Present deploy/ manifests to user and STOP for Gate 7 approval before Stage 8 Fleet Deployment.",
+            )
     return 0 if not fails else 1
 
 

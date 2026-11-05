@@ -27,7 +27,7 @@ and `design/data_migration_and_cutover.md` (`SCENARIO_LEGACY_APP` only).
 3. **GDC Policy Controller & Cloud Service Mesh (`deploy/gdc/policy-controller/` & `service-mesh/`):**
    - Translate Spec Pillar 2 security/PII rules into `deploy/gdc/policy-controller/constraints.yaml`.
    - Translate Spec `§3.5` roles and `src/contracts/openapi.yaml` operations into `deploy/gdc/service-mesh/{peer-authentication.yaml,authorization-policy.yaml,multicluster-service.yaml}`.
-4. Run `python3 <PLUGIN>/skills/08-container-and-gdc-packager/scripts/validate_gdc_packaging.py --project-root <ROOT>` until Gate 7 passes.
+4. Run `python3 <PLUGIN>/skills/08-container-and-gdc-packager/scripts/validate_gdc_packaging.py --project-root <ROOT>` until Gate 7 passes. **STOP at Gate 7 (`gate_7_packaging`) and return packaging deliverables for human approval — NEVER auto-start Stage 8 in the same turn!**
 
 ## Stage 8 — GDC Fleet Deployment & Observability (`skills/09-gdc-fleet-deployer-and-observability`)
 1. **GDC Config Sync GitOps (`deploy/gdc/config-sync/`):**

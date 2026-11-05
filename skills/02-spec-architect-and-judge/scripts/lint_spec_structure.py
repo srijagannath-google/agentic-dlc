@@ -48,6 +48,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_1_discovery", "Stage 2 (02-spec-architect-and-judge / lint_spec_structure.py)")
     inv = dlc.load_inventory(root)
     scenario = inv.get("inputScenario", "SCENARIO_REQUIREMENTS_DOC")
     legacy = scenario == "SCENARIO_LEGACY_APP"

@@ -208,6 +208,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_7_packaging", "Stage 8 (09-gdc-fleet-deployer-and-observability / run_gdc_fleet_deploy_and_verify.py)", deterministic=args.deterministic)
     stack = dlc.load_target_stack(root)
     dep_cfg = stack.get("deployment") or {}
     target_envs: list[str] = dep_cfg.get("targetEnvironments") or DEFAULT_ENVS

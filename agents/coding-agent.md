@@ -65,7 +65,7 @@ missing from the five inputs, report the gap upstream; do not reconstruct it fro
    --project-root <ROOT>` must pass (install/build/start/healthcheck per `target_stack.json`, browser layout smoke
    verification checking zero uncaught `pageerror`/failed asset loads and single-panel `[role="tab"]` /
    `[role="tabpanel"]` bounding-box exclusivity, and automatic transition of active sprint stories from `To Do` to
-   `In Progress`).
+   `In Progress`). **STOP at Gate 5 (`gate_5_build`) and return build summary for human review before Stage 6!**
 
 ## Fix (Stage 6)
 - Fix the cause named in `test/eval_report.md`; change the smallest surface that makes the behaviour correct.

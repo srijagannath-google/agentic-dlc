@@ -50,6 +50,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_0_setup", "Stage 1 (01-discovery-and-grouping / validate_discovery_blueprint.py)")
     inv = dlc.load_inventory(root)
     doc_path = dlc.require_file(dlc.project_path(root, args.file), "Stage 1 (01-discovery-and-grouping / discovery-architect)")
     md = dlc.read_text(doc_path)
@@ -210,6 +211,12 @@ def main() -> int:
             print(f"  ✗ {f}")
         print(f"[dlc] Gate 1 discovery blueprint: {'PASS' if not fails else 'FAIL'} "
               f"({len(fails)} failure(s), {len(warns)} warning(s); states={len(sm_tbl.states)} transitions={len(sm_tbl.transitions)})")
+        if not fails:
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_1_discovery",
+                summary="Stage 1 Current-State ('As-Is') Discovery Blueprint validated. Present discovery summary, §6.1 Capability Groupings, and Gate 1 intake questions to user and STOP.",
+            )
     return 0 if not fails else 1
 
 

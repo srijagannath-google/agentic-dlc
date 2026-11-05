@@ -78,13 +78,17 @@ in its intended container. Credentials come from the environment (`JIRA_URL`, `J
 optional `JIRA_PROJECT_KEY`/`JIRA_BOARD_ID`; `ADO_ORG_URL`, `ADO_PROJECT`, `ADO_PAT`). With `almPlatform = none`,
 `export-csv` produces `backlog/jira_import.csv` only.
 
-### 3. Gate 3 — human approval
-Present `backlog/user_stories.md`, `backlog/sprint_plan.md` and the board link. On the user's approval:
-```bash
-python3 $B --project-root "<PROJECT_ROOT>" --action set-approval --set-approval APPROVED_BY_USER
-python3 $B --project-root "<PROJECT_ROOT>" --action sync-sprints --approved
-```
-**Autonomous mode:** `--action set-approval --set-approval PRE_APPROVED_BY_USER`, then `sync-sprints --approved` immediately, continue to Stage 4.
+### 3. Mandatory STOP at Gate 3 (`gate_3_backlog`) — Wait for Human Backlog & Sprint Approval
+`alm_jira_ado_bridge.py --action audit` / `sync-stories` automatically stamps `gate_3_backlog = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 4A/4B (`extract_contracts.py`, `derive_test_cases.py`, `validate_test_cases.py`).
+1. Present `backlog/user_stories.md`, `backlog/sprint_plan.md`, capability-group allocation, and the live Jira/ADO board link to the user.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER call `set-approval --set-approval APPROVED_BY_USER` or start Stage 4 in the same turn!**
+3. Only **in a subsequent turn AFTER the human replies explicitly approving Gate 3**, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_3_backlog --user-response "<verbatim user approval quote>"
+   python3 $B --project-root "<PROJECT_ROOT>" --action set-approval --set-approval APPROVED_BY_USER
+   python3 $B --project-root "<PROJECT_ROOT>" --action sync-sprints --approved
+   ```
+**Autonomous mode only (`--autonomous`):** `--action set-approval --set-approval PRE_APPROVED_BY_USER`, then `sync-sprints --approved`, continue to Stage 4.
 
 ### 4. End-to-End Traceability, Automated Stage 6 `Bug` Creation & Lifecycle Status Transitions
 Every Jira Story and Azure DevOps Work Item automatically includes an **End-to-End Traceability Matrix** (`story.traceability`) linking:
@@ -108,10 +112,11 @@ Stories start in `status: "To Do"` during Stage 3. As implementation and verific
   python3 $B --project-root "<PROJECT_ROOT>" --action transition-stories --target-status "Done" --scope all
   ```
 
-### 5. Hand over
-Start `04-solution-architect` and `05-test-plan-designer` in parallel.
+### 5. Hand over (Only After Human Gate 3 Approval in Subsequent Turn)
+Once `gate_3_backlog` is `APPROVED_BY_USER` and `sync-sprints --approved` succeeds, start `04-solution-architect` and `05-test-plan-designer` in parallel.
 
 ## Do not
+- Start Stage 3 before `gate_2_spec` is `APPROVED_BY_USER`, or self-approve Gate 3 in the same turn stories are staged.
 - Run the bridge before the backlog is authored, or rely on any default/template stories.
 - Invent screens, steps, fees or roles absent from the spec; cap ACs at a fixed count; omit role/state tags
   on workflow stories.

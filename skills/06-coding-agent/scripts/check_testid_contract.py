@@ -103,6 +103,7 @@ def main() -> int:
     ap.add_argument("--write-derived", action="store_true", help="Write the derived contract file if it was absent")
     args = ap.parse_args()
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_4_design_and_tests", "Stage 5 (06-coding-agent / check_testid_contract.py)")
 
     contract_p = dlc.project_path(root, args.contract)
     role_slugs: list[str] = []

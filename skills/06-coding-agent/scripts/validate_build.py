@@ -418,6 +418,7 @@ def main() -> int:
     ap.add_argument("--deterministic", action="store_true", help="Fixed timestamps when updating story statuses")
     args = ap.parse_args()
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_4_design_and_tests", "Stage 5 (06-coding-agent / validate_build.py)", deterministic=args.deterministic)
     stack = dlc.load_target_stack(root, allow_default=False)
     commands = stack.get("commands") or {}
     backend_kind = (stack.get("backend") or {}).get("kind", "none")
@@ -577,6 +578,12 @@ def main() -> int:
         cp = subprocess.run(cmd, cwd=str(root))
         if cp.returncode not in (0, 2):
             dlc.warn(f"ALM status transition to 'In Progress' returned {cp.returncode}")
+    dlc.mark_gate_awaiting_human(
+        root,
+        "gate_5_build",
+        summary="Stage 5 Runnable Target-Stack Application Build validated. Present src/ build summary & local start instructions to user and STOP for Gate 5 approval before Stage 6 Closed-Loop Evaluation.",
+        deterministic=args.deterministic,
+    )
     return 0
 
 

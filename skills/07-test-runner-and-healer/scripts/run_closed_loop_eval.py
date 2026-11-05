@@ -1781,6 +1781,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_5_build", "Stage 6 (07-test-runner-and-healer / run_closed_loop_eval.py)", deterministic=args.deterministic)
     tc_path = dlc.require_file(dlc.project_path(root, args.test_cases), "Stage 4B (05/scripts/derive_test_cases.py skeleton + testing-agent fills steps)")
     suite = dlc.read_json(tc_path)
     retired = {str(r.get("id") if isinstance(r, dict) else r) for r in (suite.get("retiredTestCases") or [])}
@@ -2051,6 +2052,12 @@ def main() -> int:
     if gstatus != "CLEAR" and not args.approve_guardrail_flags:
         print("Gate 4: guardrail-sensitive hunks need human approval (exit 3). Re-run with --approve-guardrail-flags once reviewed.")
         return 3
+    dlc.mark_gate_awaiting_human(
+        root,
+        "gate_6_eval",
+        summary=f"Stage 6 Closed-Loop Evaluation PASSED ({counts['PASS']}/{total} passed, guardrail={gstatus}). Present test/eval_report.md & audit report to user and STOP for Gate 6 approval before Stage 7 Packaging.",
+        deterministic=args.deterministic,
+    )
     return 0
 
 

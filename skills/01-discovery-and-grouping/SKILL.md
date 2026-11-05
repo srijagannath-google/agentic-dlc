@@ -24,19 +24,10 @@ except the primary input source). Never seed synthetic sample inputs.
 
 ## Procedure
 
-### 0. Confirm the Input Source Location with the User (Mandatory Before Scanning)
-Before running `scan_input_sources.py` (unless the user's prompt already explicitly specified the input source URL/path or `--autonomous` mode was requested with an already-populated `<PROJECT_ROOT>/resources/inputs/`), **ask the user where their input source is located**:
-
-1. **Azure DevOps (ADO) Repository (`--ado-repo`):**
-   - Ask for the **ADO Repository URL** (`https://dev.azure.com/<org>/<project>/_git/<repo>`) or **repository name** (if `ADO_ORG_URL` and `ADO_PROJECT` are set in `.env`), optional branch (`--ado-branch`), and verify `ADO_PAT` is configured in `<PROJECT_ROOT>/.env` or `~/.gemini/config/agentic-dlc.env`.
-2. **Git Repository (`--git-repo` — GitHub, GitLab, Bitbucket, etc.):**
-   - Ask for the **Git Repository URL**, optional branch (`--git-branch`), and `GIT_TOKEN` / `GITHUB_TOKEN` if private.
-3. **Existing Local Directory / Checkout (`--input-dir`):**
-   - Ask for the local filesystem path to the existing source code folder, database export, or requirements document directory.
-4. **Project `<PROJECT_ROOT>/resources/inputs/` Folder:**
-   - Confirm the user has placed their legacy exports (`.sql`, `.cs`, `.vb`, `.frm`, `.xsd`, etc.) or requirements documents (BRD/PRD/RFP `.md`, `.docx`, `.pdf`, `.txt`) inside `<PROJECT_ROOT>/resources/inputs/`.
-
-Do **not** proceed with Stage 1 scanning until the user confirms where the input source is located.
+### 0. Prerequisite Gate 0 Check (`00-setup-and-connection` / `gate_0_setup`)
+Before running `scan_input_sources.py`, **Stage 0 (`00-setup-and-connection`) must already have been completed and approved (`gate_0_setup == APPROVED_BY_USER`)**, OR the user must have explicitly provided populated local files in their prompt:
+- **If the user only asked to connect/configure Azure DevOps (ADO) or Jira**, **STOP IMMEDIATELY and switch to `00-setup-and-connection`**! Run `setup_project_connection.py --action list-ado-projects`, ask the user **which ADO Project** (and repository) they want to work on, save `specs/project_setup.json`, and **END YOUR TURN** without starting Stage 1.
+- If `specs/project_setup.json` does not exist yet and the input source location is unknown, ask the user where their input source is located (`--ado-repo`, `--git-repo`, `--input-dir`, or `<PROJECT_ROOT>/resources/inputs/`), configure Stage 0 (`00-setup-and-connection`), and wait for Gate 0 human confirmation before scanning.
 
 ### 1. Ingest (if remote), scan, classify, and capture any live design reference URL
 ```bash
@@ -116,11 +107,19 @@ Write `specs/target_stack.json` from the answers (recording `capabilityGroupingD
 WCAG 2.1 AA), `almPlatform` from env (`JIRA_URL` → `jira`, `ADO_ORG_URL` → `ado`, else `none`), `decidedBy: "autonomous-default"` (using the stack named in the prompt or the zero-dependency fallback `static-html` + `python-stdlib-http` + `sqlite` only in autonomous mode), and the most restrictive workflow reading for every
 open question, each recorded for the spec as `ASSUMPTION-NN`.
 
-### 5. Hand over
-Proceed to `02-spec-architect-and-judge`; Stage 3 starts as soon as Gate 2 passes.
+### 5. Mandatory STOP at Gate 1 (`gate_1_discovery`) — Wait for Human Review & Approval
+`validate_discovery_blueprint.py` automatically marks `gate_1_discovery = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 2 (`lint_spec_structure.py` / `validate_spec_scorecard.py`).
+1. Present `specs/discovery_architecture_and_inventory.md`, the **§6.1 Business Capability Groupings (`GRP-01..N`)**, and the Gate 1 intake questions (Capability Group selection, regulations, PII/security, accessibility/design refs, ALM platform) to the user.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 2 (`02-spec-architect-and-judge`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human replies** answering the Gate 1 questions and approving Gate 1, update `specs/target_stack.json`, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_1_discovery --user-response "<verbatim user approval quote>"
+   ```
+   and then proceed to `02-spec-architect-and-judge`.
 
 ## Do not
-- Start Stage 1 scanning without first confirming with the user where the input source is located (unless already explicitly specified in the user's prompt or running in `--autonomous` mode with populated `resources/inputs/`).
+- Start Stage 1 when the user only asked to configure/connect ADO or Jira — route to `00-setup-and-connection` and ask which ADO Project to work on first!
+- Auto-advance from Stage 1 to Stage 2 without pausing for human Gate 1 review and recording `gate_1_discovery = APPROVED_BY_USER` in a subsequent turn.
 - Mix future-state 3NF ERDs, target SQL DDL, future-state architecture flow diagrams, or Legacy-to-Target entity mappings into `specs/discovery_architecture_and_inventory.md` — keep Stage 1 strictly to the Current State ("As-Is") and place all Future-State ("To-Be") design in Stage 4A (`design/solution_design.md`).
 - Guess states, roles or rules; unresolved items go to §3.1 and Gate 1.
 - Copy anything from `examples/` or write outside `<PROJECT_ROOT>/specs/`.

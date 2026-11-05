@@ -34,6 +34,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_3_backlog", "Stage 4B (05-test-plan-designer / validate_test_cases.py)")
     path = dlc.require_file(dlc.project_path(root, args.file), "Stage 4B (05/scripts/derive_test_cases.py, then the LLM completes steps)")
     data = dlc.read_json(path)
     schema = dlc.load_schema("test_cases.schema.json")
@@ -176,6 +177,12 @@ def main() -> int:
             print(f"  ✗ {f}")
         print(f"[dlc] Gate 4b test cases: {'PASS' if not fails else 'FAIL'} — {len(tcs)} TCs, {len(needing)} need steps, "
               f"{len(testids)} data-testid hooks -> test/.testid_contract.json")
+        if not fails:
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_4_design_and_tests",
+                summary=f"Stage 4B Test Plan & {len(tcs)} Test Cases validated ({len(testids)} contract-first data-testids). Present Stage 4A Architecture Suite + Stage 4B Test Plan to user and STOP for Gate 4A/4B approval before Stage 5 Build.",
+            )
     return 0 if not fails else 1
 
 

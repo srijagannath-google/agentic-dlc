@@ -53,11 +53,18 @@ Follow `resources/gdc_packaging_template.md` and `_shared/gdc_multicloud_guardra
    - `authorization-policy.yaml`: Istio `AuthorizationPolicy` mapping Spec `§3.5 Roles` & `§2.1 RBAC Matrix` to OpenAPI paths/methods from `src/contracts/openapi.yaml`.
    - `multicluster-service.yaml`: GDC `MultiClusterService` / `ServiceExport` for seamless cross-cloud and on-prem failover.
 
-### 4. Validate (Gate 7)
+### 4. Validate & Mandatory STOP at Gate 7 (`gate_7_packaging`)
 ```bash
 python3 <PLUGIN>/skills/08-container-and-gdc-packager/scripts/validate_gdc_packaging.py --project-root "<PROJECT_ROOT>"
 ```
-Fix any reported failures until Gate 7 passes, then proceed to `09-gdc-fleet-deployer-and-observability`.
+Fix any reported failures until Gate 7 passes. When it passes, `validate_gdc_packaging.py` stamps `gate_7_packaging = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 8 (`run_gdc_fleet_deploy_and_verify.py`).
+1. Present `deploy/containers/*` and `deploy/gdc/{base,overlays,policy-controller,service-mesh}/*` to the user.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 8 (`09-gdc-fleet-deployer-and-observability`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human approves Gate 7**, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_7_packaging --user-response "<verbatim user approval quote>"
+   ```
+   and then proceed to `09-gdc-fleet-deployer-and-observability`.
 
 ## Do not
 - Import AWS/Azure/GCP proprietary SDKs in `src/` or hardcode cloud endpoints in container images.

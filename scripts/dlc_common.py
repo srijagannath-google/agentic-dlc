@@ -753,3 +753,133 @@ def html_visible_text(html: str) -> str:
     p = _P()
     p.feed(html)
     return "\n".join(p.parts)
+
+
+# --------------------------------------------------------------------------------------
+# Machine-Enforced Human Gate Ledger (specs/gate_approvals.json)
+# --------------------------------------------------------------------------------------
+GATE_DEFINITIONS: dict[str, str] = {
+    "gate_0_setup": "Gate 0 — Stage 0 Setup, Connection & ADO/Jira Project Selection",
+    "gate_1_discovery": "Gate 1 — Stage 1 Current-State ('As-Is') Discovery & Capability Group Selection",
+    "gate_2_spec": "Gate 2 — Stage 2 5-Pillar Specification & Spec Judge Scorecard Review",
+    "gate_3_backlog": "Gate 3 — Stage 3 User Stories, Sprint Plan & ALM Board Staging Approval",
+    "gate_4_design_and_tests": "Gate 4A/4B — Stage 4 Target Tech Stack, 7-Perspective Architecture Suite & Test Plan Review",
+    "gate_5_build": "Gate 5 — Stage 5 Runnable Target-Stack Application Build Review",
+    "gate_6_eval": "Gate 6 — Stage 6 Closed-Loop Evaluation & Remediation/Guardrail Audit Approval",
+    "gate_7_packaging": "Gate 7 — Stage 7 Cloud-Agnostic OCI Containers & GDC Multi-Cloud Packaging Approval",
+}
+
+
+def is_autonomous_or_golden(root: Path, deterministic: bool = False) -> bool:
+    """Return True only for explicit --autonomous runs, deterministic CI verification, or repo examples/."""
+    if os.environ.get("DLC_AUTONOMOUS", "").strip() in ("1", "true", "TRUE", "yes"):
+        return True
+    if deterministic:
+        return True
+    try:
+        parts = root.resolve().parts
+        if "examples" in parts:
+            return True
+    except OSError:
+        pass
+    return False
+
+
+def gate_approvals_path(root: Path) -> Path:
+    return root / "specs" / "gate_approvals.json"
+
+
+def load_gate_approvals(root: Path) -> dict[str, Any]:
+    p = gate_approvals_path(root)
+    if p.exists():
+        data = read_json(p)
+        if isinstance(data, dict) and isinstance(data.get("gates"), dict):
+            return data
+    return {"schemaVersion": SCHEMA_VERSION, "gates": {}}
+
+
+def mark_gate_awaiting_human(
+    root: Path,
+    gate_id: str,
+    summary: str = "",
+    deterministic: bool = False,
+    force_reset: bool = False,
+) -> None:
+    """Stamp `gate_id` as AWAITING_HUMAN_REVIEW in `specs/gate_approvals.json` and print a mandatory STOP notice."""
+    if is_autonomous_or_golden(root, deterministic=deterministic):
+        return
+    import time as _time
+
+    data = load_gate_approvals(root)
+    gates = data.setdefault("gates", {})
+    existing = gates.get(gate_id) if isinstance(gates.get(gate_id), dict) else {}
+    if existing.get("status") == "APPROVED_BY_USER" and not force_reset:
+        # Preserve an already-granted human approval during subsequent validation re-runs (e.g. Stage 6 healing).
+        return
+    label = GATE_DEFINITIONS.get(gate_id, gate_id)
+    now_iso = utc_now_iso(False)
+    gates[gate_id] = {
+        "gateId": gate_id,
+        "stage": label,
+        "status": "AWAITING_HUMAN_REVIEW",
+        "readyAtUtc": now_iso,
+        "readyAtEpoch": round(_time.time(), 3),
+        "approvedAtUtc": None,
+        "userResponse": None,
+        "summary": summary or f"{label} artifacts validated and ready for human review.",
+    }
+    write_json(gate_approvals_path(root), data)
+    tracker_cmd = (
+        f'python3 "{PLUGIN_ROOT / "scripts" / "gate_tracker.py"}" '
+        f'--project-root "{root}" --action approve --gate {gate_id} '
+        f'--user-response "<verbatim quote from user approval reply>"'
+    )
+    print(
+        f"\n{'=' * 78}\n"
+        f"[STOP — HUMAN APPROVAL REQUIRED AT {gate_id.upper()}]\n"
+        f"  Gate   : {label}\n"
+        f"  Status : AWAITING_HUMAN_REVIEW\n"
+        f"  Action : 1) Present this stage's deliverables and open questions to the user.\n"
+        f"           2) END YOUR TURN NOW (call no more tools) and wait for the user's reply.\n"
+        f"           3) NEVER self-approve or start the next stage in the same turn!\n"
+        f"           4) Only AFTER the human replies approving this gate in a subsequent turn, run:\n"
+        f"              {tracker_cmd}\n"
+        f"{'=' * 78}"
+    )
+
+
+def require_gate_approved(
+    root: Path,
+    upstream_gate_id: str,
+    current_stage_name: str,
+    deterministic: bool = False,
+) -> None:
+    """Enforce that `upstream_gate_id` was explicitly approved by the human before `current_stage_name` executes.
+
+    Blocks progression whenever `specs/gate_approvals.json` exists and `upstream_gate_id` is not `APPROVED_BY_USER`
+    (or `PRE_APPROVED_AUTONOMOUS`).
+    """
+    if is_autonomous_or_golden(root, deterministic=deterministic):
+        return
+    p = gate_approvals_path(root)
+    if not p.exists():
+        return
+    data = load_gate_approvals(root)
+    entry = (data.get("gates") or {}).get(upstream_gate_id)
+    status = entry.get("status") if isinstance(entry, dict) else "NOT_STARTED"
+    if status in ("APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"):
+        return
+    label = GATE_DEFINITIONS.get(upstream_gate_id, upstream_gate_id)
+    tracker_cmd = (
+        f'python3 "{PLUGIN_ROOT / "scripts" / "gate_tracker.py"}" '
+        f'--project-root "{root}" --action approve --gate {upstream_gate_id} '
+        f'--user-response "<verbatim quote from user approval reply>"'
+    )
+    raise GateFailure(
+        f"Cannot start {current_stage_name} because {label} ({upstream_gate_id}) is '{status}' (not 'APPROVED_BY_USER').\n"
+        f"  MANDATORY RULE: Every stage requires explicit human review and approval before advancing to the next stage.\n"
+        f"  1. Present the upstream stage deliverables and questions to the user in chat.\n"
+        f"  2. END YOUR TURN immediately and wait for the human to review and approve.\n"
+        f"  3. Once the human replies approving {upstream_gate_id}, record their approval with:\n"
+        f"     {tracker_cmd}"
+    )

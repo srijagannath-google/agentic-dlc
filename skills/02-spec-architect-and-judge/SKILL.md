@@ -68,10 +68,18 @@ string is a substring of the spec, and `verdict == (total ≥ 90 ∧ no blocking
 `FAIL` → judge returns numbered gaps → author fixes the spec → lint → judge re-scores (new hash) → validate.
 Gate 2 is never pre-approved; autonomous mode just loops without asking.
 
-### 4. Hand over
-On `PASS`, immediately start `03-story-and-sprint-planner` so the user reviews spec + stories + sprint plan together.
+### 4. Mandatory STOP at Gate 2 (`gate_2_spec`) — Wait for Human Specification Review & Approval
+Once `validate_spec_scorecard.py` returns `PASS` (`total ≥ 90`, zero blocking gaps), it automatically stamps `gate_2_spec = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 3 (`alm_jira_ado_bridge.py`).
+1. Present `specs/application_spec.md`, `specs/traceability_matrix.md`, and `specs/application_eval_scorecard.md` (with pillar scores) to the user for human review.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER auto-start Stage 3 (`03-story-and-sprint-planner`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human explicitly approves Gate 2**, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_2_spec --user-response "<verbatim user approval quote>"
+   ```
+   and then proceed to `03-story-and-sprint-planner`.
 
 ## Do not
+- Start Stage 2 before `gate_1_discovery` is `APPROVED_BY_USER`, or auto-start Stage 3 before `gate_2_spec` is `APPROVED_BY_USER`.
 - Let the author score or the judge edit the spec.
 - Paste the UX guardrails or zero-leak rule text into the spec; cite them and record only overrides.
 - Add jurisdiction-specific accessibility/regulatory standards the user did not name.

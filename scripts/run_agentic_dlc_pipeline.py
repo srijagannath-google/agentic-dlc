@@ -24,6 +24,7 @@ A script that does not exist yet is reported as SKIPPED-MISSING (never a crash).
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -160,6 +161,8 @@ def main() -> int:
     root = dlc.resolve_project_root(args.project_root)
     if dlc.is_installer_dir(root) or root == PLUGIN_ROOT:
         raise dlc.GateFailure(f"{root} is the plugin directory, not a project root (see _shared/project_root.md).")
+    if args.autonomous:
+        os.environ["DLC_AUTONOMOUS"] = "1"
     print(f"agentic-dlc v4 — verify-only pipeline\n  project root : {root}\n  plugin root  : {PLUGIN_ROOT}\n  stages       : {args.from_stage}..{args.to_stage}"
           f"{'  (autonomous: Gate 3 pre-approved)' if args.autonomous else ''}")
 

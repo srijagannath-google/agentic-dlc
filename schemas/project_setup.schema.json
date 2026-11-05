@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/project_setup.schema.json",
+  "title": "specs/project_setup.json (Stage 0 — Project Setup, ALM/SCM Connection & ADO/Jira Project Selection)",
+  "type": "object",
+  "required": ["schemaVersion", "updatedAtUtc", "setupStatus", "inputSource", "almPlatform"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "updatedAtUtc": { "type": "string" },
+    "setupStatus": {
+      "type": "string",
+      "enum": ["AWAITING_PROJECT_SELECTION", "AWAITING_HUMAN_REVIEW", "APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"]
+    },
+    "inputSource": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["ado", "git", "local-dir", "resources-inputs", "tbd"] },
+        "adoOrgUrl": { "type": ["string", "null"] },
+        "adoProject": { "type": ["string", "null"] },
+        "repositoryName": { "type": ["string", "null"] },
+        "repositoryUrl": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "localPath": { "type": ["string", "null"] }
+      }
+    },
+    "almPlatform": { "type": "string", "enum": ["ado", "jira", "none", "tbd"] },
+    "almConfig": {
+      "type": "object",
+      "properties": {
+        "adoOrgUrl": { "type": ["string", "null"] },
+        "adoProject": { "type": ["string", "null"] },
+        "jiraUrl": { "type": ["string", "null"] },
+        "jiraProjectKey": { "type": ["string", "null"] },
+        "connectionVerified": { "type": "boolean" }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

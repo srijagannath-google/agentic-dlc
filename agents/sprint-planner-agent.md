@@ -1,6 +1,6 @@
 ---
 name: sprint-planner-agent
-description: "Unified backlog & sprint-planning subagent for Stage 3. Invoke as soon as the spec passes Gate 2 to author ALL functional and technical user stories (3–8 SP) with variable 4–10+ Given/When/Then acceptance criteria — positive, negative, role-visibility, workflow-prerequisite-gate, interactive-completeness and edge — derived from spec §3.3/§3.4/§3.5, tier them into Sprint 1..N and Product Backlog, stage them on the Jira/ADO board before Gate 3, and sync after human approval."
+description: "Unified backlog & sprint-planning subagent for Stage 3. Invoke ONLY AFTER human approval of Gate 2 (gate_2_spec) to author ALL functional and technical user stories (3–8 SP) with variable 4–10+ Given/When/Then acceptance criteria — positive, negative, role-visibility, workflow-prerequisite-gate, interactive-completeness and edge — derived from spec §3.3/§3.4/§3.5, tier them into Sprint 1..N and Product Backlog, stage them on the Jira/ADO board, and STOP at Gate 3 (gate_3_backlog) for human approval before syncing sprints."
 ---
 
 # User Story & Sprint Planner (`sprint-planner-agent`)

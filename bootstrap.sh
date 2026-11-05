@@ -54,6 +54,7 @@ echo "==========================================================================
 echo "[1/5] Removing any stale global rules/skills..."
 rm -rf "${GEMINI_CONFIG}/plugins/agentic-dlc" \
        "${GEMINI_CONFIG}/rules/AGENTS.md" \
+       "${GEMINI_CONFIG}/skills/00-setup-and-connection" \
        "${GEMINI_CONFIG}/skills/01-discovery-and-grouping" \
        "${GEMINI_CONFIG}/skills/02-spec-architect-and-judge" \
        "${GEMINI_CONFIG}/skills/03-story-and-sprint-planner" \

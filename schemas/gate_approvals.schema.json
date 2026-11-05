@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/gate_approvals.schema.json",
+  "title": "specs/gate_approvals.json (Machine-enforced Human Gate Ledger across Stages 0..8)",
+  "type": "object",
+  "required": ["schemaVersion", "gates"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "4.0" },
+    "gates": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["gateId", "stage", "status"],
+        "properties": {
+          "gateId": { "type": "string" },
+          "stage": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["NOT_STARTED", "AWAITING_HUMAN_REVIEW", "APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"]
+          },
+          "readyAtUtc": { "type": ["string", "null"] },
+          "readyAtEpoch": { "type": ["number", "null"] },
+          "approvedAtUtc": { "type": ["string", "null"] },
+          "userResponse": { "type": ["string", "null"] },
+          "summary": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

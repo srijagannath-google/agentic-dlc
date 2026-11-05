@@ -13,7 +13,8 @@
 
 | Dimension | `agentic-dlc` Capability |
 | :-- | :-- |
-| **Who Authors vs. Who Verifies** | **The LLM (7 subagents, 10 skills) authors every artefact** from user inputs; Python scripts **scan, crawl, derive, lint, execute, and gate** |
+| **Who Authors vs. Who Verifies** | **The LLM (7 subagents, 11 skills) authors every artefact** from user inputs; Python scripts **scan, crawl, derive, lint, execute, and enforce human gates** |
+| **Machine-Enforced Human Gate Stops** | **Stage 0 (`00-setup-and-connection`)** connects to ADO/Jira, lists ADO Projects & Repos, asks which ADO Project to work on, and stops at **Gate 0**. Every stage (`Gate 0` .. `Gate 7`) locks `specs/gate_approvals.json` (`AWAITING_HUMAN_REVIEW`) and blocks the next stage until explicit human approval via `scripts/gate_tracker.py` |
 | **Domain Neutrality** | Zero domain or organization literals baked into prompts, templates, or examples (`scripts/lint_domain_neutrality.py`) |
 | **Dual Input Scenarios** | First-class support for both legacy modernization (`SCENARIO_LEGACY_APP`) and greenfield requirements (`SCENARIO_REQUIREMENTS_DOC`) |
 | **Current-State vs. Future-State Separation** | **Stage 1 (`specs/discovery_architecture_and_inventory.md`)** is strictly Current-State ("As-Is"). **Stage 4A (`design/architecture_design.md` + `design/solution_design.md`)** owns 100% of Future-State ("To-Be") target architecture, 3NF `erDiagram`, DDL, and OpenAPI 3.1 contracts |
@@ -28,12 +29,13 @@
 
 ```mermaid
 flowchart LR
-    subgraph P1["Phase A · Discovery, Specification & Planning"]
+    subgraph P1["Phase A · Setup, Discovery, Specification & Planning (Explicit Human Stop at Every Gate)"]
         direction LR
-        S1["<b>Stage 1 · Discovery</b><br/>As-Is Model & Groups<br/><i>Gate 1: Intake</i>"]:::stage
-        S2["<b>Stage 2 · 5-Pillar Spec</b><br/>Spec & LLM Judge<br/><i>Gate 2: Score ≥ 90</i>"]:::stage
-        S3["<b>Stage 3 · Backlog & ALM</b><br/>Stories & Sprints<br/><i>Gate 3: Plan Approval</i>"]:::stage
-        S1 --> S2 --> S3
+        S0["<b>Stage 0 · Setup & ADO</b><br/>Connect & Pick Project<br/><i>Gate 0: Human Stop</i>"]:::stage
+        S1["<b>Stage 1 · Discovery</b><br/>As-Is Model & Groups<br/><i>Gate 1: Human Stop</i>"]:::stage
+        S2["<b>Stage 2 · 5-Pillar Spec</b><br/>Spec & LLM Judge<br/><i>Gate 2: Human Stop</i>"]:::stage
+        S3["<b>Stage 3 · Backlog & ALM</b><br/>Stories & Sprints<br/><i>Gate 3: Human Stop</i>"]:::stage
+        S0 --> S1 --> S2 --> S3
     end
 
     subgraph P2["Phase B · Architecture, Build, Closed-Loop Eval & GDC Deploy"]
@@ -56,14 +58,15 @@ flowchart LR
 
 | Stage | Skill | Subagent(s) | Key Artefacts Authored | Gate & Verification Script |
 | :-- | :-- | :-- | :-- | :-- |
-| **1. Discovery** | [`01-discovery-and-grouping`](skills/01-discovery-and-grouping/SKILL.md) | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (As-Is only), `specs/target_stack.json` | **Gate 1** · `scan_input_sources.py`, `validate_discovery_blueprint.py` |
-| **2. Spec & Judge** | [`02-spec-architect-and-judge`](skills/02-spec-architect-and-judge/SKILL.md) | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | **Gate 2** (`≥ 90`) · `lint_spec_structure.py`, `validate_spec_scorecard.py` |
-| **3. Stories & ALM** | [`03-story-and-sprint-planner`](skills/03-story-and-sprint-planner/SKILL.md) | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | **Gate 3** · `alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) |
-| **4A. Architecture** | [`04-solution-architect`](skills/04-solution-architect/SKILL.md) | `solution-architect` | 7 separate perspective artifacts (`business`, `high_level_solution`, `logical`, `application`, `data`, `security`, `infrastructure`) + `architecture_design.md` (index) + `solution_design.md` | **Gate 4A** · `extract_contracts.py` → `openapi.yaml`, `schema.sql`, 7 `.svg`/`.png` diagrams |
-| **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` | `derive_test_cases.py`, `validate_test_cases.py` |
-| **5. Clean Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md) + [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Runnable `src/` in confirmed Target Stack (`src/ui/`, `src/backend/`, `src/run.sh`) | `validate_build.py` (transitions stories to `In Progress`) |
-| **6. Closed Loop** | [`07-test-runner-and-healer`](skills/07-test-runner-and-healer/SKILL.md) | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `test/remediation_and_guardrail_audit_report.md`, `test/history/iter-N/` | **Gate 4** · `run_closed_loop_eval.py` (transitions stories to `Done`) |
-| **7–8. GDC Fleet** | [`08-container-and-gdc-packager`](skills/08-container-and-gdc-packager/SKILL.md), [`09-gdc-fleet-deployer-and-observability`](skills/09-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gates 7 & 8** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
+| **0. Setup & ADO** | [`00-setup-and-connection`](skills/00-setup-and-connection/SKILL.md) | coordinator | `specs/project_setup.json`, `specs/gate_approvals.json` (lists ADO Projects & Repos, asks which ADO Project to work on) | **Gate 0 (`gate_0_setup`)** · `setup_project_connection.py`, `gate_tracker.py` |
+| **1. Discovery** | [`01-discovery-and-grouping`](skills/01-discovery-and-grouping/SKILL.md) | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (As-Is only), `specs/target_stack.json` | **Gate 1 (`gate_1_discovery`)** · `scan_input_sources.py`, `validate_discovery_blueprint.py` |
+| **2. Spec & Judge** | [`02-spec-architect-and-judge`](skills/02-spec-architect-and-judge/SKILL.md) | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | **Gate 2 (`gate_2_spec`, `≥ 90`)** · `lint_spec_structure.py`, `validate_spec_scorecard.py` |
+| **3. Stories & ALM** | [`03-story-and-sprint-planner`](skills/03-story-and-sprint-planner/SKILL.md) | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | **Gate 3 (`gate_3_backlog`)** · `alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) |
+| **4A. Architecture** | [`04-solution-architect`](skills/04-solution-architect/SKILL.md) | `solution-architect` | 7 separate perspective artifacts (`business`, `high_level_solution`, `logical`, `application`, `data`, `security`, `infrastructure`) + `architecture_design.md` (index) + `solution_design.md` | **Gate 4A/4B (`gate_4_design_and_tests`)** · `extract_contracts.py` → `openapi.yaml`, `schema.sql`, 7 `.svg`/`.png` diagrams |
+| **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` | **Gate 4A/4B (`gate_4_design_and_tests`)** · `derive_test_cases.py`, `validate_test_cases.py` |
+| **5. Clean Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md) + [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Runnable `src/` in confirmed Target Stack (`src/ui/`, `src/backend/`, `src/run.sh`) | **Gate 5 (`gate_5_build`)** · `validate_build.py` (transitions stories to `In Progress`) |
+| **6. Closed Loop** | [`07-test-runner-and-healer`](skills/07-test-runner-and-healer/SKILL.md) | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `test/remediation_and_guardrail_audit_report.md`, `test/history/iter-N/` | **Gate 6 (`gate_6_eval`)** · `run_closed_loop_eval.py` (transitions stories to `Done`) |
+| **7–8. GDC Fleet** | [`08-container-and-gdc-packager`](skills/08-container-and-gdc-packager/SKILL.md), [`09-gdc-fleet-deployer-and-observability`](skills/09-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gate 7 (`gate_7_packaging`) & Gate 8** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
 
 ---
 
@@ -77,8 +80,8 @@ flowchart LR
 │   ├── policies_and_statutes/      # Business policies, compliance rules, regulatory standards & UX mandates
 │   └── shared_services/            # Enterprise shared service catalogs & style guides
 ├── specs/
-│   ├── input_inventory.json · discovery_architecture_and_inventory.md · target_stack.json
-│   └── application_spec.md · traceability_matrix.md · application_eval_scorecard.{md,json}
+│   ├── project_setup.json · gate_approvals.json · input_inventory.json
+│   └── discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md · application_eval_scorecard.{md,json}
 ├── backlog/
 │   └── user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv
 ├── design/
@@ -151,10 +154,21 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Configure optional Jira, Azure DevOps (`ADO_ORG_URL`, `ADO_PROJECT`, `ADO_PAT`), and GDC Fleet settings in `<PROJECT_ROOT>/.env` or `~/.gemini/config/agentic-dlc.env`, then run:
 
 ```bash
-# Stage 1: Ingest legacy source code directly from an Azure DevOps (ADO) Git repository or generic Git repository
+# Stage 0: Connect to Azure DevOps, list ADO Projects & Repositories, and save Gate 0 setup
+python3 ~/.gemini/config/plugins/agentic-dlc/skills/00-setup-and-connection/scripts/setup_project_connection.py \
+  --project-root "$(cat ~/.gemini/config/project_root.txt)" --action list-ado-projects
+python3 ~/.gemini/config/plugins/agentic-dlc/skills/00-setup-and-connection/scripts/setup_project_connection.py \
+  --project-root "$(cat ~/.gemini/config/project_root.txt)" --action save-setup \
+  --input-kind ado --ado-project "<SELECTED_PROJECT>" --repo-name "<SELECTED_REPO>" --alm-platform ado
+
+# Record human Gate 0 approval (in the subsequent turn after human review) before starting Stage 1
+python3 ~/.gemini/config/plugins/agentic-dlc/scripts/gate_tracker.py \
+  --project-root "$(cat ~/.gemini/config/project_root.txt)" --action approve --gate gate_0_setup \
+  --user-response "Approved Gate 0"
+
+# Stage 1: Scan & ingest the selected repository from specs/project_setup.json
 python3 ~/.gemini/config/plugins/agentic-dlc/skills/01-discovery-and-grouping/scripts/scan_input_sources.py \
-  --project-root "$(cat ~/.gemini/config/project_root.txt)" \
-  --ado-repo "https://dev.azure.com/<org>/<project>/_git/<repo>" [--ado-branch main]
+  --project-root "$(cat ~/.gemini/config/project_root.txt)"
 
 # Run the verify-only pipeline against a project root (Stages 1..8)
 python3 ~/.gemini/config/plugins/agentic-dlc/scripts/run_agentic_dlc_pipeline.py \

@@ -2411,6 +2411,10 @@ def main() -> int:
         print(json.dumps(report, indent=2))
         return 0 if report["results"] and all(r.get("connected") for r in report["results"]) else 1
 
+    # Enforce Gate 2 (Spec approval) before Stage 3 backlog authoring/staging actions
+    if args.action in ("audit", "sync-stories", "sync-sprints", "set-approval", "select-groups", "export-csv"):
+        dlc.require_gate_approved(root, "gate_2_spec", f"Stage 3 (03-story-and-sprint-planner / {args.action})", deterministic=deterministic)
+
     # ---- set-approval -----------------------------------------------------------------
     if args.action == "set-approval":
         if not args.set_approval:
@@ -2421,6 +2425,43 @@ def main() -> int:
             print_audit(audit)
             if not audit["passed"]:
                 raise dlc.GateFailure(f"Cannot mark sprint plan {args.set_approval}: Gate 3 audit failed (see [FAIL] lines).")
+        if args.set_approval == "APPROVED_BY_USER" and not dlc.is_autonomous_or_golden(root, deterministic=deterministic):
+            import time as _time
+            ga = dlc.load_gate_approvals(root)
+            g3 = (ga.get("gates") or {}).get("gate_3_backlog") or {}
+            if g3.get("readyAtEpoch") is not None:
+                elapsed = _time.time() - float(g3["readyAtEpoch"])
+                if elapsed < 8.0:
+                    raise dlc.GateFailure(
+                        f"Refusing to self-approve gate_3_backlog ({elapsed:.1f}s after staging < 8s human-turn boundary)!\n"
+                        "  Present stories + sprint plan to the user, END YOUR TURN, and wait for human approval before calling set-approval."
+                    )
+            now_iso = dlc.utc_now_iso(False)
+            ga.setdefault("gates", {})["gate_3_backlog"] = {
+                "gateId": "gate_3_backlog",
+                "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
+                "status": "APPROVED_BY_USER",
+                "readyAtUtc": g3.get("readyAtUtc") or now_iso,
+                "readyAtEpoch": g3.get("readyAtEpoch"),
+                "approvedAtUtc": now_iso,
+                "userResponse": "Approved via alm_jira_ado_bridge.py --action set-approval",
+                "summary": g3.get("summary") or "Stage 3 backlog & sprint alignment approved by human.",
+            }
+            dlc.write_json(dlc.gate_approvals_path(root), ga)
+        elif args.set_approval == "PRE_APPROVED_BY_USER" and dlc.gate_approvals_path(root).exists():
+            ga = dlc.load_gate_approvals(root)
+            now_iso = dlc.utc_now_iso(deterministic)
+            ga.setdefault("gates", {})["gate_3_backlog"] = {
+                "gateId": "gate_3_backlog",
+                "stage": dlc.GATE_DEFINITIONS["gate_3_backlog"],
+                "status": "PRE_APPROVED_AUTONOMOUS",
+                "readyAtUtc": now_iso,
+                "readyAtEpoch": None,
+                "approvedAtUtc": now_iso,
+                "userResponse": "Pre-approved via --autonomous mode",
+                "summary": "Stage 3 backlog pre-approved in autonomous mode.",
+            }
+            dlc.write_json(dlc.gate_approvals_path(root), ga)
         touched = set_approval_status(root, args.set_approval, deterministic)
         print(json.dumps({"approvalStatus": args.set_approval, "updated": touched}, indent=2))
         return 0
@@ -2501,6 +2542,13 @@ def main() -> int:
         summary = build_sprint_plan_summary(stories, audit, approval, platform, deterministic)
         write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
         print(f"[dlc] sprint plan summary -> {out_dir / 'sprint_plan.json'}")
+        if audit["passed"] and approval == "PENDING_HUMAN_APPROVAL":
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_3_backlog",
+                summary="Stage 3 User Stories & Sprint Plan audited. Sync stories to board (`--action sync-stories`), present stories + sprint plan to user, and STOP for Gate 3 approval.",
+                deterministic=deterministic,
+            )
         return 0 if audit["passed"] else 1
 
     jira_key_hint = args.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or None
@@ -2690,6 +2738,7 @@ def main() -> int:
     if args.action == "sync-sprints":
         if not args.approved:
             raise dlc.GateFailure("--action sync-sprints requires --approved (human Gate 3 approval).")
+        dlc.require_gate_approved(root, "gate_3_backlog", "Stage 3 (alm_jira_ado_bridge.py --action sync-sprints)", deterministic=deterministic)
         if approval == "PENDING_HUMAN_APPROVAL":
             approval = "APPROVED_BY_USER"
             set_approval_status(root, approval, deterministic)
@@ -2811,6 +2860,13 @@ def main() -> int:
     summary.update(live_summary)
     write_sprint_plan_json(out_dir / "sprint_plan.json", summary)
     print(json.dumps({k: v for k, v in summary.items() if k != "coverage"}, indent=2))
+    if args.action == "sync-stories" and audit["passed"] and approval == "PENDING_HUMAN_APPROVAL":
+        dlc.mark_gate_awaiting_human(
+            root,
+            "gate_3_backlog",
+            summary="Stage 3 User Stories & Sprint Plan staged on ALM board. Present stories + sprint plan + board links to user and STOP for Gate 3 approval before Stage 4.",
+            deterministic=deterministic,
+        )
     if all_errors:
         print(f"[dlc][warn] {len(all_errors)} live sync error(s) recorded in the state file(s); the live sync is incomplete.", file=sys.stderr)
         return 2

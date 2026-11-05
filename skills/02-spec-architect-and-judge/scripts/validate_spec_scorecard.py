@@ -88,6 +88,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    dlc.require_gate_approved(root, "gate_1_discovery", "Stage 2 (02-spec-architect-and-judge / validate_spec_scorecard.py)")
     inv = dlc.load_inventory(root)
     scenario = inv.get("inputScenario", "SCENARIO_REQUIREMENTS_DOC")
     spec_path = root / "specs" / "application_spec.md"
@@ -222,6 +223,12 @@ def main() -> int:
             print(f"  ✗ {f}")
         print(f"[dlc] Gate 2 scorecard: {computed} — total {total_calc}/{rubric.get('maxScore', 100)}, "
               f"pillars {pillar_sum}, blocking@0={blocking_zero or 'none'}")
+        if computed == "PASS":
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_2_spec",
+                summary=f"Stage 2 5-Pillar Specification passed Spec Judge ({total_calc}/{rubric.get('maxScore', 100)}). Present application_spec.md & scorecard to user and STOP for Gate 2 approval before Stage 3.",
+            )
     return 0 if computed == "PASS" else 1
 
 

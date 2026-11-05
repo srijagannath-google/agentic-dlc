@@ -586,14 +586,51 @@ def main() -> int:
     ap.add_argument("--domain-slug", default=None, help="Override the kebab-case domain slug")
     ap.add_argument("--output", default="specs/input_inventory.json")
     ap.add_argument("--deterministic", action="store_true", help="Freeze timestamp for byte-identical output")
+    ap.add_argument("--allow-empty", action="store_true", help="Allow zero input files during dry-run checks")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
     load_env_files(root)
+    dlc.require_gate_approved(root, "gate_0_setup", "Stage 1 (01-discovery-and-grouping / scan_input_sources.py)", deterministic=args.deterministic)
+
+    # Enforce Stage 0 setup & ADO project confirmation before ingesting an ADO repository in interactive mode
+    if args.ado_repo and not dlc.is_autonomous_or_golden(root, deterministic=args.deterministic):
+        ga = dlc.load_gate_approvals(root)
+        g0_status = ((ga.get("gates") or {}).get("gate_0_setup") or {}).get("status")
+        if g0_status not in ("APPROVED_BY_USER", "PRE_APPROVED_AUTONOMOUS"):
+            raise dlc.GateFailure(
+                "ADO repository ingestion requires completing Stage 0 (`00-setup-and-connection`) and human Gate 0 approval first.\n"
+                "  1. Run `setup_project_connection.py --action list-ado-projects` and ask the user WHICH ADO Project they want to work on.\n"
+                "  2. Run `setup_project_connection.py --action list-ado-repos --ado-project <PROJECT>` and confirm the repository.\n"
+                "  3. Save `specs/project_setup.json` (`--action save-setup`), STOP, and wait for human Gate 0 approval (`gate_0_setup`)."
+            )
+
     for folder in ["resources/inputs", "resources/design_references", "resources/policies_and_statutes",
                    "resources/shared_services", "specs"]:
         (root / folder).mkdir(parents=True, exist_ok=True)
+
+    # Auto-populate input source from Stage 0 `specs/project_setup.json` when CLI flags were not explicitly repeated
+    setup_path = root / "specs" / "project_setup.json"
+    if setup_path.is_file() and not args.ado_repo and not args.git_repo:
+        setup_doc = dlc.read_json(setup_path)
+        inp_cfg = (setup_doc.get("inputSource") or {}) if isinstance(setup_doc, dict) else {}
+        kind = inp_cfg.get("kind")
+        if kind == "ado" and (inp_cfg.get("repositoryUrl") or inp_cfg.get("repositoryName")):
+            repo_target = inp_cfg.get("repositoryUrl") or inp_cfg.get("repositoryName")
+            rname = inp_cfg.get("repositoryName") or "ado-repo"
+            if not (root / "resources" / "inputs" / dlc.slugify(str(rname))).exists():
+                args.ado_repo = str(repo_target)
+                args.ado_org_url = args.ado_org_url or inp_cfg.get("adoOrgUrl")
+                args.ado_project = args.ado_project or inp_cfg.get("adoProject")
+                args.ado_branch = args.ado_branch or inp_cfg.get("branch")
+        elif kind == "git" and inp_cfg.get("repositoryUrl"):
+            rname = inp_cfg.get("repositoryName") or Path(urllib.parse.urlparse(str(inp_cfg["repositoryUrl"])).path).stem
+            if not (root / "resources" / "inputs" / dlc.slugify(str(rname))).exists():
+                args.git_repo = str(inp_cfg["repositoryUrl"])
+                args.git_branch = args.git_branch or inp_cfg.get("branch")
+        elif kind == "local-dir" and inp_cfg.get("localPath") and args.input_dir == ["resources/inputs"]:
+            args.input_dir = [str(inp_cfg["localPath"])]
 
     out = dlc.project_path(root, args.output)
     source_repo_meta: dict[str, Any] | None = None
@@ -664,7 +701,40 @@ def main() -> int:
              f"requirements(n={ev['requirementsDocCount']},w={ev['requirementsWeight']}) -> {inv['inputScenario']} "
              f"[{inv['scenarioConfidence']}] slug={inv['domainSlug']} ({inv['domainSlugSource']})")
     if inv["totalFilesScanned"] == 0:
-        dlc.warn("no input files found — Stage 1 must ask the user where their input source is located (resources/inputs/, local folder, Azure DevOps repo, or Git repo).")
+        if not args.allow_empty and not dlc.is_autonomous_or_golden(root, deterministic=args.deterministic):
+            raise dlc.GateFailure(
+                "Zero input files found in Stage 1 scan — refusing to proceed without confirmed inputs.\n"
+                "  Run Stage 0 (`00-setup-and-connection`) first: ask the user where their input source is located "
+                "(`resources/inputs/`, local directory, Azure DevOps project/repository, or Git repository), "
+                "save `specs/project_setup.json`, and wait for human Gate 0 approval before running Stage 1."
+            )
+        dlc.warn("no input files found — Stage 0/1 must ask the user where their input source is located (resources/inputs/, local folder, Azure DevOps repo, or Git repo).")
+
+    # Initialize specs/gate_approvals.json on new interactive runs started directly with local files so Stage 2+ gates are enforced
+    if (
+        not dlc.is_autonomous_or_golden(root, deterministic=args.deterministic)
+        and not dlc.gate_approvals_path(root).exists()
+        and not (root / "specs" / "application_spec.md").exists()
+    ):
+        now_iso = dlc.utc_now_iso(False)
+        dlc.write_json(
+            dlc.gate_approvals_path(root),
+            {
+                "schemaVersion": dlc.SCHEMA_VERSION,
+                "gates": {
+                    "gate_0_setup": {
+                        "gateId": "gate_0_setup",
+                        "stage": dlc.GATE_DEFINITIONS["gate_0_setup"],
+                        "status": "APPROVED_BY_USER",
+                        "readyAtUtc": now_iso,
+                        "readyAtEpoch": None,
+                        "approvedAtUtc": now_iso,
+                        "userResponse": "Direct local input scan initiated with populated input files",
+                        "summary": "Local input files provided directly at Stage 1 entry.",
+                    }
+                },
+            },
+        )
     if inv["scenarioConfidence"] == "LOW":
         dlc.warn("scenario confidence LOW — Gate 1 must ask the user to confirm SCENARIO_LEGACY_APP vs SCENARIO_REQUIREMENTS_DOC.")
     if not inv["hasUserProvidedDesignReferences"]:

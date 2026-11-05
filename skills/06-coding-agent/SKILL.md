@@ -109,14 +109,21 @@ python3 <PLUGIN>/skills/06-coding-agent/scripts/validate_build.py --project-root
 ```
 Runs `install` → `build` → `start` → polls `healthcheck` → optional `test` → stops the process, and automatically transitions active sprint stories from `To Do` to `In Progress` in `backlog/` and on Jira / Azure DevOps via `alm_jira_ado_bridge.py --action transition-stories --target-status "In Progress" --scope active-sprints --only-from-todo`. Fix until green.
 
-### 7. Hand over
-Report what was built, the run command, applied design references, and any upstream gap found.
-Stage 6 (`07-test-runner-and-healer`) runs next.
+### 7. Mandatory STOP at Gate 5 (`gate_5_build`) — Wait for Human Build Review & Approval
+`validate_build.py` stamps `gate_5_build = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 6 (`run_closed_loop_eval.py`).
+1. Report what was built in `src/`, the local run command (`bash src/run.sh`), applied design references, and any upstream gap found.
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 6 (`07-test-runner-and-healer`) in the same turn!**
+3. Only **in a subsequent turn AFTER the human reviews and approves Gate 5**, run:
+   ```bash
+   python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_5_build --user-response "<verbatim user approval quote>"
+   ```
+   and then proceed to `07-test-runner-and-healer`.
 
 **Scenario differences:** none in this stage by design — the coder sees only derived artefacts. (Legacy
 projects simply have no legacy names anywhere in `src/`; `TC-UI-LEAK-*` checks that.)
 
 ## Do not
+- Start Stage 5 before `gate_4_design_and_tests` is `APPROVED_BY_USER`, or auto-start Stage 6 before `gate_5_build` is `APPROVED_BY_USER`.
 - Read raw inputs; reproduce legacy screens, naming or fixed-width/dual-run adapters.
 - Invent screens, steps, roles or formulas; hard-code values a test expects; add dependencies the stack
   does not name.
