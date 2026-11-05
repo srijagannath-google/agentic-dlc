@@ -1,16 +1,19 @@
 # Infrastructure & Deployment Architecture (`design/infrastructure_architecture.md`)
 
 - **Perspective:** **Infrastructure & Deployment Architecture (Cloud-Agnostic Multi-Region Topology, Kubernetes Compute, Managed Database HA, OpenTelemetry & Multi-Cloud GitOps)**
-- **Visual Archetype:** Concentric Multi-Region Deployment & Network Topology (`diagrams/infrastructure_architecture.svg`)
+- **Visual Archetype:** Concentric Multi-Region Deployment & Network Topology (`diagrams/infrastructure_architecture.png`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Cloud-Agnostic Multi-Region Infrastructure & Deployment Diagram
 
-![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.svg)
+![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/infrastructure_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     subgraph SG_OnPrem2["External Clients & Hybrid Edge"]
         CLI_WEB["<b>Web &amp; Mobile Browsers</b><br/>HTTPS Client Access"]:::gcpCard
@@ -111,6 +114,8 @@ flowchart LR
     style SG_NonProdRow2 fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
     style SG_DevRow2 fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
 ```
+
+</details>
 
 ---
 

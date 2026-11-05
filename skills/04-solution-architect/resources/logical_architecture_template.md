@@ -1,16 +1,19 @@
 # Logical Architecture (`design/logical_architecture.md`)
 
 - **Perspective:** **Logical Architecture (Technology-Agnostic Domain Capabilities, Policy Orchestration & Logical Information Stores)**
-- **Visual Archetype:** Concentric Multi-Zone Functional Topology (`diagrams/logical_architecture.svg`)
+- **Visual Archetype:** Concentric Multi-Zone Functional Topology (`diagrams/logical_architecture.png`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Logical Solution Architecture Diagram
 
-![Logical Solution Architecture](diagrams/logical_architecture.svg)
+![Logical Solution Architecture](diagrams/logical_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/logical_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     subgraph SG_OnPrem["Business Personas & Actors"]
         P1["<b>&lt;Business Persona 1&gt;</b><br/>&lt;Business Role&gt;"]:::gcpCard
@@ -111,6 +114,8 @@ flowchart LR
     style SG_NonProdRow fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
     style SG_DevRow fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
 ```
+
+</details>
 
 ---
 

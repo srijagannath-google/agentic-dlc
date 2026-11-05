@@ -1,16 +1,19 @@
 # Data & Information Architecture (`design/data_architecture.md`)
 
 - **Perspective:** **Data & Information Architecture (End-to-End Data Lifecycle, 3NF System of Record, Master Data Management, AI Grounding & Retention)**
-- **Visual Archetype:** 5-Stage Data Pipeline & Governance Foundation (`diagrams/data_architecture.svg`) + Normalised 3NF `erDiagram`
+- **Visual Archetype:** 5-Stage Data Pipeline & Governance Foundation (`diagrams/data_architecture.png`) + Normalised 3NF `erDiagram`
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md) · **Machine-Readable SQL DDL:** [`design/solution_design.md`](solution_design.md) (`src/db/schema.sql`)
 
 ---
 
 ## 1. End-to-End Data & Information Architecture Diagram
 
-![Data Architecture](diagrams/data_architecture.svg)
+![Data Architecture](diagrams/data_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/data_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     %% title: <Application Name> — Data & Information Architecture
     subgraph SG_DataSources["1. Data Sources &amp; Producers"]
@@ -65,6 +68,8 @@ flowchart LR
     style SG_Consumption fill:#FFFBEB,stroke:#D97706,stroke-width:2px,color:#B45309
     style SG_DataGovernance fill:#F1F5F9,stroke:#0F172A,stroke-width:2px,color:#0F172A
 ```
+
+</details>
 
 ---
 

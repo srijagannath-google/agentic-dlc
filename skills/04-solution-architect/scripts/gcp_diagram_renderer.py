@@ -1161,11 +1161,60 @@ def render_capability_map_svg(spec: dict[str, Any]) -> str:
     def _col_x(c_idx: int) -> float:
         return left_x + c_idx * (col_w + col_gap)
 
+    grid_top_y = 166.0
+    card_h = 52.0
+    row_gap = 9.0
+
+    def _row_y(r_idx: int) -> float:
+        return grid_top_y + r_idx * (card_h + row_gap)
+
+    max_col_cards = max((len(col) for col in flat_columns), default=4)
+    span_start_col: int | None = None
+    span_row_idx = max(max_col_cards - 1, 0)
+    total_core_rows = max(max_col_cards, 4)
+
+    if isinstance(spanning_outcome, dict) and spanning_outcome.get("title"):
+        explicit_start = spanning_outcome.get("startCol")
+        explicit_row = spanning_outcome.get("row")
+        if (
+            explicit_start is not None
+            and explicit_row is not None
+            and 0 <= int(explicit_start) < total_cols
+            and all(len(flat_columns[c]) <= int(explicit_row) for c in range(int(explicit_start), len(flat_columns)))
+        ):
+            span_start_col = int(explicit_start)
+            span_row_idx = int(explicit_row)
+            total_core_rows = max(max_col_cards, span_row_idx + 1)
+        else:
+            trailing_start = len(flat_columns)
+            while trailing_start > 0 and len(flat_columns[trailing_start - 1]) < max_col_cards:
+                trailing_start -= 1
+            if max_col_cards >= 2 and trailing_start <= len(flat_columns) - 2:
+                span_start_col = trailing_start
+                span_row_idx = max_col_cards - 1
+                total_core_rows = max_col_cards
+            else:
+                span_start_col = 0
+                span_row_idx = max_col_cards
+                total_core_rows = max_col_cards + 1
+
+    core_bottom_y = _row_y(max(total_core_rows - 1, 0)) + card_h
+    fb_y = max(482.0, core_bottom_y + 20.0)
+    fb_h = 44.0
+    f_cols = 6
+    f_gap = 14.0
+    f_w = (usable_w - (f_cols - 1) * f_gap) / f_cols
+    f_h = 50.0
+    f_row_gap = 12.0
+    f_top_y = fb_y + fb_h + 12.0
+    f_rows = max(2, (len(foundational) + f_cols - 1) // f_cols) if foundational else 2
+    canvas_h = max(810, int(f_top_y + f_rows * f_h + (f_rows - 1) * f_row_gap + 60.0))
+
     svg: list[str] = [
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 810" width="1440" height="810" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 {canvas_h}" width="1440" height="{canvas_h}" '
         'font-family="\'Google Sans\', \'Roboto\', \'Inter\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Arial, sans-serif">',
-        '<rect x="0" y="0" width="1440" height="810" fill="#FFFFFF"/>',
-        f'<text x="{left_x:.1f}" y="62" font-size="27" font-weight="700" fill="#202124">{_esc(title)}</text>',
+        f'<rect x="0" y="0" width="1440" height="{canvas_h}" fill="#FFFFFF"/>',
+        f'<text x="{left_x:.1f}" y="64" font-size="31" font-weight="700" fill="#202124">{_esc(title)}</text>',
     ]
 
     # 1. Top Value-Stream Chevron Ribbon (y=94, h=56)
@@ -1220,27 +1269,11 @@ def render_capability_map_svg(spec: dict[str, Any]) -> str:
             )
         )
 
-    # 2. Core Business Capability Grid (up to 5 rows: y=166, 227, 288, 349, 410)
-    grid_top_y = 166.0
-    card_h = 52.0
-    row_gap = 9.0
-
-    def _row_y(r_idx: int) -> float:
-        return grid_top_y + r_idx * (card_h + row_gap)
-
-    span_start_col = None
-    span_row_idx = 4
-    if isinstance(spanning_outcome, dict) and spanning_outcome.get("title"):
-        default_start = 2 if total_cols >= 5 else (1 if total_cols >= 3 else 0)
-        span_start_col = int(spanning_outcome.get("startCol", default_start))
-        span_start_col = max(0, min(span_start_col, total_cols - 1))
-        span_row_idx = int(spanning_outcome.get("row", 4))
-
+    # 2. Core Business Capability Grid (all capability cards rendered — zero truncation)
     card_max_chars = max(16, int((col_w - 16) / 6.6))
     for c_idx, col_cards in enumerate(flat_columns):
         cx = _col_x(c_idx)
-        max_rows_for_col = span_row_idx if (span_start_col is not None and c_idx >= span_start_col) else 5
-        for r_idx, card in enumerate(col_cards[:max_rows_for_col]):
+        for r_idx, card in enumerate(col_cards):
             cy = _row_y(r_idx)
             svg.append(
                 f'<rect x="{cx:.1f}" y="{cy:.1f}" width="{col_w:.1f}" height="{card_h:.1f}" '
@@ -1261,7 +1294,7 @@ def render_capability_map_svg(spec: dict[str, Any]) -> str:
                 )
             )
 
-    # Render Cross-Cutting / Spanning Outcome Bar on Row 5 (matching Slide 8 `Program, Referral & Outcome Management`)
+    # Render Cross-Cutting / Spanning Outcome Bar (matching Slide 8 bottom spanning outcome bar)
     if span_start_col is not None and spanning_outcome:
         sx = _col_x(span_start_col)
         sw = (_col_x(total_cols - 1) + col_w) - sx
@@ -1283,9 +1316,7 @@ def render_capability_map_svg(spec: dict[str, Any]) -> str:
             )
         )
 
-    # 3. Full-Width `Foundational Capabilities` Banner (HOME_PLATE chevron at y=482, h=44)
-    fb_y = 482.0
-    fb_h = 44.0
+    # 3. Full-Width `Foundational Capabilities` Banner (HOME_PLATE chevron)
     fb_ym = fb_y + fb_h / 2.0
     fb_y1 = fb_y + fb_h
     fb_pts = (
@@ -1309,18 +1340,13 @@ def render_capability_map_svg(spec: dict[str, Any]) -> str:
         )
     )
 
-    # 4. Foundational Capabilities 2x6 Grid (y=538 and y=600, h=50)
-    f_cols = 6
-    f_gap = 14.0
-    f_w = (usable_w - (f_cols - 1) * f_gap) / f_cols
-    f_h = 50.0
-    f_row_ys = [538.0, 600.0]
+    # 4. Foundational Capabilities 6-Column Grid (2x6 standard; expands if > 12 foundational capabilities)
     f_max_chars = max(18, int((f_w - 16) / 6.6))
-    for idx, f_card in enumerate(foundational[:12]):
+    for idx, f_card in enumerate(foundational):
         r_idx = idx // f_cols
         c_idx = idx % f_cols
         fx = left_x + c_idx * (f_w + f_gap)
-        fy = f_row_ys[r_idx]
+        fy = f_top_y + r_idx * (f_h + f_row_gap)
         svg.append(
             f'<rect x="{fx:.1f}" y="{fy:.1f}" width="{f_w:.1f}" height="{f_h:.1f}" '
             f'fill="#EEEEEE" stroke="#202124" stroke-width="1.5"/>'
@@ -1390,7 +1416,7 @@ def parse_capability_map_mermaid(mermaid_text: str, app_title: str = "") -> dict
             is_span = cls_name.lower() in ("capspan", "spanning") or "span" in stack[-1]["id"].lower()
             card_obj = {"id": node_id, "title": clean_label, "mvp": is_mvp}
             if is_span:
-                spanning_outcome = {"title": clean_label, "mvp": is_mvp, "startCol": 2}
+                spanning_outcome = {"title": clean_label, "mvp": is_mvp}
             else:
                 stack[-1]["cards"].append(card_obj)
 
@@ -1416,7 +1442,7 @@ def parse_capability_map_mermaid(mermaid_text: str, app_title: str = "") -> dict
         elif "span" in sg_id_low or "cross-cutting" in sg_title_low or "outcome" in sg_id_low:
             if sg.get("cards") and not spanning_outcome:
                 c0 = sg["cards"][0]
-                spanning_outcome = {"title": c0["title"], "mvp": c0.get("mvp", False), "startCol": 2}
+                spanning_outcome = {"title": c0["title"], "mvp": c0.get("mvp", False)}
         else:
             cols: list[list[dict[str, Any]]] = []
             if sg.get("children"):
@@ -1430,6 +1456,8 @@ def parse_capability_map_mermaid(mermaid_text: str, app_title: str = "") -> dict
                     cols.extend([cards[:mid], cards[mid:]])
                 else:
                     cols.append(cards)
+            if len(cols) >= 2:
+                cols.sort(key=len, reverse=True)
             if cols:
                 value_streams.append({"id": sg["id"], "title": sg["title"], "columns": cols})
 
@@ -1533,8 +1561,8 @@ def _save_svg_and_png(svg_text: str, svg_path: Path, width: int = 1440, height: 
 
 
 def write_capability_map_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
-    """Writes the Slide-8-style Business Capability Map SVG (`1440x810`) to `svg_path` and renders a PNG sibling."""
-    return _save_svg_and_png(render_capability_map_svg(spec), svg_path, width=1440, height=810)
+    """Writes the Slide-8-style Business Capability Map SVG (`1440x810+`) to `svg_path` and renders a PNG sibling."""
+    return _save_svg_and_png(render_capability_map_svg(spec), svg_path, width=0, height=0)
 
 
 # ===========================================================================

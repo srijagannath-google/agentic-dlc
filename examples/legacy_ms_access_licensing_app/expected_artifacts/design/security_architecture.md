@@ -11,9 +11,12 @@
 
 *(Depicts the concentric 5-layer defense-in-depth security model across **Perimeter 1 (Identity & Federation)**, **Perimeter 2 (Network & Edge)**, **Perimeter 3 (Application RBAC, State-Guard & Separation of Duties)**, **Perimeter 4 (AI Trust Layer & Zero-Leak Tax ID Privacy)**, and **Perimeter 5 (Data Encryption, Secrets & Continuous Compliance)**.)*
 
-![Security Architecture](diagrams/security_architecture.svg)
+![Security Architecture](diagrams/security_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/security_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: Business Licensing & Renewal Portal — Zero-Trust & AI Security Architecture
     %% subtitle: 5-Layer Defense-in-Depth across Identity, Edge, Application RBAC, AI Trust Layer, and Tax ID Encryption
@@ -56,6 +59,8 @@ flowchart TB
 
     classDef secCard fill:#FFFFFF,stroke:#3C4043,stroke-width:1.5px,color:#202124;
 ```
+
+</details>
 
 ---
 

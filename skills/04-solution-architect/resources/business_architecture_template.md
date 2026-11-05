@@ -2,16 +2,19 @@
 
 - **Perspective:** **Business Architecture ("Why & What" — Value Streams, Core Business Capabilities & Foundational Capabilities)**
 - **Input Scenario:** `<SCENARIO_LEGACY_APP | SCENARIO_REQUIREMENTS_DOC>`
-- **Visual Archetype:** Executive Value-Stream Chevron Ribbon (`1..4`) + Multi-Column Level-2 Capability Grid + Cross-Cutting Outcome Bar + Foundational Capabilities Grid (`diagrams/business_capability_map.svg`)
+- **Visual Archetype:** Executive Value-Stream Chevron Ribbon (`1..4`) + Multi-Column Level-2 Capability Grid + Cross-Cutting Outcome Bar + Foundational Capabilities Grid (`diagrams/business_capability_map.png`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Executive Business Capability Map
 
-![Business Capability Map](diagrams/business_capability_map.svg)
+![Business Capability Map](diagrams/business_capability_map.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/business_capability_map.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: <Application Name> Capability Map
     subgraph VS1["1. &lt;Value Stream 1: Outreach, Intake &amp; Onboarding&gt;"]
@@ -108,6 +111,8 @@ flowchart TB
     style SPAN_OUTCOME fill:#F8F9FA,stroke:#202124,stroke-width:1.5px,color:#202124
     style FOUND fill:#4285F4,stroke:#202124,stroke-width:1.5px,color:#FFFFFF
 ```
+
+</details>
 
 ---
 

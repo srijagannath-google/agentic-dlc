@@ -11,9 +11,12 @@
 
 *(Depicts the application's internal modular structure across **Tier 1 (Presentation & Omnichannel UI Modules)**, **Tier 2 (API Gateway, BFF & Zero-Leak DTO Tier)**, **Tier 3 (Core Domain & AI Agent Services Tier)**, and **Tier 4 (Data Access, Event Bus & Integration Adapters Tier)**.)*
 
-![Application Architecture](diagrams/application_architecture.svg)
+![Application Architecture](diagrams/application_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/application_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: Employee Leave Request Portal — Application Component Architecture
     %% subtitle: 4-Tier Modular Application, BFF/DTO Boundary, Domain & AI Services, and Repository Adapters
@@ -51,6 +54,8 @@ flowchart TB
 
     classDef appCard fill:#FFFFFF,stroke:#1A73E8,stroke-width:1.5px,color:#202124;
 ```
+
+</details>
 
 ---
 

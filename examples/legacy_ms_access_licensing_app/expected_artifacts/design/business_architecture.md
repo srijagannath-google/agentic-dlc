@@ -11,9 +11,12 @@
 
 *(Depicts the Business Licensing & Renewal Portal's cloud-agnostic **Business Architecture & Capability Map**: top horizontal Blue (`#4285F4`) Value-Stream Chevrons (`1. Business Onboarding & License Intake`, `2. Category Classification, Fee & Tax Verification`, `3. Compliance Review & Adjudication Routing`, `4. Certificate Issuance, Renewal & Regulatory Oversight`), multi-column Level-2 Core Business Capability cards in uniform `#EEEEEE` fill with `#202124` borders, a bottom Cross-Cutting Outcome bar (`:::capSpan`), and a full-width `Foundational Capabilities` banner above a 2×6 Foundational Capabilities grid.)*
 
-![Business Capability Map](diagrams/business_capability_map.svg)
+![Business Capability Map](diagrams/business_capability_map.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/business_capability_map.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: Business Licensing & Renewal Portal Capability Map
     subgraph VS1["1. Business Onboarding &amp; License Intake"]
@@ -110,6 +113,8 @@ flowchart TB
     style SPAN_OUTCOME fill:#F8F9FA,stroke:#202124,stroke-width:1.5px,color:#202124
     style FOUND fill:#4285F4,stroke:#202124,stroke-width:1.5px,color:#FFFFFF
 ```
+
+</details>
 
 ---
 

@@ -11,9 +11,12 @@
 
 *(Synthesizes the executive 3-tier enterprise architecture across **Business Personas**, the **Engagement Layer (`System of Engagement`)**, the **System of Intelligence & AI (`Agentic AI, Regulatory RAG, Fee/Bond Intelligence & Governance Core`)**, and **Transactional Systems (`Systems of Record`)**.)*
 
-![High-Level Solution Architecture](diagrams/high_level_solution_architecture.svg)
+![High-Level Solution Architecture](diagrams/high_level_solution_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/high_level_solution_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: Business Licensing & Renewal Portal — Future State High-Level Architecture
     %% subtitle: Unified System of Engagement, Agentic AI & Regulatory Intelligence Core, and Transactional Systems of Record
@@ -79,6 +82,8 @@ flowchart TB
     style SG_Intelligence fill:#FFFFFF,stroke:#19A5E6,stroke-width:3.5px,color:#0D47A1
     style SG_Transactional fill:#FFFFFF,stroke:#2B5B84,stroke-width:1.5px,color:#202124
 ```
+
+</details>
 
 ---
 

@@ -177,6 +177,110 @@ def parse_ddl(sql: str) -> list[dict[str, Any]]:
     return tables
 
 
+def _architecture_dsl_blocks(md: str) -> list[str]:
+    """Return diagram specification blocks (`diagram-dsl` or `mermaid`) from an architecture perspective file."""
+    return dlc.md_fenced_blocks(md, "diagram-dsl") + dlc.md_fenced_blocks(md, "mermaid")
+
+
+def _resolve_app_title(arch_doc: str, bus_doc: str, spec: str, root: Path) -> str:
+    """Resolve a clean human-readable application title without filename/scenario suffixes."""
+    for candidate_doc in (bus_doc, arch_doc):
+        proj_m = re.search(r"^\s*-\s*\*\*Project:\*\*\s*(.+)$", candidate_doc, re.MULTILINE | re.IGNORECASE)
+        if proj_m:
+            raw = re.sub(r"`[^`]*`", "", proj_m.group(1)).strip()
+            raw = re.sub(r"\(\s*\)", "", raw).strip()
+            raw = re.split(r"\s+[—–-]\s+(?:Legacy|Greenfield|Modernization|Architecture)\b", raw, maxsplit=1)[0].strip()
+            raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw).strip()
+            if raw:
+                return raw
+    cm_title_m = re.search(r"^\s*%%\s*title\s*:\s*(.+)$", bus_doc, re.MULTILINE | re.IGNORECASE)
+    if cm_title_m:
+        raw = re.sub(r"\s+Capability\s+Map\s*$", "", cm_title_m.group(1).strip(), flags=re.IGNORECASE).strip()
+        if raw and "<" not in raw:
+            return raw
+    spec_h1_m = re.search(r"^#\s+(.+)$", spec, re.MULTILINE)
+    if spec_h1_m:
+        raw = re.sub(r"`[^`]*`", "", spec_h1_m.group(1)).strip()
+        raw = re.split(r"\s+[—–-]\s+(?:Application\s+Specification|5-Pillar|Specification)\b", raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw).strip()
+        if raw:
+            return raw
+    doc_title_m = re.search(r"^#\s+(.+?)(?:\s+[—–-]\s+Architecture\s+Design.*)?$", arch_doc, re.MULTILINE | re.IGNORECASE)
+    if doc_title_m:
+        raw = re.sub(r"`[^`]*`", "", doc_title_m.group(1)).strip()
+        raw = re.sub(r"\(\s*\)", "", raw).strip()
+        if raw and not re.search(r"Architecture\s+(?:Portfolio|Design)", raw, re.IGNORECASE):
+            return raw
+    return root.name.replace("_", " ").replace("-", " ").title()
+
+
+_FLOWCHART_DSL_BLOCK_RE = re.compile(
+    r"<details>\s*<summary>[^<]*</summary>\s*```(?:mermaid|diagram-dsl)[^\n]*\n"
+    r"((?:[ \t]*%%[^\n]*\n|[ \t]*\n)*[ \t]*(?:flowchart|graph)\b.*?)```\s*</details>"
+    r"|```(?:mermaid|diagram-dsl)[^\n]*\n"
+    r"((?:[ \t]*%%[^\n]*\n|[ \t]*\n)*[ \t]*(?:flowchart|graph)\b.*?)```",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _normalize_perspective_diagram_embed(
+    doc_path: Path,
+    doc_text: str,
+    alt_text: str,
+    diagram_stem: str,
+    has_png: bool,
+) -> str:
+    """Ensure perspective Markdown embeds the rendered PNG (or SVG fallback) and wraps raw flowchart DSL in `<details>` (`diagram-dsl`).
+
+    Prevents Markdown viewers, IDEs, and Docs/Slides importers from rendering raw Mermaid `flowchart TB` blocks
+    as vertical stacked boxes instead of the Slide-8 horizontal chevron Business Capability Map or layered diagrams.
+    Leaves `sequenceDiagram` and `erDiagram` Mermaid blocks untouched so native Mermaid renders those directly.
+    """
+    target_ext = "png" if has_png else "svg"
+    target_rel = f"diagrams/{diagram_stem}.{target_ext}"
+    updated = doc_text
+
+    if has_png:
+        updated = re.sub(
+            rf"!\[([^\]]*)\]\(diagrams/{re.escape(diagram_stem)}\.svg\)",
+            rf"![\1]({target_rel})",
+            updated,
+        )
+
+    summary_label = (
+        f"Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into {target_rel})"
+    )
+
+    def _wrap_block(m: re.Match[str]) -> str:
+        body = (m.group(1) if m.group(1) is not None else m.group(2) or "").strip("\n")
+        return f"<details>\n<summary>{summary_label}</summary>\n\n```diagram-dsl\n{body}\n```\n\n</details>"
+
+    updated = _FLOWCHART_DSL_BLOCK_RE.sub(_wrap_block, updated)
+
+    if not re.search(rf"!\[[^\]]*\]\(diagrams/{re.escape(diagram_stem)}\.(?:png|svg)\)", updated):
+        details_tag = f"<details>\n<summary>{summary_label}</summary>"
+        if details_tag in updated:
+            updated = updated.replace(details_tag, f"![{alt_text}]({target_rel})\n\n{details_tag}", 1)
+
+    if updated != doc_text:
+        dlc.write_text(doc_path, updated)
+    return updated
+
+
+def _normalize_portfolio_index_embeds(arch_path: Path, arch_doc: str, diagrams_dir: Path) -> str:
+    """Upgrade `![...](diagrams/<stem>.svg)` image embeds in `design/architecture_design.md` to `.png` when PNG exists."""
+    def _repl_img(m: re.Match[str]) -> str:
+        alt, stem = m.group(1), m.group(2)
+        if (diagrams_dir / f"{stem}.png").exists():
+            return f"![{alt}](diagrams/{stem}.png)"
+        return m.group(0)
+
+    updated = re.sub(r"!\[([^\]]*)\]\(diagrams/([A-Za-z0-9_.-]+)\.svg\)", _repl_img, arch_doc)
+    if updated != arch_doc:
+        dlc.write_text(arch_path, updated)
+    return updated
+
+
 # ------------------------------------------------------------------------------------------ main
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -322,19 +426,18 @@ def main() -> int:
     arch_mermaid_blocks = dlc.md_fenced_blocks(arch_doc, "mermaid")
     rendered_svgs: list[str] = []
 
-    doc_title_m = re.search(r"^#\s+(.+?)(?:\s+[—–-]\s+Architecture\s+Design.*)?$", arch_doc, re.MULTILINE | re.IGNORECASE)
-    app_title = (doc_title_m.group(1).strip() if doc_title_m else root.name.replace("_", " ").title())
-
-    # 1. Business Architecture (`design/business_architecture.md` -> `business_capability_map.svg`)
     bus_doc = perspective_docs.get("design/business_architecture.md", arch_doc)
+    app_title = _resolve_app_title(arch_doc, bus_doc, spec, root)
+
+    # 1. Business Architecture (`design/business_architecture.md` -> `business_capability_map.{svg,png}`)
     bus_blocks = [
-        b for b in dlc.md_fenced_blocks(bus_doc, "mermaid")
+        b for b in _architecture_dsl_blocks(bus_doc)
         if re.search(r"^\s*(?:flowchart|graph)\s+T[BD]\b", b, re.IGNORECASE | re.MULTILINE)
         or re.search(r"Foundational\s+Capabilities", b, re.IGNORECASE)
     ]
     if not bus_blocks:
         fails.append(
-            "design/business_architecture.md must include a 'flowchart TB' Business Capability Map diagram "
+            "design/business_architecture.md must include a 'flowchart TB' Business Capability Map diagram specification "
             "(top Value-Stream Pillars '1. ...' .. '4. ...', Core Business Capabilities, and 'Foundational Capabilities')."
         )
     else:
@@ -354,19 +457,28 @@ def main() -> int:
             cm_svg_out = arch_path.parent / "diagrams" / "business_capability_map.svg"
             cm_svg_written, cm_png_written = gdr.write_capability_map_svg_and_png(cm_spec, cm_svg_out)
             rendered_svgs.append(str(cm_svg_written.relative_to(root)))
+            bus_path = root / "design" / "business_architecture.md"
+            if bus_path.exists():
+                perspective_docs["design/business_architecture.md"] = _normalize_perspective_diagram_embed(
+                    bus_path,
+                    bus_doc,
+                    "Business Capability Map",
+                    "business_capability_map",
+                    cm_png_written is not None and cm_png_written.exists(),
+                )
             if not args.json:
                 extra = f" (+ {cm_png_written.name})" if cm_png_written else ""
                 print(f"[dlc] rendered {cm_svg_written}{extra}")
 
-    # 2. High-Level Solution Architecture (`design/high_level_solution_architecture.md` -> `high_level_solution_architecture.svg`)
+    # 2. High-Level Solution Architecture (`design/high_level_solution_architecture.md` -> `high_level_solution_architecture.{svg,png}`)
     hl_doc = perspective_docs.get("design/high_level_solution_architecture.md", "")
     hl_blocks = [
-        b for b in dlc.md_fenced_blocks(hl_doc, "mermaid")
+        b for b in _architecture_dsl_blocks(hl_doc)
         if re.search(r"^\s*(?:flowchart|graph)\b", b, re.IGNORECASE | re.MULTILINE)
     ]
     if not hl_blocks:
         fails.append(
-            "design/high_level_solution_architecture.md must include a Mermaid flowchart depicting Personas, "
+            "design/high_level_solution_architecture.md must include a flowchart diagram specification depicting Personas, "
             "Engagement Layer, System of Intelligence & AI (Agentic Layer + Domain Intelligence + Governance), and Transactional Systems."
         )
     else:
@@ -378,6 +490,15 @@ def main() -> int:
             hl_svg_out = arch_path.parent / "diagrams" / "high_level_solution_architecture.svg"
             hl_svg_written, hl_png_written = gdr.write_high_level_solution_svg_and_png(hl_parsed, hl_svg_out)
             rendered_svgs.append(str(hl_svg_written.relative_to(root)))
+            hl_path = root / "design" / "high_level_solution_architecture.md"
+            if hl_path.exists():
+                perspective_docs["design/high_level_solution_architecture.md"] = _normalize_perspective_diagram_embed(
+                    hl_path,
+                    hl_doc,
+                    "High-Level Solution Architecture",
+                    "high_level_solution_architecture",
+                    hl_png_written is not None and hl_png_written.exists(),
+                )
             if not args.json:
                 extra = f" (+ {hl_png_written.name})" if hl_png_written else ""
                 print(f"[dlc] rendered {hl_svg_written}{extra}")
@@ -385,24 +506,24 @@ def main() -> int:
     # 3. Logical Architecture (`design/logical_architecture.md`) & 7. Infrastructure Architecture (`design/infrastructure_architecture.md`)
     log_doc = perspective_docs.get("design/logical_architecture.md", arch_doc)
     inf_doc = perspective_docs.get("design/infrastructure_architecture.md", arch_doc)
-    log_lr = [b for b in dlc.md_fenced_blocks(log_doc, "mermaid") if re.search(r"^\s*flowchart\s+LR\b", b, re.IGNORECASE | re.MULTILINE)]
-    inf_lr = [b for b in dlc.md_fenced_blocks(inf_doc, "mermaid") if re.search(r"^\s*flowchart\s+LR\b", b, re.IGNORECASE | re.MULTILINE)]
+    log_lr = [b for b in _architecture_dsl_blocks(log_doc) if re.search(r"^\s*flowchart\s+LR\b", b, re.IGNORECASE | re.MULTILINE)]
+    inf_lr = [b for b in _architecture_dsl_blocks(inf_doc) if re.search(r"^\s*flowchart\s+LR\b", b, re.IGNORECASE | re.MULTILINE)]
 
     if not log_lr or not inf_lr:
         fails.append(
-            f"design/logical_architecture.md and design/infrastructure_architecture.md must each include a 'flowchart LR' diagram "
+            f"design/logical_architecture.md and design/infrastructure_architecture.md must each include a 'flowchart LR' diagram specification "
             f"(found logical={len(log_lr)}, infrastructure={len(inf_lr)})."
         )
     else:
         labels_stems = [
-            ("design/logical_architecture.md", "logical_architecture", log_lr[0]),
-            ("design/infrastructure_architecture.md", "infrastructure_architecture", inf_lr[0]),
+            ("design/logical_architecture.md", "logical_architecture", "Logical Solution Architecture", log_lr[0]),
+            ("design/infrastructure_architecture.md", "infrastructure_architecture", "Infrastructure & Deployment Architecture", inf_lr[0]),
         ]
         parsed_specs: list[dict[str, Any]] = [
             gdr.parse_mermaid_flowchart_to_spec(log_lr[0], "logical_architecture"),
             gdr.parse_mermaid_flowchart_to_spec(inf_lr[0], "infrastructure_architecture"),
         ]
-        for idx, (label, default_stem, fb) in enumerate(labels_stems):
+        for idx, (label, default_stem, alt_label, fb) in enumerate(labels_stems):
             for req_cls in ("gcpCard", "focal", "gcpBlue", "gcpGreen", "gcpYellow", "gcpRed"):
                 if not re.search(rf"\bclassDef\s+{req_cls}\b", fb):
                     fails.append(f"{label} diagram is missing classDef '{req_cls}'.")
@@ -428,6 +549,15 @@ def main() -> int:
                 svg_out = arch_path.parent / "diagrams" / f"{default_stem}.svg"
                 svg_written, png_written = gdr.write_svg_and_png(spec_obj, svg_out)
                 rendered_svgs.append(str(svg_written.relative_to(root)))
+                p_doc_path = root / label
+                if p_doc_path.exists() and label in perspective_docs:
+                    perspective_docs[label] = _normalize_perspective_diagram_embed(
+                        p_doc_path,
+                        perspective_docs[label],
+                        alt_label,
+                        default_stem,
+                        png_written is not None and png_written.exists(),
+                    )
                 if not args.json:
                     extra = f" (+ {png_written.name})" if png_written else ""
                     print(f"[dlc] rendered {svg_written}{extra}")
@@ -435,14 +565,14 @@ def main() -> int:
                     tech_alias_svg = arch_path.parent / "diagrams" / "technical_architecture.svg"
                     gdr.write_svg_and_png(spec_obj, tech_alias_svg)
 
-    # 4. Application Architecture (`design/application_architecture.md` -> `application_architecture.svg` + sequenceDiagram)
+    # 4. Application Architecture (`design/application_architecture.md` -> `application_architecture.{svg,png}` + sequenceDiagram)
     app_doc = perspective_docs.get("design/application_architecture.md", "")
     app_flow_blocks = [
-        b for b in dlc.md_fenced_blocks(app_doc, "mermaid")
+        b for b in _architecture_dsl_blocks(app_doc)
         if re.search(r"^\s*(?:flowchart|graph)\b", b, re.IGNORECASE | re.MULTILINE)
     ]
     if not app_flow_blocks:
-        fails.append("design/application_architecture.md must include a Mermaid flowchart depicting the Multi-Tier Application & AI Component Architecture.")
+        fails.append("design/application_architecture.md must include a flowchart diagram specification depicting the Multi-Tier Application & AI Component Architecture.")
     else:
         app_parsed = gdr.parse_layered_perspective_mermaid(app_flow_blocks[0], app_title=f"{app_title} — Application & AI Architecture")
         app_errs = gdr.validate_perspective_spec(app_parsed, "design/application_architecture.md", min_cards=8)
@@ -452,18 +582,28 @@ def main() -> int:
             app_svg_out = arch_path.parent / "diagrams" / "application_architecture.svg"
             app_svg_written, app_png_written = gdr.write_application_architecture_svg_and_png(app_parsed, app_svg_out)
             rendered_svgs.append(str(app_svg_written.relative_to(root)))
+            app_path = root / "design" / "application_architecture.md"
+            if app_path.exists():
+                app_doc = _normalize_perspective_diagram_embed(
+                    app_path,
+                    app_doc,
+                    "Application Architecture",
+                    "application_architecture",
+                    app_png_written is not None and app_png_written.exists(),
+                )
+                perspective_docs["design/application_architecture.md"] = app_doc
             if not args.json:
                 extra = f" (+ {app_png_written.name})" if app_png_written else ""
                 print(f"[dlc] rendered {app_svg_written}{extra}")
 
-    # 5. Data Architecture (`design/data_architecture.md` -> `data_architecture.svg` + erDiagram)
+    # 5. Data Architecture (`design/data_architecture.md` -> `data_architecture.{svg,png}` + erDiagram)
     data_doc = perspective_docs.get("design/data_architecture.md", "")
     data_flow_blocks = [
-        b for b in dlc.md_fenced_blocks(data_doc, "mermaid")
+        b for b in _architecture_dsl_blocks(data_doc)
         if re.search(r"^\s*(?:flowchart|graph)\b", b, re.IGNORECASE | re.MULTILINE)
     ]
     if not data_flow_blocks:
-        fails.append("design/data_architecture.md must include a Mermaid flowchart depicting the End-to-End Data & Information Architecture.")
+        fails.append("design/data_architecture.md must include a flowchart diagram specification depicting the End-to-End Data & Information Architecture.")
     else:
         data_parsed = gdr.parse_layered_perspective_mermaid(data_flow_blocks[0], app_title=f"{app_title} — Data & Information Architecture")
         data_errs = gdr.validate_perspective_spec(data_parsed, "design/data_architecture.md", min_cards=8)
@@ -473,18 +613,28 @@ def main() -> int:
             data_svg_out = arch_path.parent / "diagrams" / "data_architecture.svg"
             data_svg_written, data_png_written = gdr.write_data_architecture_svg_and_png(data_parsed, data_svg_out)
             rendered_svgs.append(str(data_svg_written.relative_to(root)))
+            data_path = root / "design" / "data_architecture.md"
+            if data_path.exists():
+                data_doc = _normalize_perspective_diagram_embed(
+                    data_path,
+                    data_doc,
+                    "Data Architecture",
+                    "data_architecture",
+                    data_png_written is not None and data_png_written.exists(),
+                )
+                perspective_docs["design/data_architecture.md"] = data_doc
             if not args.json:
                 extra = f" (+ {data_png_written.name})" if data_png_written else ""
                 print(f"[dlc] rendered {data_svg_written}{extra}")
 
-    # 6. Security Architecture (`design/security_architecture.md` -> `security_architecture.svg`)
+    # 6. Security Architecture (`design/security_architecture.md` -> `security_architecture.{svg,png}`)
     sec_doc = perspective_docs.get("design/security_architecture.md", "")
     sec_flow_blocks = [
-        b for b in dlc.md_fenced_blocks(sec_doc, "mermaid")
+        b for b in _architecture_dsl_blocks(sec_doc)
         if re.search(r"^\s*(?:flowchart|graph)\b", b, re.IGNORECASE | re.MULTILINE)
     ]
     if not sec_flow_blocks:
-        fails.append("design/security_architecture.md must include a Mermaid flowchart depicting the Defense-in-Depth Security & AI Trust Architecture.")
+        fails.append("design/security_architecture.md must include a flowchart diagram specification depicting the Defense-in-Depth Security & AI Trust Architecture.")
     else:
         sec_parsed = gdr.parse_layered_perspective_mermaid(sec_flow_blocks[0], app_title=f"{app_title} — Security, Privacy & AI Trust Architecture")
         sec_errs = gdr.validate_perspective_spec(sec_parsed, "design/security_architecture.md", min_cards=8)
@@ -494,9 +644,35 @@ def main() -> int:
             sec_svg_out = arch_path.parent / "diagrams" / "security_architecture.svg"
             sec_svg_written, sec_png_written = gdr.write_security_architecture_svg_and_png(sec_parsed, sec_svg_out)
             rendered_svgs.append(str(sec_svg_written.relative_to(root)))
+            sec_path = root / "design" / "security_architecture.md"
+            if sec_path.exists():
+                sec_doc = _normalize_perspective_diagram_embed(
+                    sec_path,
+                    sec_doc,
+                    "Security Architecture",
+                    "security_architecture",
+                    sec_png_written is not None and sec_png_written.exists(),
+                )
+                perspective_docs["design/security_architecture.md"] = sec_doc
             if not args.json:
                 extra = f" (+ {sec_png_written.name})" if sec_png_written else ""
                 print(f"[dlc] rendered {sec_svg_written}{extra}")
+
+    if not fails:
+        arch_doc = _normalize_portfolio_index_embeds(arch_path, arch_doc, arch_path.parent / "diagrams")
+        all_arch_text = arch_doc + "\n" + "\n".join(perspective_docs.values())
+        arch_mermaid_blocks = dlc.md_fenced_blocks(arch_doc, "mermaid")
+
+    # Forbid raw Mermaid flowchart blocks inside the Executive Portfolio Index (`design/architecture_design.md`)
+    arch_raw_flow = [
+        b for b in arch_mermaid_blocks
+        if re.search(r"^\s*(?:flowchart|graph)\b", b, re.IGNORECASE | re.MULTILINE)
+    ]
+    if arch_raw_flow:
+        fails.append(
+            f"{args.architecture} must embed rendered diagram images ('diagrams/<perspective>.png') rather than raw "
+            f"```mermaid flowchart blocks (found {len(arch_raw_flow)} raw flowchart block(s), which render as vertical stacked boxes)."
+        )
 
     # Validate sequenceDiagram (in application_architecture.md or architecture_design.md)
     seq_blocks = [
@@ -567,7 +743,7 @@ def main() -> int:
         )
 
     # ---- Document 2: Standalone Solution Design & Contracts (`design/solution_design.md`)
-    design_mermaid_blocks = dlc.md_fenced_blocks(design, "mermaid")
+    design_mermaid_blocks = dlc.md_fenced_blocks(design, "mermaid") + dlc.md_fenced_blocks(design, "diagram-dsl")
     design_flow_or_seq = [
         b for b in design_mermaid_blocks
         if re.search(r"^\s*(?:flowchart|graph|sequenceDiagram)\b", b, re.IGNORECASE | re.MULTILINE)

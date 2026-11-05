@@ -28,34 +28,34 @@ To ensure each architectural perspective is easy to consume, review, and govern 
 ### 2.1 High-Level Solution Architecture — System of Engagement, System of Intelligence & AI, and Systems of Record
 Full specification: [`design/high_level_solution_architecture.md`](high_level_solution_architecture.md)
 
-![High-Level Solution Architecture](diagrams/high_level_solution_architecture.svg)
+![High-Level Solution Architecture](diagrams/high_level_solution_architecture.png)
 
 ### 2.2 Business Architecture & Capability Map
 Full specification: [`design/business_architecture.md`](business_architecture.md)
 
-![Business Capability Map](diagrams/business_capability_map.svg)
+![Business Capability Map](diagrams/business_capability_map.png)
 
 ### 2.3 Logical Solution Architecture
 Full specification: [`design/logical_architecture.md`](logical_architecture.md)
 
-![Logical Solution Architecture](diagrams/logical_architecture.svg)
+![Logical Solution Architecture](diagrams/logical_architecture.png)
 
 ### 2.4 Application Architecture
 Full specification: [`design/application_architecture.md`](application_architecture.md)
 
-![Application Architecture](diagrams/application_architecture.svg)
+![Application Architecture](diagrams/application_architecture.png)
 
 ### 2.5 Data Architecture
 Full specification: [`design/data_architecture.md`](data_architecture.md)
 
-![Data Architecture](diagrams/data_architecture.svg)
+![Data Architecture](diagrams/data_architecture.png)
 
 ### 2.6 Security Architecture
 Full specification: [`design/security_architecture.md`](security_architecture.md)
 
-![Security Architecture](diagrams/security_architecture.svg)
+![Security Architecture](diagrams/security_architecture.png)
 
 ### 2.7 Infrastructure & Deployment Architecture
 Full specification: [`design/infrastructure_architecture.md`](infrastructure_architecture.md)
 
-![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.svg)
+![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.png)

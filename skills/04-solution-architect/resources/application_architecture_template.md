@@ -1,16 +1,19 @@
 # Application Architecture (`design/application_architecture.md`)
 
 - **Perspective:** **Application & AI Service Architecture (C4 Component Topology, API/BFF Layer, Domain & Agentic Services, and Request Execution Sequence)**
-- **Visual Archetype:** 4-Tier Application Component Topology (`diagrams/application_architecture.svg`) + End-to-End `sequenceDiagram`
+- **Visual Archetype:** 4-Tier Application Component Topology (`diagrams/application_architecture.png`) + End-to-End `sequenceDiagram`
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Multi-Tier Application & AI Component Architecture
 
-![Application Architecture](diagrams/application_architecture.svg)
+![Application Architecture](diagrams/application_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/application_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: <Application Name> — Application & AI Component Architecture
     subgraph SG_Presentation["1. Presentation &amp; Omnichannel Experience Tier (Frontend UI Modules)"]
@@ -52,6 +55,8 @@ flowchart TB
     style SG_AppServices fill:#F0FDF4,stroke:#16A34A,stroke-width:2px,color:#15803D
     style SG_IntegrationData fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#B45309
 ```
+
+</details>
 
 ---
 

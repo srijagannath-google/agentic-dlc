@@ -11,9 +11,12 @@
 
 *(Depicts the Employee Leave Request Portal's **Cloud-Agnostic Target Platform & Infrastructure Architecture** (`specs/target_stack.json` — portable across On-Premises, GCP, AWS, and Azure): Web & Mobile Browsers, Corporate OIDC Identity Provider, and Campus Hybrid Gateway on the left; Zero-Trust Edge Security (`Global L7 Load Balancer`, `Web Application Firewall`, `Edge CDN Cache`, `Zero-Trust Identity Proxy`) in Column 1; Multi-Region Shared Virtual Network (`Primary Region` & `Secondary Region` running `Kubernetes` Web and Application tiers with `Service Mesh STRICT mTLS`) in Column 2 with private service routing (`internal.service.mesh 10.240.0.0/16`); and the 3×3 Managed Platform Services Grid (`PgBouncer Pooler`, `PostgreSQL / SQLite Primary`, `Read Replica HA`, `Object Storage Buckets`, `KMS & Secrets Manager`, `Workload Identity`, `OpenTelemetry & Tracing`, `Metrics & SLO Alerting`, `GitOps & OPA Policy Engine`) in Column 3.)*
 
-![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.svg)
+![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/infrastructure_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     subgraph SG_OnPrem2["External Clients & Corporate Edge"]
         CLI_WEB["<b>Web &amp; Mobile Browsers</b><br/>HTTPS Client Access"]:::gcpCard
@@ -114,6 +117,8 @@ flowchart LR
     style SG_NonProdRow2 fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
     style SG_DevRow2 fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
 ```
+
+</details>
 
 ---
 

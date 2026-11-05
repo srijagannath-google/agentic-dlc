@@ -11,9 +11,12 @@
 
 *(Depicts the Employee Leave Request Portal's cloud-agnostic **Business Capability & Functional Domain Architecture**: Business Personas (`Employee`, `Line Manager`, `HR Administrator`) in the left `#F1F3F4` column, User Experience Channels & Data Privacy Gateway in Column 1, Core Leave Policy & Calculation Orchestration in Column 2 with red dashed policy-rejection feedback, and the 3×3 grid of Business Capability Services and Logical Domain Data Stores in Column 3.)*
 
-![Logical Solution Architecture](diagrams/logical_architecture.svg)
+![Logical Solution Architecture](diagrams/logical_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/logical_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     subgraph SG_OnPrem["Business Personas & Actors"]
         P_EMP["<b>Employee</b><br/>Request &amp; Cancel Leave"]:::gcpCard
@@ -114,6 +117,8 @@ flowchart LR
     style SG_NonProdRow fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
     style SG_DevRow fill:#F1F3F4,stroke:#9AA0A6,stroke-width:1.5px,color:#202124
 ```
+
+</details>
 
 ---
 

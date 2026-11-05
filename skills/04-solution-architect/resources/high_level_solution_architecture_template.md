@@ -1,7 +1,7 @@
 # High-Level Solution Architecture (`design/high_level_solution_architecture.md`)
 
 - **Perspective:** **High-Level Solution Architecture ("North Star" Pace-Layered View — System of Engagement, System of Intelligence & AI, and Systems of Record)**
-- **Visual Archetype:** Executive Layered Architecture (`resources/reference_high_level_solution_architecture.png` + AI-Era Agentic Layer + Value-Led Enterprise Architecture; `diagrams/high_level_solution_architecture.svg`)
+- **Visual Archetype:** Executive Layered Architecture (`resources/reference_high_level_solution_architecture.png` + AI-Era Agentic Layer + Value-Led Enterprise Architecture; `diagrams/high_level_solution_architecture.png`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
@@ -10,9 +10,12 @@
 
 *(Modeled on `resources/reference_high_level_solution_architecture.png` and the enterprise pace-layered digital strategy framework, unifying **Business Personas**, the **Engagement Layer (System of Engagement)**, the **System of Intelligence & AI (AI & Agentic Orchestration Layer, Core Domain Intelligence, Data Ingestion & Harmonization, and Built-in Governance/Trust Sidebar)**, and **Transactional Systems (Systems of Record)**.)*
 
-![High-Level Solution Architecture](diagrams/high_level_solution_architecture.svg)
+![High-Level Solution Architecture](diagrams/high_level_solution_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/high_level_solution_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: Future State Architecture — <Application Name>
     subgraph SG_Personas["Business Personas &amp; Actors"]
@@ -72,6 +75,8 @@ flowchart TB
     style SG_Governance fill:#F8FAFC,stroke:#00A1E0,stroke-width:1.5px,color:#202124
     style SG_Transactional fill:#FFFFFF,stroke:#1F5A88,stroke-width:2px,color:#202124
 ```
+
+</details>
 
 ---
 

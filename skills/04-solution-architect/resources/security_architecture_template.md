@@ -1,16 +1,19 @@
 # Security, Privacy & AI Trust Architecture (`design/security_architecture.md`)
 
 - **Perspective:** **Security, Privacy, Compliance & AI Trust Architecture (Defense-in-Depth Zero-Trust Perimeters & AI Guardrails)**
-- **Visual Archetype:** 5-Layer Defense-in-Depth Security & AI Trust Stack (`diagrams/security_architecture.svg`)
+- **Visual Archetype:** 5-Layer Defense-in-Depth Security & AI Trust Stack (`diagrams/security_architecture.png`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Defense-in-Depth & AI Trust Security Architecture Diagram
 
-![Security Architecture](diagrams/security_architecture.svg)
+![Security Architecture](diagrams/security_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/security_architecture.png)</summary>
+
+```diagram-dsl
 flowchart TB
     %% title: <Application Name> — Security, Privacy & AI Trust Architecture
     subgraph SG_SecIdentity["1. Identity, Federation &amp; Access Perimeter (Zero-Trust IAM)"]
@@ -56,6 +59,8 @@ flowchart TB
     style SG_SecAITrust fill:#F3E8FF,stroke:#7E22CE,stroke-width:2px,color:#6B21A8
     style SG_SecData fill:#FCE8E6,stroke:#D93025,stroke-width:2px,color:#B31412
 ```
+
+</details>
 
 ---
 

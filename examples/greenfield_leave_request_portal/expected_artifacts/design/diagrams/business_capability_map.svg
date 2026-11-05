@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 810" width="1440" height="810" font-family="'Google Sans', 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
 <rect x="0" y="0" width="1440" height="810" fill="#FFFFFF"/>
-<text x="56.0" y="62" font-size="27" font-weight="700" fill="#202124">Employee Leave Request Portal Capability Map</text>
+<text x="56.0" y="64" font-size="31" font-weight="700" fill="#202124">Employee Leave Request Portal Capability Map</text>
 <polygon points="56.0,94.0 222.4,94.0 238.4,122.0 222.4,150.0 56.0,150.0" fill="#4285F4" stroke="#202124" stroke-width="1.5" stroke-linejoin="round"/>
 <text x="139.2" y="118.4" text-anchor="middle" font-size="12.5" font-weight="700" fill="#FFFFFF">1. Employee Outreach &amp;</text>
 <text x="139.2" y="134.4" text-anchor="middle" font-size="12.5" font-weight="700" fill="#FFFFFF">Leave Intake</text>

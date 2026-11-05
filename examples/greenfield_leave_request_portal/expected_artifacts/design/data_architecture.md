@@ -11,9 +11,12 @@
 
 *(Depicts the end-to-end flow of leave data across **5 Pipeline Stages** — **Data Sources & Producers**, **Ingestion, Validation & CDC**, **Operational 3NF System of Record & MDM**, **Unified Data & AI Grounding / RAG**, and **Consumption, Analytics & Archival** — underpinned by the **Unified Data Governance, Lineage, PII Masking & Retention** bar.)*
 
-![Data Architecture](diagrams/data_architecture.svg)
+![Data Architecture](diagrams/data_architecture.png)
 
-```mermaid
+<details>
+<summary>Architecture Diagram Specification (parsed by 04/scripts/extract_contracts.py into diagrams/data_architecture.png)</summary>
+
+```diagram-dsl
 flowchart LR
     %% title: Employee Leave Request Portal — End-to-End Data & AI Grounding Architecture
     %% subtitle: 5-Stage Data Pipeline from Leave Intake to 3NF System of Record, Policy RAG Grounding, and Payroll Export
@@ -65,6 +68,8 @@ flowchart LR
     classDef dataCard fill:#FFFFFF,stroke:#2B5B84,stroke-width:1.5px,color:#202124;
     classDef govCard fill:#E8F0FE,stroke:#1A73E8,stroke-width:1.5px,color:#0D47A1;
 ```
+
+</details>
 
 ---
 
