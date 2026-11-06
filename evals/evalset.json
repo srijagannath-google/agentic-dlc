@@ -148,9 +148,9 @@
     {
       "id": "EVAL-09-DAY2-DRIFT-EVOLUTION",
       "kind": "skill_trap",
-      "targetSkill": "10-drift-and-evolution",
+      "targetSkill": "08-drift-and-evolution",
       "counterfactualPairId": null,
-      "prompt": "Day-2 evolution: a developer added `POST /api/v1/calibrations/{id}/expedite` directly in `src/backend/routes.py` without updating `specs/application_spec.md`, `design/solution_design.md`, or `src/contracts/openapi.yaml`. What happens when Stage 9 runs, and how do we reconcile an intentional feature addition?",
+      "prompt": "Pre-deployment / Day-2 evolution: a developer added `POST /api/v1/calibrations/{id}/expedite` directly in `src/backend/routes.py` without updating `specs/application_spec.md`, `design/solution_design.md`, or `src/contracts/openapi.yaml`. What happens when Stage 7 (`08-drift-and-evolution`) runs before GDC packaging, and how do we reconcile an intentional feature addition?",
       "mustMatchRegex": [
         "check_spec_code_drift\\.py|drift_report",
         "design/adrs/ADR-",

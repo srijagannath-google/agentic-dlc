@@ -78,14 +78,14 @@ Report iterations, final counts per category, story status counts (`storyStatusC
 changes with their rationale.
 
 ### 5. Mandatory STOP at Gate 6 (`gate_6_eval`) — Wait for Human Evaluation & Audit Approval
-When `run_closed_loop_eval.py` exits `0` (`VERDICT: PASS`), it stamps `gate_6_eval = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 7 (`validate_gdc_packaging.py`).
+When `run_closed_loop_eval.py` exits `0` (`VERDICT: PASS`), it stamps `gate_6_eval = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 7 (`check_spec_code_drift.py`).
 1. Present `test/eval_report.md`, `test/remediation_and_guardrail_audit_report.md`, and Jira/ADO story closure summary to the user.
-2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 7 (`08-container-and-gdc-packager`) in the same turn!**
+2. **END YOUR TURN IMMEDIATELY (call zero further tools). NEVER start Stage 7 (`08-drift-and-evolution`) in the same turn!**
 3. Only **in a subsequent turn AFTER the human approves Gate 6**, run:
    ```bash
    python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate gate_6_eval --user-response "<verbatim user approval quote>"
    ```
-   and then proceed to `08-container-and-gdc-packager`.
+   and then proceed to Stage 7 (`08-drift-and-evolution`) to verify zero spec-to-code drift before containerization and GDC packaging.
 
 **Scenario differences:** none at execution time; legacy projects additionally fail `TC-UI-LEAK-*` on any legacy
 object name in visible text (tokens derived at Stage 4B).

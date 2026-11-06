@@ -102,7 +102,8 @@ def main() -> int:
         rel = f.relative_to(root).as_posix()
         if rel in allow:
             continue
-        for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        for n, raw_line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            line = dlc.strip_inline_data_uris(raw_line)
             for m in core_pattern.finditer(line):
                 hits += 1
                 print(f"[CORE] {rel}:{n}: '{m.group(0)}'  | {line.strip()[:120]}")
@@ -122,7 +123,8 @@ def main() -> int:
         if rel in allow:
             continue
         rx = dlc.DELIVERABLE_JSON_INTERNAL_LEAK_RE if f.suffix.lower() == ".json" else dlc.DELIVERABLE_INTERNAL_LEAK_RE
-        for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        for n, raw_line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            line = dlc.strip_inline_data_uris(raw_line)
             m = rx.search(line)
             if m:
                 hits += 1
@@ -166,7 +168,8 @@ def main() -> int:
             print(f"[BINARY-DB] {rel}: runtime SQLite database files must not be committed (seed from schema.sql at startup)")
             continue
         if suf in TEXT_EXT or suf == ".svg":
-            for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            for n, raw_line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                line = dlc.strip_inline_data_uris(raw_line)
                 for m in repo_pattern.finditer(line):
                     hits += 1
                     print(f"[REPO] {rel}:{n}: '{m.group(0)}'  | {line.strip()[:120]}")

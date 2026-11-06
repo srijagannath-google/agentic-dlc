@@ -1,14 +1,14 @@
 # Security, Privacy & AI Trust Architecture (`design/security_architecture.md`)
 
 - **Perspective:** **Security, Privacy, Compliance & AI Trust Architecture (Defense-in-Depth Zero-Trust Perimeters & AI Guardrails)**
-- **Visual Archetype:** 5-Layer Defense-in-Depth Security & AI Trust Stack (`diagrams/security_architecture.png`)
+- **Visual Archetype:** 5-Layer Defense-in-Depth Security & AI Trust Stack (`./diagrams/security_architecture.svg`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Defense-in-Depth & AI Trust Security Architecture Diagram
 
-![Security Architecture](diagrams/security_architecture.png)
+![Security Architecture](./diagrams/security_architecture.svg)
 
 ---
 

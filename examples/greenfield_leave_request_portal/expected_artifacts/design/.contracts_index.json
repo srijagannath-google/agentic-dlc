@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "architectureSha256": "f41411bbf4c95b7ec6b6014c8fdf19955cb73e98789db2949e7a51df467f8bc1",
+  "architectureSha256": "4ec15ef2053215c661a8dd54c205cacde7d7b4dedcc332fc2528fa65c6c6cae4",
   "designSha256": "627a076f24438b2e10fda54718d3c64fdba5436fca963267f5e45d6a24303b85",
   "openapiVersion": "3.1.0",
   "tables": [
@@ -230,5 +230,131 @@
     "Certify",
     "Post",
     "Withdraw"
-  ]
+  ],
+  "coexistenceStrategy": "clean-cutover",
+  "coexistenceArtifacts": [],
+  "guardrailBindings": {
+    "stateTransitions": [
+      {
+        "from": "[*]",
+        "to": "DRAFT",
+        "trigger": "Create",
+        "roles": [
+          "Employee"
+        ],
+        "guard": "request belongs to the signed-in employee (BRD §4 step 1)"
+      },
+      {
+        "from": "DRAFT",
+        "to": "SUBMITTED",
+        "trigger": "Submit",
+        "roles": [
+          "Employee"
+        ],
+        "guard": "own request; BR-01, BR-03 and BR-04 pass, otherwise stays DRAFT with VAL-01/02/03 (BRD §4 step 2)"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "MANAGER_APPROVED",
+        "trigger": "Manager Approve",
+        "roles": [
+          "Manager"
+        ],
+        "guard": "requester is a direct report; BR-02 applies — requested hours > 40 or type Exception (BRD §4 steps 3–4)"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "APPROVED",
+        "trigger": "Manager Approve",
+        "roles": [
+          "Manager"
+        ],
+        "guard": "requester is a direct report; BR-02 does not apply (BRD §4 step 4)"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "DRAFT",
+        "trigger": "Return",
+        "roles": [
+          "Manager"
+        ],
+        "guard": "requester is a direct report; non-empty comment (BR-07) (BRD §4 step 3)"
+      },
+      {
+        "from": "MANAGER_APPROVED",
+        "to": "APPROVED",
+        "trigger": "Certify",
+        "roles": [
+          "HR Certifier"
+        ],
+        "guard": "BR-02 applies to the request (BRD §4 step 4)"
+      },
+      {
+        "from": "MANAGER_APPROVED",
+        "to": "DRAFT",
+        "trigger": "Return",
+        "roles": [
+          "HR Certifier"
+        ],
+        "guard": "non-empty comment (BR-07) (BRD §4 step 4)"
+      },
+      {
+        "from": "APPROVED",
+        "to": "POSTED",
+        "trigger": "Post",
+        "roles": [
+          "Payroll Integration"
+        ],
+        "guard": "payroll endpoint answered 2xx; otherwise stays APPROVED and an alert is raised (BRD §4 step 5, ASSUMPTION-05)"
+      },
+      {
+        "from": "DRAFT",
+        "to": "WITHDRAWN",
+        "trigger": "Withdraw",
+        "roles": [
+          "Employee"
+        ],
+        "guard": "own request; BR-05 (BRD §4 step 6)"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "WITHDRAWN",
+        "trigger": "Withdraw",
+        "roles": [
+          "Employee"
+        ],
+        "guard": "own request; BR-05 (BRD §4 step 6)"
+      },
+      {
+        "from": "MANAGER_APPROVED",
+        "to": "WITHDRAWN",
+        "trigger": "Withdraw",
+        "roles": [
+          "Employee"
+        ],
+        "guard": "own request; BR-05; ASSUMPTION-04"
+      }
+    ],
+    "businessRuleIds": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-05",
+      "BR-06",
+      "BR-07"
+    ],
+    "roles": [
+      "Employee",
+      "Manager",
+      "HR Certifier",
+      "Payroll Integration"
+    ],
+    "pragmaAnnotations": [
+      "@dlc-guard:<FromState>-><ToState>",
+      "@dlc-rule:<BR-ID>",
+      "@dlc-mask:<sensitive-field>",
+      "@dlc-a11y:<wcag-criterion>"
+    ]
+  }
 }

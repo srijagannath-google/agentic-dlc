@@ -2660,7 +2660,7 @@ def main() -> int:
     dlc.mark_gate_awaiting_human(
         root,
         "gate_6_eval",
-        summary=f"Stage 6 Closed-Loop Evaluation PASSED ({counts['PASS']}/{total} passed, guardrail={gstatus}). Present test/eval_report.md & audit report to user and STOP for Gate 6 approval before Stage 7 Packaging.",
+        summary=f"Stage 6 Closed-Loop Evaluation PASSED ({counts['PASS']}/{total} passed, guardrail={gstatus}). Present test/eval_report.md & audit report to user and STOP for Gate 6 approval before Stage 7 Pre-Deployment Drift Verification.",
         deterministic=args.deterministic,
     )
     return 0

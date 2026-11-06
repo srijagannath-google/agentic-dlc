@@ -15,8 +15,9 @@ Configure at Stage 0 (`setup_project_connection.py --ceremony-track <track>`) or
 | `gate_4_design_and_tests` | Stage 4A/4B — Target Stack, 7-Perspective Design & Test Plan | **Human Pause** | **Human Pause** | **Human Pause** + **Mandatory** `architecture-critic` Red-Team Scorecard (`>= 90/100`) |
 | `gate_5_build` | Stage 5 — Runnable Dual-Mode Build | Auto-advances once `validate_build.py` passes | **Human Pause** | **Human Pause** |
 | `gate_6_eval` | Stage 6 — Closed-Loop Browser/HTTP/Static Eval & Gate 4 Diff Audit | **Human Pause** (Gate 4 guardrail hunks **never** auto-approve) | **Human Pause** | **Human Pause** |
-| `gate_7_packaging` | Stage 7 — Rootless OCI & GDC Multi-Cloud KRM Packaging | Auto-advances once `validate_gdc_packaging.py` passes | **Human Pause** | **Human Pause** |
-| `gate_8_deployment` | Stage 8 — GDC Fleet GitOps, OpenTelemetry & SLO Verification | **Human Pause** | **Human Pause** | **Human Pause** |
+| `gate_7_drift` | Stage 7 — Pre-Deployment Spec-to-Code Drift & ADR Alignment | Auto-advances once `check_spec_code_drift.py` reports `ALIGNED` | **Human Pause** | **Human Pause** |
+| `gate_8_packaging` | Stage 8 — Rootless OCI & GDC Multi-Cloud KRM Packaging | Auto-advances once `validate_gdc_packaging.py` passes | **Human Pause** | **Human Pause** |
+| `gate_9_deployment` | Stage 9 — GDC Fleet GitOps, OpenTelemetry & SLO Verification | **Human Pause** | **Human Pause** | **Human Pause** |
 
 > **Hard Invariant:** Even in `quick` or `--autonomous` mode, deterministic validators (`validate_spec_scorecard.py`, `extract_contracts.py`, `validate_test_cases.py`, `validate_build.py`, `run_closed_loop_eval.py`) are **never** bypassed, and Stage 6 **Gate 4** (`FLAGGED_REQUIRES_HUMAN_APPROVAL` on role, state-guard, formula, masking, or `@dlc-*` hunks) **always** pauses for explicit human review.
 
@@ -37,4 +38,4 @@ For multi-module legacy estates, avoid risky "Big-Bang" cutovers by iterating Ca
 1. **Stage 1 Topological Grouping:** Ground `§6.1 Business Capability Groupings` (`GRP-01..N`) in `specs/dependency_dag.json` so leaf/foundational capabilities precede dependent capabilities (`dependsOnGroups`).
 2. **Wave Selection & Coexistence:** Set `selectedCapabilityGroups: ["GRP-01"]` and `coexistenceStrategy: "boundary-acl-cdc"` (or `"strangler-gateway"`) in `specs/target_stack.json` (or pass `--wave GRP-01` to `run_agentic_dlc_pipeline.py`).
 3. **Disposable Boundary ACL Rule:** Keep `src/` 100% pure future-state domain models (zero legacy table/column names). Place any temporary Strangler routing rules, CDC Debezium/DMS connectors, or legacy-to-target outbox translation views strictly inside `deploy/coexistence/`, with explicit retirement milestones in `design/data_migration_and_cutover.md`.
-4. **Next Wave Advancement:** Once Wave 1 passes Stage 6/8, run Stage 9 (`10-drift-and-evolution`) to verify zero drift, expand `selectedCapabilityGroups` to `["GRP-01", "GRP-02"]`, and run `--refresh-from-stage 4` to activate deferred stories and tests while preserving all previously authored test steps.
+4. **Next Wave Advancement:** Once Wave 1 passes Stage 9 deployment, re-run Stage 7 (`08-drift-and-evolution`) to verify zero drift, expand `selectedCapabilityGroups` to `["GRP-01", "GRP-02"]`, and run `--refresh-from-stage 4` to activate deferred stories and tests while preserving all previously authored test steps.

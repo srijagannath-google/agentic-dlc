@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Gate 8 — validate (and optionally live-apply) GDC Fleet Multi-Cloud / On-Prem Deployment & Unified Observability
-(09-gdc-fleet-deployer-and-observability).
+"""Gate 9 — validate (and optionally live-apply) GDC Fleet Multi-Cloud / On-Prem Deployment & Unified Observability
+(10-gdc-fleet-deployer-and-observability).
 
 Default execution mode is **manifest-validation**: nothing is pushed to any cluster. The script verifies:
-  1. Stage 7 packaging index (re-runs `validate_gdc_packaging.py`; its failures are inherited).
+  1. Stage 8 packaging index (re-runs `validate_gdc_packaging.py`; its failures — including Stage 7 pre-deployment drift checks — are inherited).
   2. GDC Config Sync GitOps manifests (`deploy/gdc/config-sync/{rootsync.yaml,cluster-selectors.yaml}`)
      with `ClusterSelector` definitions for all target environments (`on-prem-gdc`, `gcp`, `aws`, `azure`)
      and topological rollout waves ordered by Business Capability Group dependencies (`GRP-01` Shared Foundation first).
@@ -345,7 +345,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
-    dlc.require_gate_approved(root, "gate_7_packaging", "Stage 8 (09-gdc-fleet-deployer-and-observability / run_gdc_fleet_deploy_and_verify.py)", deterministic=args.deterministic)
+    dlc.require_gate_approved(root, "gate_8_packaging", "Stage 9 (10-gdc-fleet-deployer-and-observability / run_gdc_fleet_deploy_and_verify.py)", deterministic=args.deterministic)
     stack = dlc.load_target_stack(root)
     dep_cfg = stack.get("deployment") or {}
     target_envs: list[str] = dep_cfg.get("targetEnvironments") or DEFAULT_ENVS
@@ -355,8 +355,8 @@ def main() -> int:
     warns: list[str] = []
     total_checks = 0  # every unit that can contribute to failedChecks is counted here
 
-    # 1. Stage 7 packaging index (inherit its checks/failures)
-    pkg_script = Path(__file__).resolve().parents[2] / "08-container-and-gdc-packager" / "scripts" / "validate_gdc_packaging.py"
+    # 1. Stage 8 packaging index (inherit its checks/failures)
+    pkg_script = Path(__file__).resolve().parents[2] / "09-container-and-gdc-packager" / "scripts" / "validate_gdc_packaging.py"
     pkg_cp = subprocess.run([sys.executable, str(pkg_script), "--project-root", str(root), "--json"], capture_output=True, text=True)
     try:
         pkg_idx = json.loads(pkg_cp.stdout)
@@ -606,7 +606,7 @@ def main() -> int:
         for f in fails:
             print(f"  ✗ {f}")
         print(
-            f"[dlc] Gate 8 GDC Fleet deployment & observability: {report['summary']['verdict']} "
+            f"[dlc] Gate 9 GDC Fleet deployment & observability: {report['summary']['verdict']} "
             f"({report['summary']['passedChecks']}/{report['summary']['totalChecks']} checks) — mode={execution_mode}, "
             f"environments={','.join(target_envs)}, waves={len(waves)}, SLOs={slo_count}, alerts={alert_count}, "
             f"dashboardPanels={dash_panels} -> deploy/deployment_eval_report.{{json,md}}"
@@ -614,8 +614,8 @@ def main() -> int:
         if not fails:
             dlc.mark_gate_awaiting_human(
                 root,
-                "gate_8_deployment",
-                summary="Stage 8 GDC Fleet GitOps Deployment, Observability & SLO Verification passed. Present deploy/deployment_eval_report.md and deploy/deployment_and_runbook.md to user for final Gate 8 sign-off.",
+                "gate_9_deployment",
+                summary="Stage 9 GDC Fleet GitOps Deployment, Observability & SLO Verification passed. Present deploy/deployment_eval_report.md and deploy/deployment_and_runbook.md to user for final Gate 9 sign-off.",
                 deterministic=args.deterministic,
             )
     return 0 if not fails else 1

@@ -65,6 +65,8 @@ def stage_project(example: Path, dest: Path) -> list[str]:
         dest / "test" / "eval_results.json",
         dest / "test" / "eval_report.md",
         dest / "test" / "remediation_and_guardrail_audit_report.md",
+        dest / "test" / "drift_report.json",
+        dest / "test" / "drift_report.md",
         dest / "test" / ".guardrail_state.json",
         *sorted((dest / "test").glob("*.iter-*")),
         *sorted((dest / "deploy").glob("deployment_eval_report*")),
@@ -204,12 +206,16 @@ def main() -> int:
                 st_counts = json.loads(sp.read_text(encoding="utf-8")).get("storyStatusCounts", {}) if sp.exists() else {}
                 done_n = st_counts.get("Done", 0)
                 tot_s = sum(st_counts.values()) if st_counts else 0
+                drift_rep = tmp / "test" / "drift_report.json"
+                drift_verdict = json.loads(drift_rep.read_text(encoding="utf-8")).get("verdict", "?") if drift_rep.exists() else "MISSING"
                 dep_rep = tmp / "deploy" / "deployment_eval_report.json"
                 dep_verdict = (json.loads(dep_rep.read_text(encoding="utf-8")).get("summary") or {}).get("verdict", "?") if dep_rep.exists() else "N/A"
-                detail = (f"{s.get('pass', 0)}/{s.get('total', 0)} pass, storiesDone={done_n}/{tot_s}, gdcDeploy={dep_verdict}, browser={d.get('runtime', {}).get('browser')}, "
+                detail = (f"{s.get('pass', 0)}/{s.get('total', 0)} pass, storiesDone={done_n}/{tot_s}, drift={drift_verdict}, gdcDeploy={dep_verdict}, browser={d.get('runtime', {}).get('browser')}, "
                           f"leakHits={len(d.get('leakage', {}).get('hits', []))}, unwired={len(d.get('interactivity', {}).get('unwired', []))}")
                 if tot_s and done_n != tot_s:
                     verdict = "STORIES_NOT_DONE"
+                if drift_verdict != "ALIGNED":
+                    verdict = "DRIFT_NOT_ALIGNED"
                 if dep_rep.exists() and dep_verdict != "PASS":
                     verdict = "DEPLOY_NOT_PASS"
             except Exception as e:  # pragma: no cover

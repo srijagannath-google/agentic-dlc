@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate 7 — validate cloud-agnostic OCI containerization and GDC multi-cloud/on-prem KRM packaging (08-container-and-gdc-packager).
+"""Gate 8 — validate cloud-agnostic OCI containerization and GDC multi-cloud/on-prem KRM packaging (09-container-and-gdc-packager).
 
 Verifies:
   0. Stage 5 did not run in degraded mode (`test/.build_logs/degraded_mode.json` absent) — or, if it did, the real
@@ -184,7 +184,7 @@ def main() -> int:
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
-    dlc.require_gate_approved(root, "gate_6_eval", "Stage 7 (08-container-and-gdc-packager / validate_gdc_packaging.py)")
+    dlc.require_gate_approved(root, "gate_7_drift", "Stage 8 (09-container-and-gdc-packager / validate_gdc_packaging.py)")
     inv = dlc.load_inventory(root)
     legacy = inv.get("inputScenario") == "SCENARIO_LEGACY_APP"
     stack = dlc.load_target_stack(root)
@@ -224,6 +224,35 @@ def main() -> int:
         else:
             warns.append("Stage 5 degraded-mode marker present but the container build was verified — proceeding.")
 
+    # 0b. Pre-deployment Spec-to-Code Drift refusal (Stage 7 Gate 7):
+    #     Containers and GDC manifests must never package drifted application code.
+    drift_p = root / "test" / "drift_report.json"
+    drift_doc: dict[str, Any] | None = None
+    if drift_p.is_file():
+        try:
+            drift_doc = dlc.read_json(drift_p)
+        except SystemExit:
+            drift_doc = None
+    else:
+        drift_script = Path(__file__).resolve().parents[2] / "08-drift-and-evolution" / "scripts" / "check_spec_code_drift.py"
+        if drift_script.is_file() and (root / "src").is_dir():
+            import subprocess
+            dcp = subprocess.run(
+                [sys.executable, str(drift_script), "--project-root", str(root), "--skip-gate-check", "--json"],
+                capture_output=True,
+                text=True,
+            )
+            try:
+                drift_doc = json.loads(dcp.stdout)
+            except Exception:
+                drift_doc = None
+    if isinstance(drift_doc, dict) and drift_doc.get("verdict") == "DRIFT_DETECTED":
+        d_errs = (drift_doc.get("summary") or {}).get("errors", "?")
+        fails.append(
+            f"Pre-deployment spec-to-code drift detected (test/drift_report.json verdict='DRIFT_DETECTED', errors={d_errs}). "
+            "Stage 8 refuses to package containers until all drift is resolved or documented via ADR + upstream contract sync in Stage 7."
+        )
+
     # 1. Cloud-neutral application code check on src/
     src_dir = root / "src"
     if not src_dir.exists():
@@ -251,7 +280,7 @@ def main() -> int:
 
     for comp, df_p in (("backend", df_backend), ("ui", df_ui)):
         if not df_p.exists():
-            fails.append(f"Missing {df_p.relative_to(root)} (Stage 7 08-container-and-gdc-packager).")
+            fails.append(f"Missing {df_p.relative_to(root)} (Stage 8 09-container-and-gdc-packager).")
             continue
         info = parse_dockerfile(df_p)
         info["file"] = str(df_p.relative_to(root))
@@ -456,15 +485,15 @@ def main() -> int:
         for f in fails:
             print(f"  ✗ {f}")
         print(
-            f"[dlc] Gate 7 GDC packaging: {'PASS' if not fails else 'FAIL'} — "
+            f"[dlc] Gate 8 GDC packaging: {'PASS' if not fails else 'FAIL'} — "
             f"{len(container_infos)} container(s), {len(overlay_infos)} GDC provider overlay(s) ({', '.join(target_envs)}), "
             f"{pc_info['constraintCount']} Policy Controller constraint(s), {authz_count} Service Mesh policy(ies)"
         )
         if not fails:
             dlc.mark_gate_awaiting_human(
                 root,
-                "gate_7_packaging",
-                summary="Stage 7 Cloud-Agnostic OCI Containers & GDC Multi-Cloud KRM Packaging validated. Present deploy/ manifests to user and STOP for Gate 7 approval before Stage 8 Fleet Deployment.",
+                "gate_8_packaging",
+                summary="Stage 8 Cloud-Agnostic OCI Containers & GDC Multi-Cloud KRM Packaging validated. Present deploy/ manifests to user and STOP for Gate 8 approval before Stage 9 Fleet Deployment.",
             )
     return 0 if not fails else 1
 

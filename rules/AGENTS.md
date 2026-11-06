@@ -27,11 +27,11 @@ references only when executing that stage).
 ├── resources/{inputs,design_references,policies_and_statutes,shared_services}/   # user-provided only (read-only)
 ├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · input_inventory.json · dependency_dag.json
 │              discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md
-│              application_eval_scorecard.{md,json} · drift_report.{md,json} · adr/ADR-*.md
+│              application_eval_scorecard.{md,json}
 ├── backlog/   user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv
 ├── design/    architecture_design.md · {business,high_level_solution,logical,application,data,security,infrastructure}_architecture.md
-│              diagrams/ · solution_design.md · architecture_eval_scorecard.{md,json} · data_migration_and_cutover.md (legacy)
-├── test/      test_plan.md · test_cases.json · legacy_parity_goldens.jsonl (opt) · eval_report.md · eval_results.json
+│              diagrams/ · adrs/ADR-*.md · solution_design.md · architecture_eval_scorecard.{md,json} · data_migration_and_cutover.md (legacy)
+├── test/      test_plan.md · test_cases.json · legacy_parity_goldens.jsonl (opt) · eval_report.md · eval_results.json · drift_report.{md,json}
 │              remediation_and_guardrail_audit_report.md · history/iter-N/ · .snapshots/iter-N/ · .build_logs/
 ├── src/       contracts/openapi.yaml · db/schema.sql · ui/ · backend/ · run.sh · README.md
 └── deploy/    containers/ · coexistence/ (legacy strangler ACL only) · gdc/{base,overlays/<env>,policy-controller,service-mesh,config-sync}/
@@ -58,9 +58,9 @@ references only when executing that stage).
 | **4B Tests** | `05-test-plan-designer` | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` (`TC-POS/NEG/EDGE/STATE/UI-LEAK/INTERACT/API/A11Y/PARITY-*`) | `05/scripts/derive_test_cases.py`, `validate_test_cases.py` → **`gate_4_design_and_tests`** |
 | **5 Build** | `06-coding-agent`, `google-cloud-ui-design` | `coding-agent` | Runnable dual-mode `src/{ui,backend,run.sh,README.md}` with `@dlc-guard`/`@dlc-rule` pragmas | `06/scripts/validate_build.py` (stories `To Do` → `In Progress`) → **`gate_5_build`** |
 | **6 Eval** | `07-test-runner-and-healer` | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `remediation_and_guardrail_audit_report.md`, `backlog/defects.*` | `07/scripts/run_closed_loop_eval.py` (stories → `Done`; **Gate 4** guardrail pause) → **`gate_6_eval`** |
-| **7 GDC Pkg** | `08-container-and-gdc-packager` | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/{base,overlays,policy-controller,service-mesh}/*` | `08/scripts/validate_gdc_packaging.py` → **`gate_7_packaging`** |
-| **8 Fleet Obs** | `09-gdc-fleet-deployer-and-observability` | `platform-ops-agent` | `deploy/gdc/config-sync/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | `09/scripts/run_gdc_fleet_deploy_and_verify.py` (`--live` for `kubectl`) → **`gate_8_deployment`** |
-| **9 Drift/ADR** | `10-drift-and-evolution` | `discovery-architect`, `solution-architect` | `specs/drift_report.{md,json}`, `specs/adr/ADR-NNNN-*.md`, brownfield spec/contract refresh | `10/scripts/check_spec_code_drift.py` (`ALIGNED` vs `DRIFT_DETECTED`) |
+| **7 Drift/ADR** | `08-drift-and-evolution` | `discovery-architect`, `solution-architect` | Pre-deployment & Day-2 `test/drift_report.{md,json}`, `design/adrs/ADR-*.md`, upstream contract refresh | `08/scripts/check_spec_code_drift.py` (`ALIGNED` vs `DRIFT_DETECTED`) → **`gate_7_drift`** |
+| **8 GDC Pkg** | `09-container-and-gdc-packager` | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/{base,overlays,policy-controller,service-mesh}/*` | `09/scripts/validate_gdc_packaging.py` (refuses degraded mode & `DRIFT_DETECTED`) → **`gate_8_packaging`** |
+| **9 Fleet Obs** | `10-gdc-fleet-deployer-and-observability` | `platform-ops-agent` | `deploy/gdc/config-sync/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | `10/scripts/run_gdc_fleet_deploy_and_verify.py` (`--live` for `kubectl`) → **`gate_9_deployment`** |
 
 ---
 
@@ -85,4 +85,4 @@ references only when executing that stage).
 python3 <PLUGIN>/scripts/run_agentic_dlc_pipeline.py --project-root "<PROJECT_ROOT>" [--autonomous] [--from-stage 1] [--to-stage 10] [--refresh-from-stage N] [--wave GRP-01] [--continue-on-failure]
 ```
 
-Runs steps `01..10` (`01` discovery → `02` spec judge → `03` backlog audit → `04` contracts + optional `04-arch-judge` → `05` tests → `06` build → `07` closed-loop eval → `08` GDC packaging → `09` GDC fleet → `10` spec-code drift). Use `--refresh-from-stage N` after an intentional upstream edit (`10-drift-and-evolution`) to re-hash/re-derive downstream contracts while preserving authored test steps. After editing any plugin file, run `python3 <PLUGIN>/scripts/lint_domain_neutrality.py` and `python3 <PLUGIN>/evals/run_skill_ablation.py --selftest`.
+Runs steps `01..10` (`01` discovery → `02` spec judge → `03` backlog audit → `04` contracts + optional `04-arch-judge` → `05` tests → `06` build → `07` closed-loop eval → `08` pre-deployment spec-code drift → `09` GDC packaging → `10` GDC fleet). Use `--refresh-from-stage N` after an intentional upstream edit (`08-drift-and-evolution`) to re-hash/re-derive downstream contracts while preserving authored test steps. After editing any plugin file, run `python3 <PLUGIN>/scripts/lint_domain_neutrality.py` and `python3 <PLUGIN>/evals/run_skill_ablation.py --selftest`.

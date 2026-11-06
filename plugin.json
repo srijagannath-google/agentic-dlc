@@ -16,9 +16,9 @@
     "skills/05-test-plan-designer",
     "skills/06-coding-agent",
     "skills/07-test-runner-and-healer",
-    "skills/08-container-and-gdc-packager",
-    "skills/09-gdc-fleet-deployer-and-observability",
-    "skills/10-drift-and-evolution",
+    "skills/08-drift-and-evolution",
+    "skills/09-container-and-gdc-packager",
+    "skills/10-gdc-fleet-deployer-and-observability",
     "skills/google-cloud-ui-design"
   ],
   "agents": [

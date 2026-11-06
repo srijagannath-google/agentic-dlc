@@ -1,14 +1,14 @@
 # Logical Architecture (`design/logical_architecture.md`)
 
 - **Perspective:** **Logical Architecture (Technology-Agnostic Domain Capabilities, Policy Orchestration & Logical Information Stores)**
-- **Visual Archetype:** Concentric Multi-Zone Functional Topology (`diagrams/logical_architecture.png`)
+- **Visual Archetype:** Concentric Multi-Zone Functional Topology (`./diagrams/logical_architecture.svg`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Logical Solution Architecture Diagram
 
-![Logical Solution Architecture](diagrams/logical_architecture.png)
+![Logical Solution Architecture](./diagrams/logical_architecture.svg)
 
 ---
 

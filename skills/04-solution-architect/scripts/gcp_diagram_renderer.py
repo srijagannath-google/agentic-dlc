@@ -23,11 +23,13 @@ Google Cloud Reference SVG/PNG directly from the Mermaid `flowchart LR` blocks i
 """
 from __future__ import annotations
 
+import base64
 import html
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -980,11 +982,21 @@ def reference_layout_warnings(spec: dict[str, Any], label: str) -> list[str]:
     ]
 
 
-_CHROME_CANDIDATES = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "msedge")
+_CHROME_CANDIDATES = (
+    "google-chrome",
+    "google-chrome-stable",
+    "chromium",
+    "chromium-browser",
+    "chrome",
+    "msedge",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+)
 
 
 def find_chrome_binary() -> str | None:
-    """Chrome/Chromium binary: dlc_common.find_chrome_binary() when available, else CHROME_BIN / PATH lookup."""
+    """Chrome/Chromium binary: dlc_common.find_chrome_binary() when available, else CHROME_BIN / PATH / macOS bundle lookup."""
     try:
         import dlc_common as _dlc  # type: ignore  # noqa: WPS433 (optional; present when run from extract_contracts.py)
         finder = getattr(_dlc, "find_chrome_binary", None)
@@ -998,20 +1010,22 @@ def find_chrome_binary() -> str | None:
     if env_bin and (Path(env_bin).is_file() or shutil.which(env_bin)):
         return shutil.which(env_bin) or env_bin
     for c in _CHROME_CANDIDATES:
+        if "/" in c and Path(c).is_file():
+            return c
         w = shutil.which(c)
         if w:
             return w
     return None
 
 
-def _chrome_headless_flags(profile_dir: Path | None = None) -> list[str]:
-    """`--no-sandbox` only when running as root or when DLC_CHROME_NO_SANDBOX=1 is set explicitly; a private
+def _chrome_headless_flags(profile_dir: Path | None = None, force_no_sandbox: bool = False) -> list[str]:
+    """`--no-sandbox` when running as root, when DLC_CHROME_NO_SANDBOX=1 is set, or on sandbox fallback retry; a private
     `--user-data-dir` avoids blocking on the default profile lock when another Chrome instance is running."""
     flags = ["--headless=new", "--disable-gpu", "--hide-scrollbars"]
     if profile_dir is not None:
         flags.append(f"--user-data-dir={profile_dir}")
     is_root = hasattr(os, "geteuid") and os.geteuid() == 0
-    if is_root or os.environ.get("DLC_CHROME_NO_SANDBOX") == "1":
+    if force_no_sandbox or is_root or os.environ.get("DLC_CHROME_NO_SANDBOX") == "1":
         flags.append("--no-sandbox")
     return flags
 
@@ -1021,37 +1035,114 @@ def _svg_size(svg_text: str) -> tuple[int, int]:
     return (int(m.group(1)), int(m.group(2))) if m else (1320, 500)
 
 
-def write_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
-    """Writes the Google Cloud Reference Style SVG to `svg_path` and renders a PNG sibling if headless Chrome is available."""
-    svg_path.parent.mkdir(parents=True, exist_ok=True)
-    svg_text = render_gcp_reference_svg(spec)
-    svg_path.write_text(svg_text, encoding="utf-8")
-    png_path = svg_path.with_suffix(".png")
-    chrome_bin = find_chrome_binary()
-    if chrome_bin:
-        w, h = _svg_size(svg_text)
-        profile_dir = Path(tempfile.mkdtemp(prefix="dlc-chrome-profile-"))
+def compact_svg(svg_text: str) -> str:
+    """Losslessly compact inter-tag whitespace and redundant `.0` numeric suffixes in rendered SVG XML."""
+    s = svg_text.strip()
+    s = re.sub(r">\s+<", "><", s)
+    s = re.sub(r'="(-?\d+)\.0"', r'="\1"', s)
+    return s
+
+
+def svg_to_data_uri(svg_text: str) -> str:
+    """Encode rendered SVG XML as a universal, space-free `data:image/svg+xml;base64,...` URI."""
+    encoded = base64.b64encode(compact_svg(svg_text).encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def _rasterize_svg_to_png(svg_path: Path, png_path: Path, width: int, height: int) -> Path | None:
+    """Best-effort multi-backend SVG->PNG rasterizer (`rsvg-convert` -> `cairosvg` -> headless Chrome -> macOS QuickLook/sips)."""
+    png_resolved = png_path.resolve()
+    svg_resolved = svg_path.resolve()
+
+    rsvg_bin = shutil.which("rsvg-convert")
+    if rsvg_bin:
         try:
             subprocess.run(
-                [
-                    chrome_bin,
-                    *_chrome_headless_flags(profile_dir),
-                    f"--window-size={w},{h}",
-                    f"--screenshot={png_path}",
-                    svg_path.resolve().as_uri(),
-                ],
+                [rsvg_bin, "-w", str(width), "-h", str(height), "-o", str(png_resolved), str(svg_resolved)],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=15,
                 check=False,
             )
-            if png_path.exists() and png_path.stat().st_size > 0:
-                return svg_path, png_path
+            if png_resolved.is_file() and png_resolved.stat().st_size > 0:
+                return png_path
         except (subprocess.TimeoutExpired, OSError):
             pass
-        finally:
-            shutil.rmtree(profile_dir, ignore_errors=True)
-    return svg_path, None
+
+    try:
+        import cairosvg  # type: ignore  # noqa: WPS433
+        cairosvg.svg2png(url=str(svg_resolved), write_to=str(png_resolved), output_width=width, output_height=height)
+        if png_resolved.is_file() and png_resolved.stat().st_size > 0:
+            return png_path
+    except Exception:
+        pass
+
+    chrome_bin = find_chrome_binary()
+    if chrome_bin:
+        for force_ns in (False, True):
+            profile_dir = Path(tempfile.mkdtemp(prefix="dlc-chrome-profile-"))
+            try:
+                subprocess.run(
+                    [
+                        chrome_bin,
+                        *_chrome_headless_flags(profile_dir, force_no_sandbox=force_ns),
+                        f"--window-size={width},{height}",
+                        f"--screenshot={png_resolved}",
+                        svg_resolved.as_uri(),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                    check=False,
+                )
+                if png_resolved.is_file() and png_resolved.stat().st_size > 0:
+                    return png_path
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+            finally:
+                shutil.rmtree(profile_dir, ignore_errors=True)
+
+    if sys.platform == "darwin":
+        sips_bin = shutil.which("sips")
+        if sips_bin:
+            try:
+                subprocess.run(
+                    [sips_bin, "-s", "format", "png", str(svg_resolved), "--out", str(png_resolved)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15,
+                    check=False,
+                )
+                if png_resolved.is_file() and png_resolved.stat().st_size > 0:
+                    return png_path
+            except (subprocess.TimeoutExpired, OSError):
+                pass
+
+    if png_resolved.exists() and png_resolved.stat().st_size == 0:
+        png_resolved.unlink(missing_ok=True)
+    return None
+
+
+def _write_svg_with_png_sync(svg_text: str, svg_path: Path, width: int, height: int) -> tuple[Path, Path | None]:
+    """Write `svg_text` and synchronize its `.png` sibling without leaving stale PNGs when SVG content changes."""
+    svg_path.parent.mkdir(parents=True, exist_ok=True)
+    png_path = svg_path.with_suffix(".png")
+    old_svg = svg_path.read_text(encoding="utf-8") if svg_path.is_file() else None
+    svg_changed = old_svg != svg_text
+    svg_path.write_text(svg_text, encoding="utf-8")
+    if svg_changed and png_path.exists():
+        png_path.unlink(missing_ok=True)
+    png_written = _rasterize_svg_to_png(svg_path, png_path, width, height)
+    if png_written is None and not svg_changed and png_path.is_file() and png_path.stat().st_size > 0:
+        return svg_path, png_path
+    return svg_path, png_written
+
+
+def write_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:
+    """Writes the Google Cloud Reference Style SVG to `svg_path` and renders a PNG sibling when a rasterizer is available."""
+    svg_text = render_gcp_reference_svg(spec)
+    w, h = _svg_size(svg_text)
+    return _write_svg_with_png_sync(svg_text, svg_path, w, h)
 
 
 # ===========================================================================
@@ -1529,35 +1620,9 @@ def validate_capability_map_spec(
 
 
 def _save_svg_and_png(svg_text: str, svg_path: Path, width: int = 1440, height: int = 840) -> tuple[Path, Path | None]:
-    """Writes `svg_text` to `svg_path` and renders a PNG sibling at `width x height` if headless Chrome is available."""
-    svg_path.parent.mkdir(parents=True, exist_ok=True)
-    svg_path.write_text(svg_text, encoding="utf-8")
-    png_path = svg_path.with_suffix(".png")
-    chrome_bin = find_chrome_binary()
-    if chrome_bin:
-        w, h = _svg_size(svg_text) if (width <= 0 or height <= 0) else (width, height)
-        profile_dir = Path(tempfile.mkdtemp(prefix="dlc-chrome-profile-"))
-        try:
-            subprocess.run(
-                [
-                    chrome_bin,
-                    *_chrome_headless_flags(profile_dir),
-                    f"--window-size={w},{h}",
-                    f"--screenshot={png_path}",
-                    svg_path.resolve().as_uri(),
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
-                check=False,
-            )
-            if png_path.exists() and png_path.stat().st_size > 0:
-                return svg_path, png_path
-        except (subprocess.TimeoutExpired, OSError):
-            pass
-        finally:
-            shutil.rmtree(profile_dir, ignore_errors=True)
-    return svg_path, None
+    """Writes `svg_text` to `svg_path` and renders a PNG sibling at `width x height` when a rasterizer is available."""
+    w, h = _svg_size(svg_text) if (width <= 0 or height <= 0) else (width, height)
+    return _write_svg_with_png_sync(svg_text, svg_path, w, h)
 
 
 def write_capability_map_svg_and_png(spec: dict[str, Any], svg_path: Path) -> tuple[Path, Path | None]:

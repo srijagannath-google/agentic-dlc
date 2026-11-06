@@ -79,6 +79,9 @@ $StalePaths = @(
   (Join-Path $GeminiConfig "skills\05-test-plan-designer"),
   (Join-Path $GeminiConfig "skills\06-coding-agent"),
   (Join-Path $GeminiConfig "skills\07-test-runner-and-healer"),
+  (Join-Path $GeminiConfig "skills\08-drift-and-evolution"),
+  (Join-Path $GeminiConfig "skills\09-container-and-gdc-packager"),
+  (Join-Path $GeminiConfig "skills\10-gdc-fleet-deployer-and-observability"),
   (Join-Path $GeminiConfig "skills\08-container-and-gdc-packager"),
   (Join-Path $GeminiConfig "skills\09-gdc-fleet-deployer-and-observability"),
   (Join-Path $GeminiConfig "skills\10-drift-and-evolution"),
@@ -199,8 +202,8 @@ DLC_SPRINT_CAPACITY_POINTS=21
 }
 
 # 4. Scaffold <PROJECT_ROOT> if provided (or confirmed interactively).
-#    Only the authoring folders are created; deploy/ is created by Stage 7 (08-container-and-gdc-packager)
-#    so an empty deploy/ never makes the pipeline think Stages 7/8 are in scope.
+#    Only the authoring folders are created; deploy/ is created by Stage 8 (09-container-and-gdc-packager)
+#    so an empty deploy/ never makes the pipeline think Stages 8/9 are in scope.
 if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
   New-Item -ItemType Directory -Force -Path $ProjectRoot | Out-Null
   $ResolvedRoot = Get-CanonicalPath $ProjectRoot

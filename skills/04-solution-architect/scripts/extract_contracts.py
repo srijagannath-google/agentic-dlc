@@ -254,36 +254,64 @@ def _load_perspective_flowchart_blocks(
     return []
 
 
+def _diagram_files_caption(diagram_stem: str, has_png: bool) -> str:
+    if has_png:
+        return (
+            f"*Standalone diagram files: [Vector SVG](./diagrams/{diagram_stem}.svg) · "
+            f"[Raster PNG](./diagrams/{diagram_stem}.png)*"
+        )
+    return f"*Standalone diagram files: [Vector SVG](./diagrams/{diagram_stem}.svg)*"
+
+
 def _clean_perspective_diagram_embed(
     doc_path: Path,
     doc_text: str,
     alt_text: str,
     diagram_stem: str,
+    svg_path: Path,
     has_png: bool,
 ) -> str:
-    """Ensure perspective Markdown embeds ONLY the rendered PNG (or SVG fallback) with zero inline flowchart DSL or `<details>`.
+    """Embed a universal self-contained `data:image/svg+xml;base64,...` diagram plus standalone `.svg`/`.png` links.
 
-    Leaves `sequenceDiagram` and `erDiagram` Mermaid blocks untouched so native Mermaid renders those directly.
+    Guarantees diagrams render visibly in every IDE/Web/sandbox viewer (even when directory-relative webview
+    asset resolution or headless Chrome PNG rasterization is unavailable), while stripping inline flowchart DSL
+    and leaving `sequenceDiagram` and `erDiagram` Mermaid blocks untouched.
     """
-    target_ext = "png" if has_png else "svg"
-    target_rel = f"diagrams/{diagram_stem}.{target_ext}"
+    data_uri = gdr.svg_to_data_uri(dlc.read_text(svg_path))
+    caption = _diagram_files_caption(diagram_stem, has_png)
     updated = doc_text
 
-    if has_png:
+    if not has_png:
         updated = re.sub(
-            rf"!\[([^\]]*)\]\(diagrams/{re.escape(diagram_stem)}\.svg\)",
-            rf"![\1]({target_rel})",
+            rf"(?<!!)\[([^\]]*?){re.escape(diagram_stem)}\.png([^\]]*?)\]\((?:\./)?diagrams/{re.escape(diagram_stem)}\.png\)",
+            rf"[\1{diagram_stem}.svg\2](./diagrams/{diagram_stem}.svg)",
+            updated,
+        )
+        updated = re.sub(
+            rf"(?<!!)\]\((?:\./)?diagrams/{re.escape(diagram_stem)}\.png\)",
+            f"](./diagrams/{diagram_stem}.svg)",
             updated,
         )
 
-    has_img_already = bool(re.search(rf"!\[[^\]]*\]\(diagrams/{re.escape(diagram_stem)}\.(?:png|svg)\)", updated))
+    existing_embed_re = re.compile(
+        rf"!\[([^\]]*)\]\((?:(?:\./)?diagrams/{re.escape(diagram_stem)}\.(?:png|svg)|data:image/svg\+xml;base64,[A-Za-z0-9+/=]+)\)"
+        r"(?:\s*\n+\*Standalone diagram files:[^\n]*\*)?",
+    )
+    has_img_already = bool(existing_embed_re.search(updated))
+    if has_img_already:
+        updated = existing_embed_re.sub(
+            lambda m: f"![{m.group(1) or alt_text}]({data_uri})\n\n{caption}",
+            updated,
+            count=1,
+        )
+
     inserted_img = False
 
     def _strip_block(_m: re.Match[str]) -> str:
         nonlocal inserted_img
         if not has_img_already and not inserted_img:
             inserted_img = True
-            return f"![{alt_text}]({target_rel})"
+            return f"![{alt_text}]({data_uri})\n\n{caption}"
         return ""
 
     updated = _FLOWCHART_DSL_BLOCK_RE.sub(_strip_block, updated)
@@ -295,17 +323,73 @@ def _clean_perspective_diagram_embed(
 
 
 def _normalize_portfolio_index_embeds(arch_path: Path, arch_doc: str, diagrams_dir: Path) -> str:
-    """Upgrade `![...](diagrams/<stem>.svg)` image embeds in `design/architecture_design.md` to `.png` when PNG exists."""
-    def _repl_img(m: re.Match[str]) -> str:
-        alt, stem = m.group(1), m.group(2)
-        if (diagrams_dir / f"{stem}.png").exists():
-            return f"![{alt}](diagrams/{stem}.png)"
-        return m.group(0)
+    """Embed universal self-contained `data:image/svg+xml;base64,...` diagrams + standalone links in `design/architecture_design.md`."""
+    def _build_embed(alt: str, stem: str, fallback: str) -> str:
+        svg_file = diagrams_dir / f"{stem}.svg"
+        if not svg_file.is_file():
+            return fallback
+        data_uri = gdr.svg_to_data_uri(dlc.read_text(svg_file))
+        has_png = (diagrams_dir / f"{stem}.png").is_file()
+        return f"![{alt}]({data_uri})\n\n{_diagram_files_caption(stem, has_png)}"
 
-    updated = re.sub(r"!\[([^\]]*)\]\(diagrams/([A-Za-z0-9_.-]+)\.svg\)", _repl_img, arch_doc)
+    existing_data_re = re.compile(
+        r"!\[([^\]]*)\]\(data:image/svg\+xml;base64,[A-Za-z0-9+/=]+\)"
+        r"\s*\n+\*Standalone diagram files:\s*\[Vector SVG\]\((?:\./)?diagrams/([A-Za-z0-9_.-]+)\.svg\)[^\n]*\*"
+    )
+    updated = existing_data_re.sub(lambda m: _build_embed(m.group(1), m.group(2), m.group(0)), arch_doc)
+
+    rel_img_re = re.compile(
+        r"!\[([^\]]*)\]\((?:\./)?diagrams/([A-Za-z0-9_.-]+)\.(?:png|svg)\)"
+        r"(?:\s*\n+\*Standalone diagram files:[^\n]*\*)?"
+    )
+    updated = rel_img_re.sub(lambda m: _build_embed(m.group(1), m.group(2), m.group(0)), updated)
+
+    def _fix_table_png_link(m: re.Match[str]) -> str:
+        label_txt, stem = m.group(1), m.group(2)
+        if (diagrams_dir / f"{stem}.png").is_file() or not (diagrams_dir / f"{stem}.svg").is_file():
+            return m.group(0)
+        new_label = label_txt.replace(f"{stem}.png", f"{stem}.svg")
+        return f"[{new_label}](./diagrams/{stem}.svg)"
+
+    updated = re.sub(
+        r"(?<!!)\[([^\]]+)\]\((?:\./)?diagrams/([A-Za-z0-9_.-]+)\.png\)",
+        _fix_table_png_link,
+        updated,
+    )
+    updated = re.sub(r"\n{3,}", "\n\n", updated).strip() + "\n"
+
     if updated != arch_doc:
         dlc.write_text(arch_path, updated)
     return updated
+
+
+def _verify_markdown_image_targets(root: Path, md_rel_paths: list[str]) -> list[str]:
+    """Fail closed if any Markdown image target in `design/*.md` points to a missing/empty file or malformed data URI."""
+    errs: list[str] = []
+    fence_re = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
+    img_re = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+    for rel in md_rel_paths:
+        md_file = root / rel
+        if not md_file.is_file():
+            continue
+        prose = fence_re.sub("", dlc.read_text(md_file))
+        for m in img_re.finditer(prose):
+            alt, raw_target = m.group(1), m.group(2).strip()
+            if raw_target.startswith("data:image/svg+xml;base64,"):
+                b64 = raw_target.split(",", 1)[1]
+                if len(b64) < 64 or re.search(r"\s", raw_target):
+                    errs.append(f"{rel}: malformed or whitespace-containing SVG data URI on image '{alt}'.")
+                continue
+            if re.match(r"^https?://", raw_target, re.IGNORECASE):
+                continue
+            clean_rel = raw_target.split("#", 1)[0].split("?", 1)[0].strip().strip("<>")
+            resolved = (md_file.parent / clean_rel).resolve()
+            if not resolved.is_file() or resolved.stat().st_size == 0:
+                errs.append(
+                    f"{rel}: broken Markdown image '![{alt}]({raw_target})' — target file '{clean_rel}' "
+                    f"does not exist or is empty relative to '{md_file.parent.relative_to(root)}'."
+                )
+    return errs
 
 
 # ------------------------------------------------------------------------------------------ main
@@ -392,7 +476,7 @@ def main() -> int:
     # ---- Forbid Local-Testing Mock Mechanics Inside Stage 4A Design Documents (`architecture_design.md` & `solution_design.md`)
     leaked_local_test_tokens = re.findall(
         r"\b(?:APP_ENV=local|AUTH_MODE=local-mock|STORAGE_BACKEND=local-fs|local_dev_runner|APP_DB_RESET|pretotype)\b",
-        arch_doc + "\n" + design,
+        dlc.strip_inline_data_uris(arch_doc + "\n" + design),
         re.IGNORECASE,
     )
     if leaked_local_test_tokens:
@@ -433,7 +517,7 @@ def main() -> int:
                 fails.append(f"{p_rel} must NOT embed raw ```json blocks.")
             leaked_local_p = re.findall(
                 r"\b(?:APP_ENV=local|AUTH_MODE=local-mock|STORAGE_BACKEND=local-fs|local_dev_runner|APP_DB_RESET|pretotype)\b",
-                p_txt,
+                dlc.strip_inline_data_uris(p_txt),
                 re.IGNORECASE,
             )
             if leaked_local_p:
@@ -495,6 +579,7 @@ def main() -> int:
                     bus_doc,
                     "Business Capability Map",
                     "business_capability_map",
+                    cm_svg_written,
                     cm_png_written is not None and cm_png_written.exists(),
                 )
             if not args.json:
@@ -530,6 +615,7 @@ def main() -> int:
                     hl_doc,
                     "High-Level Solution Architecture",
                     "high_level_solution_architecture",
+                    hl_svg_written,
                     hl_png_written is not None and hl_png_written.exists(),
                 )
             if not args.json:
@@ -600,6 +686,7 @@ def main() -> int:
                         perspective_docs[label],
                         alt_label,
                         default_stem,
+                        svg_written,
                         png_written is not None and png_written.exists(),
                     )
                 if not args.json:
@@ -635,6 +722,7 @@ def main() -> int:
                     app_doc,
                     "Application Architecture",
                     "application_architecture",
+                    app_svg_written,
                     app_png_written is not None and app_png_written.exists(),
                 )
                 perspective_docs["design/application_architecture.md"] = app_doc
@@ -668,6 +756,7 @@ def main() -> int:
                     data_doc,
                     "Data Architecture",
                     "data_architecture",
+                    data_svg_written,
                     data_png_written is not None and data_png_written.exists(),
                 )
                 perspective_docs["design/data_architecture.md"] = data_doc
@@ -701,6 +790,7 @@ def main() -> int:
                     sec_doc,
                     "Security Architecture",
                     "security_architecture",
+                    sec_svg_written,
                     sec_png_written is not None and sec_png_written.exists(),
                 )
                 perspective_docs["design/security_architecture.md"] = sec_doc
@@ -712,6 +802,12 @@ def main() -> int:
         arch_doc = _normalize_portfolio_index_embeds(arch_path, arch_doc, arch_path.parent / "diagrams")
         all_arch_text = arch_doc + "\n" + "\n".join(perspective_docs.values())
         arch_mermaid_blocks = dlc.md_fenced_blocks(arch_doc, "mermaid")
+        fails.extend(
+            _verify_markdown_image_targets(
+                root,
+                [args.architecture, *(p_rel for _, p_rel, _ in perspective_files)],
+            )
+        )
 
     # Forbid raw Mermaid flowchart blocks inside the Executive Portfolio Index (`design/architecture_design.md`)
     arch_raw_flow = [

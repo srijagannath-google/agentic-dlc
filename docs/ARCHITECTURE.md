@@ -66,7 +66,7 @@ agentic-dlc/
 │   ├── test_cases.schema.json           # Includes TC-PARITY-*, matrixCases & negative HTTP assertions
 │   ├── eval_results.schema.json
 │   ├── deployment_eval_results.schema.json
-│   └── drift_report.schema.json         # Stage 9 bidirectional spec-to-code drift report
+│   └── drift_report.schema.json         # Stage 7 pre-deployment & Day-2 spec-to-code drift report
 ├── rules/AGENTS.md                      # progressive-disclosure router
 ├── agents/*.md                          # 8 subagents (incl. architecture-critic)
 ├── skills/00..10-*/SKILL.md (+ resources/, scripts/)
@@ -119,6 +119,7 @@ agentic-dlc/
 │   ├── test_cases.json                  # Stage 4B (script derives skeleton from stories+state machine; LLM fills steps) — schemas/test_cases.schema.json
 │   ├── eval_report.md, eval_results.json           # Stage 6 (script — latest + cumulative run history)
 │   ├── remediation_and_guardrail_audit_report.md   # Stage 6 (script — §0 cumulative history + §1-3 current + §4 prior run failures & remediation diffs)
+│   ├── drift_report.md, drift_report.json          # Stage 7 (script) — schemas/drift_report.schema.json (pre-deployment & Day-2 drift gate)
 │   ├── *.iter-NN.{json,md}              # Stage 6 (script) numbered non-overwritten copies per run
 │   ├── history/iter-N/                  # Stage 6 (script) immutable per-run archive of eval_results, eval_report, remediation_and_guardrail_audit_report & defects (+ run_index.json)
 │   └── .snapshots/iter-N/               # Stage 6 (script) immutable copies of src/ + evaluation/remediation artifacts per iteration (never overwritten)
@@ -130,15 +131,16 @@ agentic-dlc/
     ├── run.sh | Makefile | docker-compose.yml   # Stage 5 (LLM) — must match target_stack.commands
     └── README.md                        # Stage 5 (LLM) how to build/run/test
 ├── deploy/
-│   ├── containers/{Dockerfile.backend,Dockerfile.ui,docker-compose.yaml}     # Stage 7 (LLM)
-│   ├── gdc/base/{kustomization.yaml,workloads.yaml}                          # Stage 7 (LLM)
-│   ├── gdc/overlays/{on-prem-gdc,gcp,aws,azure}/kustomization.yaml           # Stage 7 (LLM)
-│   ├── gdc/policy-controller/constraints.yaml                                # Stage 7 (LLM)
-│   ├── gdc/service-mesh/{peer-authentication.yaml,authorization-policy.yaml,multicluster-service.yaml} # Stage 7 (LLM)
-│   ├── gdc/config-sync/{rootsync.yaml,cluster-selectors.yaml}                # Stage 8 (LLM)
-│   ├── observability/{otel-collector.yaml,slo_and_alerts.yaml,fleet_dashboard.json} # Stage 8 (LLM)
-│   ├── deployment_and_runbook.md                                             # Stage 8 (LLM)
-│   └── deployment_eval_report.{md,json}                                      # Stage 8 (script) — schemas/deployment_eval_results.schema.json
+│   ├── containers/{Dockerfile.backend,Dockerfile.ui,docker-compose.yaml}     # Stage 8 (LLM)
+│   ├── coexistence/*                                                         # Stage 4A/8 (opt, legacy Strangler ACL only)
+│   ├── gdc/base/{kustomization.yaml,workloads.yaml}                          # Stage 8 (LLM)
+│   ├── gdc/overlays/{on-prem-gdc,gcp,aws,azure}/kustomization.yaml           # Stage 8 (LLM)
+│   ├── gdc/policy-controller/constraints.yaml                                # Stage 8 (LLM)
+│   ├── gdc/service-mesh/{peer-authentication.yaml,authorization-policy.yaml,multicluster-service.yaml} # Stage 8 (LLM)
+│   ├── gdc/config-sync/{rootsync.yaml,cluster-selectors.yaml}                # Stage 9 (LLM)
+│   ├── observability/{otel-collector.yaml,slo_and_alerts.yaml,fleet_dashboard.json} # Stage 9 (LLM)
+│   ├── deployment_and_runbook.md                                             # Stage 9 (LLM)
+│   └── deployment_eval_report.{md,json}                                      # Stage 9 (script) — schemas/deployment_eval_results.schema.json
 ```
 
 ## 4. Machine artefact contracts
@@ -201,7 +203,7 @@ Before running `01/scripts/scan_input_sources.py`, `discovery-architect` confirm
 ```
 - **Never silently assume `static-html` + Python in Interactive Mode:** During Stage 1 (Current-State Discovery) and Stages 2–3 (Functional Spec & User Stories), if the user has not yet chosen a Future-State technology stack, `specs/target_stack.json` sets `frontend.kind = "tbd"`, `backend.kind = "tbd"`, `database.kind = "tbd"`, and `decidedBy = "pending-stage-4a"`.
 - **Mandatory Stage 4A Future-State Tech Stack Intake & Pure Target-State Design (`design/`):** When entering **Stage 4A (`04-solution-architect`)** from the Spec / Sprint Plan, if `decidedBy != "user"` or any stack component is `"tbd"`, `solution-architect` **MUST ask the human what Future-State frontend, backend, database, and deployment technology stack to use**, and update `specs/target_stack.json` with `decidedBy = "user"` before authoring `design/solution_design.md`. Both `design/architecture_design.md` and `design/solution_design.md` must describe **only the Target State ("To-Be")** (target runtime, target managed database e.g. `AlloyDB` / `Cloud SQL` / `PostgreSQL`, `OIDC / IAP` authentication, `Cloud KMS`, `Cloud Logging` / `Monitoring` / `OpenTelemetry`). **Local testing details (`APP_ENV=local`, `AUTH_MODE=local-mock`, `STORAGE_BACKEND=local-fs`, `local_dev_runner`) must never go into `design/architecture_design.md` or `design/solution_design.md`** (`04/scripts/extract_contracts.py` fails Gate 4A if local-testing mock flags appear in the design or if `specs/target_stack.json` is downgraded to `static-html` + `python-stdlib-http` when another stack is designed).
-- **Target-Stack Implementation in Stage 5 (`06-coding-agent`) & Stage 7 (`08-container-and-gdc-packager`):** Stage 5 **never** ignores `specs/target_stack.json` to build a throwaway Python `http.server` app just for local testing. Instead, `coding-agent` authors the complete `src/ui/` and `src/backend/` codebase and manifests (`package.json`, `pom.xml`/`build.gradle`, `requirements.txt`, `go.mod`, `.csproj`) in the confirmed Target Stack with 12-Factor environment configuration in `src/` so the **same target-stack codebase** runs locally for testing (`bash src/run.sh`) during Stages 5–6 and deploys to the target cloud/GDC environment (`deploy/containers/Dockerfile.*`, `DATABASE_URL`, `OIDC / IAP`) in Stages 7–8. `06/scripts/validate_build.py` and `08/scripts/validate_gdc_packaging.py` verify the target-stack artifacts and container base images and fail the gate if a Python substitute was used.
+- **Target-Stack Implementation in Stage 5 (`06-coding-agent`) & Stage 8 (`09-container-and-gdc-packager`):** Stage 5 **never** ignores `specs/target_stack.json` to build a throwaway Python `http.server` app just for local testing. Instead, `coding-agent` authors the complete `src/ui/` and `src/backend/` codebase and manifests (`package.json`, `pom.xml`/`build.gradle`, `requirements.txt`, `go.mod`, `.csproj`) in the confirmed Target Stack with 12-Factor environment configuration in `src/` so the **same target-stack codebase** runs locally for testing (`bash src/run.sh`) during Stages 5–6, passes Stage 7 drift alignment, and deploys to the target cloud/GDC environment (`deploy/containers/Dockerfile.*`, `DATABASE_URL`, `OIDC / IAP`) in Stages 8–9. `06/scripts/validate_build.py` and `09/scripts/validate_gdc_packaging.py` verify the target-stack artifacts and container base images and fail the gate if a Python substitute was used.
 
 ### 4.3 `specs/application_spec.md` required structure (LLM) — linted by `02/scripts/lint_spec_structure.py`
 - `# <Project Name>` and a header block with `Input Scenario`, `Domain Slug`.
@@ -320,9 +322,9 @@ Derivation rules (`05/scripts/derive_test_cases.py`):
 | 4b Tests | `05/derive_test_cases.py` + `05/validate_test_cases.py` | every AC has a TC; every TC has steps; schema valid |
 | 5 Build | `06/validate_build.py` | `install/build/start/healthcheck` succeed per `target_stack.json` |
 | 6 Closed loop | `07/run_closed_loop_eval.py` | verdict PASS, leakage 0 hits, no unwired controls, guardrail flags approved |
-| 7 Container & GDC pkg | `08/validate_gdc_packaging.py` | Zero cloud-provider SDK lock-in in `src/` (any disposable Strangler Boundary ACL isolated under `deploy/coexistence/`), hardened rootless OCI images, Kustomize base + 4 GDC overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + Spec `§3.5` RBAC |
-| 8 GDC Fleet deploy & obs | `09/run_gdc_fleet_deploy_and_verify.py` | Config Sync GitOps RootSync & ClusterSelectors valid, OpenTelemetry Collector + SLOs + multi-cloud dashboard valid, runbook complete, local `/health` smoke probe PASS (`MANIFEST_VALIDATED` by default; `DEPLOYED` / `gdc-live-fleet` only when `--live` `kubectl apply` succeeds across all target environments) |
-| 9 Drift & ADR evolution | `10/check_spec_code_drift.py` | Bidirectional verification across `specs/application_spec.md` (§3.3/§3.4/§3.5), `src/contracts/openapi.yaml`, `src/db/schema.sql`, `test/test_cases.json`, and `src/` (`ALIGNED` vs `DRIFT_DETECTED`), writing `specs/drift_report.{json,md}` and recording intentional brownfield changes in `specs/adr/ADR-NNNN-*.md` |
+| 7 Drift & ADR gate | `08/check_spec_code_drift.py` | Pre-deployment & Day-2 verification across `specs/application_spec.md` (§3.3/§3.4/§3.5), `src/contracts/openapi.yaml`, `src/db/schema.sql`, `test/test_cases.json`, and `src/` (`ALIGNED` vs `DRIFT_DETECTED`), writing `test/drift_report.{json,md}` and verifying `design/adrs/ADR-*.md` before packaging or deploying |
+| 8 Container & GDC pkg | `09/validate_gdc_packaging.py` | Refuses degraded mode and refuses `DRIFT_DETECTED`; zero cloud-provider SDK lock-in in `src/` (any disposable Strangler Boundary ACL isolated under `deploy/coexistence/`), hardened rootless OCI images, Kustomize base + 4 GDC overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + Spec `§3.5` RBAC |
+| 9 GDC Fleet deploy & obs | `10/run_gdc_fleet_deploy_and_verify.py` | Config Sync GitOps RootSync & ClusterSelectors valid, OpenTelemetry Collector + SLOs + multi-cloud dashboard valid, runbook complete, local `/health` smoke probe PASS (`MANIFEST_VALIDATED` by default; `DEPLOYED` / `gdc-live-fleet` only when `--live` `kubectl apply` succeeds across all target environments) |
 
 ## 6. Writing rules for skills & agents (v4)
 

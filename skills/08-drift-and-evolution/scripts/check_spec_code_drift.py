@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage 9 (Day-2 Evolution) — Continuous Spec-to-Code & Contract Drift Detector (10-drift-and-evolution).
+"""Gate 7 (Stage 7 Pre-Deployment Drift Gate & Day-2 Evolution) — Spec-to-Code & Contract Drift Detector (08-drift-and-evolution).
 
 Audits six alignment planes between upstream approved artefacts and `src/` without modifying application code:
   1. Cryptographic lineage freshness (spec -> scorecard & test_cases, solution_design -> .contracts_index)
@@ -103,10 +103,18 @@ def main() -> int:
     ap.add_argument("--report-out", default="test/drift_report.md")
     ap.add_argument("--deterministic", action="store_true")
     ap.add_argument("--fail-on-drift", action="store_true", help="Exit 1 whenever any blocking drift error is found")
+    ap.add_argument("--skip-gate-check", action="store_true", help="Run ad-hoc / Day-2 CI drift audit without enforcing or stamping gate_approvals.json")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    if not args.skip_gate_check and dlc.gate_approvals_path(root).exists():
+        dlc.require_gate_approved(
+            root,
+            "gate_6_eval",
+            "Stage 7 (08-drift-and-evolution / check_spec_code_drift.py)",
+            deterministic=args.deterministic,
+        )
     findings: list[dict[str, Any]] = []
 
     def add_finding(severity: str, category: str, artifact: str, code_loc: str, desc: str, remediation: str) -> None:
@@ -294,11 +302,18 @@ def main() -> int:
         print(json.dumps(report, indent=2))
     else:
         print(
-            f"[dlc] Stage 9 drift check: {verdict} — errors={err_count}, warnings={warn_count}, "
+            f"[dlc] Gate 7 pre-deployment drift check: {verdict} — errors={err_count}, warnings={warn_count}, "
             f"ADRs={len(adr_files)}, pragmas={pragma_count} -> {args.json_out}, {args.report_out}"
         )
         for f in findings[:15]:
             print(f"  [{f['severity'].upper()}] {f['id']} ({f['category']}): {f['description']}")
+        if err_count == 0 and not args.skip_gate_check and dlc.gate_approvals_path(root).exists():
+            dlc.mark_gate_awaiting_human(
+                root,
+                "gate_7_drift",
+                summary="Stage 7 Pre-Deployment Spec-to-Code Drift Verification PASSED (ALIGNED, 0 errors). Present test/drift_report.md to user before Stage 8 Container & GDC Packaging.",
+                deterministic=args.deterministic,
+            )
     if err_count > 0 and args.fail_on_drift:
         return 1
     return 0 if err_count == 0 else 1

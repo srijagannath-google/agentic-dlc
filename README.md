@@ -20,7 +20,7 @@
 | **Dual Adversarial Judges (`spec-judge` + `architecture-critic`)** | Stage 2 scores the 5-Pillar Spec (`schemas/spec_rubric.json`) and Stage 4A scores the 7-Perspective Architecture + 3NF DDL + OpenAPI + FinOps TCO (`schemas/architecture_rubric.json`, `≥ 90` with verbatim evidence) |
 | **Google Cloud UI Design & `A2UI v0.9` Surfaces** | Stage 5 builds target-stack UIs following the **Google Cloud UI Design System** (`skills/google-cloud-ui-design`) including declarative **`A2UI v0.9`** generative agent surfaces (`references/gemini-enterprise-a2ui.md`) |
 | **Differential Parity Oracles & Closed-Loop Eval** | Stage 4B derives `TC-PARITY-*` tests from `test/legacy_parity_goldens.jsonl`; Stage 6 executes hermetic `commands.reset` hooks, Playwright / headless Chrome hit-testing, inline browser `httpRequest` steps, negative API assertions, and `@dlc-guard` pragma-backed diff audits |
-| **GDC Multi-Cloud, Drift Detection & Skill Evals** | Stages 7–8 package OCI containers + GDC KRM multi-cloud overlays; Stage 9 (`10-drift-and-evolution`) audits bidirectional spec↔code drift & ADRs; `evals/` runs counterfactual A/B skill ablation benchmarks |
+| **Pre-Deployment Drift Gate, GDC Multi-Cloud & Skill Evals** | **Stage 7 (`08-drift-and-evolution`)** verifies zero spec↔contract↔code drift *before* deployment (and governs Day-2 brownfield ADRs); **Stages 8–9** package OCI containers + GDC KRM multi-cloud overlays & SLO GitOps; `evals/` runs counterfactual A/B skill ablation benchmarks |
 
 ---
 
@@ -37,18 +37,20 @@ flowchart LR
         S0 --> S1 --> S2 --> S3
     end
 
-    subgraph P2["Phase B · Architecture, Build, Closed-Loop Eval & GDC Deploy"]
+    subgraph P2["Phase B · Architecture, Build, Closed-Loop Eval, Drift Gate & GDC Deploy"]
         direction LR
         S4A["<b>Stage 4A · Architecture</b><br/>3NF DDL & OpenAPI<br/><i>Gate 4A: Stack & Contracts</i>"]:::stage
         S4B["<b>Stage 4B · Test Plan</b><br/>Shift-Left Test Cases<br/><i>100% AC Coverage</i>"]:::stage
         S5["<b>Stage 5 · Clean Build</b><br/>Target-Stack UI & API<br/><i>Build & Smoke Pass</i>"]:::stage
         S6["<b>Stage 6 · Eval & Heal</b><br/>Playwright + API Loop<br/><i>Gate 4: Guardrail Audit</i>"]:::stage
-        S78["<b>Stages 7–8 · GDC Fleet</b><br/>OCI, KRM & SLO GitOps<br/><i>Gates 7–8: Multi-Cloud</i>"]:::stage
-        S4A & S4B --> S5 --> S6 --> S78
+        S7["<b>Stage 7 · Drift & ADR</b><br/>Spec↔Contract↔Code<br/><i>Gate 7: Pre-Deploy Align</i>"]:::stage
+        S89["<b>Stages 8–9 · GDC Fleet</b><br/>OCI, KRM & SLO GitOps<br/><i>Gates 8–9: Multi-Cloud</i>"]:::stage
+        S4A & S4B --> S5 --> S6 --> S7 --> S89
     end
 
     S3 --> S4A & S4B
     S6 -.->|"Self-Heal"| S5
+    S89 -.->|"Day-2 Evolution"| S7
 
     classDef stage fill:#E8F0FE,stroke:#1A73E8,stroke-width:1.5px,color:#202124;
     style P1 fill:#F8F9FA,stroke:#DADCE0,stroke-width:1px,color:#202124
@@ -65,8 +67,8 @@ flowchart LR
 | **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` (incl. `TC-PARITY-*`) | **Gate 4A/4B (`gate_4_design_and_tests`)** · `derive_test_cases.py`, `validate_test_cases.py` |
 | **5. Clean Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md) + [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Runnable `src/` in confirmed Target Stack (`src/ui/`, `src/backend/`, `src/run.sh`, `@dlc-guard` pragmas) | **Gate 5 (`gate_5_build`)** · `validate_build.py` (transitions stories to `In Progress`) |
 | **6. Closed Loop** | [`07-test-runner-and-healer`](skills/07-test-runner-and-healer/SKILL.md) | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `test/remediation_and_guardrail_audit_report.md`, `test/history/iter-N/` | **Gate 6 (`gate_6_eval`)** · `run_closed_loop_eval.py` (transitions stories to `Done`) |
-| **7–8. GDC Fleet** | [`08-container-and-gdc-packager`](skills/08-container-and-gdc-packager/SKILL.md), [`09-gdc-fleet-deployer-and-observability`](skills/09-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gate 7 (`gate_7_packaging`) & Gate 8** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
-| **9. Drift & ADR** | [`10-drift-and-evolution`](skills/10-drift-and-evolution/SKILL.md) | `discovery-architect`, `solution-architect` | `specs/drift_report.{md,json}`, `specs/adr/ADR-NNNN-*.md` | **Continuous Brownfield Governance** · `check_spec_code_drift.py`, `--refresh-from-stage` |
+| **7. Drift & ADR** | [`08-drift-and-evolution`](skills/08-drift-and-evolution/SKILL.md) | `discovery-architect`, `solution-architect` | Pre-deployment & Day-2 `test/drift_report.{md,json}`, `design/adrs/ADR-*.md` | **Gate 7 (`gate_7_drift`)** · `check_spec_code_drift.py` (`ALIGNED` required before packaging) |
+| **8–9. GDC Fleet** | [`09-container-and-gdc-packager`](skills/09-container-and-gdc-packager/SKILL.md), [`10-gdc-fleet-deployer-and-observability`](skills/10-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gate 8 (`gate_8_packaging`) & Gate 9 (`gate_9_deployment`)** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
 
 ---
 
@@ -170,11 +172,11 @@ python3 ~/.gemini/config/plugins/agentic-dlc/scripts/gate_tracker.py \
 python3 ~/.gemini/config/plugins/agentic-dlc/skills/01-discovery-and-grouping/scripts/scan_input_sources.py \
   --project-root "$(cat ~/.gemini/config/project_root.txt)"
 
-# Run the verify-only pipeline against a project root (Stages 1..8)
+# Run the verify + derive pipeline against a project root (Stages 1..9, steps 01..10)
 python3 ~/.gemini/config/plugins/agentic-dlc/scripts/run_agentic_dlc_pipeline.py \
   --project-root "$(cat ~/.gemini/config/project_root.txt)" [--autonomous]
 
-# Sync Stage 6 evaluation status or Stage 8 GDC deployment status to Jira / Azure DevOps
+# Sync Stage 6 evaluation status or Stage 9 GDC deployment status to Jira / Azure DevOps
 python3 ~/.gemini/config/plugins/agentic-dlc/skills/03-story-and-sprint-planner/scripts/alm_jira_ado_bridge.py \
   --project-root "$(cat ~/.gemini/config/project_root.txt)" --platform jira --action sync-status-from-eval
 

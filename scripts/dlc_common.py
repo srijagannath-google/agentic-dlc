@@ -1078,8 +1078,9 @@ GATE_DEFINITIONS: dict[str, str] = {
     "gate_4_design_and_tests": "Gate 4A/4B — Stage 4 Target Tech Stack, 7-Perspective Architecture Suite & Test Plan Review",
     "gate_5_build": "Gate 5 — Stage 5 Runnable Target-Stack Application Build Review",
     "gate_6_eval": "Gate 6 — Stage 6 Closed-Loop Evaluation & Remediation/Guardrail Audit Approval",
-    "gate_7_packaging": "Gate 7 — Stage 7 Cloud-Agnostic OCI Containers & GDC Multi-Cloud Packaging Approval",
-    "gate_8_deployment": "Gate 8 — Stage 8 GDC Fleet GitOps Deployment, Observability & SLO Verification Approval",
+    "gate_7_drift": "Gate 7 — Stage 7 Pre-Deployment Spec-to-Code Drift & ADR Alignment Approval",
+    "gate_8_packaging": "Gate 8 — Stage 8 Cloud-Agnostic OCI Containers & GDC Multi-Cloud Packaging Approval",
+    "gate_9_deployment": "Gate 9 — Stage 9 GDC Fleet GitOps Deployment, Observability & SLO Verification Approval",
 }
 
 # Gates that autonomous mode may pre-approve without a human (AGENTS.md §3: Gates 1, 3 and 4A are skipped in
@@ -1093,7 +1094,8 @@ QUICK_TRACK_AUTO_SKIP_GATES: frozenset[str] = frozenset({
     "gate_2_spec",
     "gate_3_backlog",
     "gate_5_build",
-    "gate_7_packaging",
+    "gate_7_drift",
+    "gate_8_packaging",
 })
 
 GATE_STATUS_PENDING = "PENDING"
@@ -1283,6 +1285,22 @@ def generate_gate_decision_brief(
 
     if guardrail_section:
         lines.extend(["", "## 5. Guardrail-Sensitive Remediation Hunks", *guardrail_section])
+
+    drift_path = root / "test" / "drift_report.json"
+    if drift_path.is_file():
+        try:
+            dr = read_json(drift_path)
+            if isinstance(dr, dict):
+                ds = dr.get("summary") or {}
+                lines.extend([
+                    "",
+                    "## 6. Pre-Deployment Spec-to-Code Alignment",
+                    f"- **Drift Verdict:** `{dr.get('verdict', 'UNKNOWN')}` "
+                    f"(Errors: `{ds.get('errors', 0)}`, Warnings: `{ds.get('warnings', 0)}`, "
+                    f"Recorded ADRs: `{ds.get('adrsRecorded', 0)}`)",
+                ])
+        except Exception:
+            pass
 
     lines.extend([
         "",
@@ -1511,7 +1529,7 @@ DELIVERABLE_INTERNAL_LEAK_CORE_PATTERNS = [
     r"\bresources/reference_[A-Za-z0-9_.-]+",
     r"\bschemas/(?:spec_rubric|architecture_rubric|architecture_scorecard|drift_report|input_inventory|target_stack|user_stories|test_cases|eval_results|deployment_eval_results)[A-Za-z0-9_.-]*\.json\b",
     r"\b(?:doit-agentic-dlc|agentic-dlc)\b",
-    r"\b(?:00-setup-and-connection|01-discovery-and-grouping|02-spec-architect-and-judge|03-story-and-sprint-planner|04-solution-architect|05-test-plan-designer|06-coding-agent|07-test-runner-and-healer|08-container-and-gdc-packager|09-gdc-fleet-deployer-and-observability|10-drift-and-evolution)\b",
+    r"\b(?:00-setup-and-connection|01-discovery-and-grouping|02-spec-architect-and-judge|03-story-and-sprint-planner|04-solution-architect|05-test-plan-designer|06-coding-agent|07-test-runner-and-healer|08-drift-and-evolution|09-container-and-gdc-packager|10-gdc-fleet-deployer-and-observability|08-container-and-gdc-packager|09-gdc-fleet-deployer-and-observability|10-drift-and-evolution)\b",
     r"\b(?:discovery-architect|spec-judge|sprint-planner-agent|solution-architect|architecture-critic|testing-agent|coding-agent|platform-ops-agent)\b",
     r"\bARCHITECTURE(?:\.md|\s*§\d)",
     r"\bdiagram-dsl\b",
@@ -1541,6 +1559,12 @@ DELIVERABLE_JSON_INTERNAL_LEAK_RE = re.compile(
 )
 
 _DELIVERABLE_TEXT_SUFFIXES = {".md", ".html", ".css", ".js", ".ts", ".tsx", ".jsx", ".sql", ".yaml", ".yml", ".sh", ".csv", ".txt"}
+INLINE_DATA_URI_RE = re.compile(r"data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+", re.IGNORECASE)
+
+
+def strip_inline_data_uris(text: str) -> str:
+    """Replace inline `data:image/...;base64,...` payloads before prose token regex scans."""
+    return INLINE_DATA_URI_RE.sub("data:image/svg+xml;base64,REDACTED", text)
 
 
 def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = None) -> list[str]:
@@ -1577,7 +1601,8 @@ def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = No
         suf = p.suffix.lower()
         if suf in _DELIVERABLE_TEXT_SUFFIXES:
             txt = p.read_text(encoding="utf-8", errors="replace")
-            for lineno, line in enumerate(txt.splitlines(), 1):
+            for lineno, raw_line in enumerate(txt.splitlines(), 1):
+                line = strip_inline_data_uris(raw_line)
                 m = DELIVERABLE_INTERNAL_LEAK_RE.search(line)
                 if m:
                     findings.append(
@@ -1586,7 +1611,8 @@ def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = No
                     )
         elif suf == ".json" and Path(rel).name not in ("gate_approvals.json",):
             txt = p.read_text(encoding="utf-8", errors="replace")
-            for lineno, line in enumerate(txt.splitlines(), 1):
+            for lineno, raw_line in enumerate(txt.splitlines(), 1):
+                line = strip_inline_data_uris(raw_line)
                 m = DELIVERABLE_JSON_INTERNAL_LEAK_RE.search(line)
                 if m:
                     findings.append(

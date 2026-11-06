@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentic-dlc.local/schemas/drift_report.schema.json",
-  "title": "test/drift_report.json (Day-2 Spec-to-Code Drift & Contract Alignment Report)",
+  "title": "test/drift_report.json (Stage 7 Pre-Deployment & Day-2 Spec-to-Code Drift & Contract Alignment Report)",
   "type": "object",
   "required": [
     "schemaVersion", "checkedAtUtc", "verdict", "summary", "findings"

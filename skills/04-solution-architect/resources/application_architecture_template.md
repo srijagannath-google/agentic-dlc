@@ -1,14 +1,14 @@
 # Application Architecture (`design/application_architecture.md`)
 
 - **Perspective:** **Application & AI Service Architecture (C4 Component Topology, API/BFF Layer, Domain & Agentic Services, and Request Execution Sequence)**
-- **Visual Archetype:** 4-Tier Application Component Topology (`diagrams/application_architecture.png`) + End-to-End `sequenceDiagram`
+- **Visual Archetype:** 4-Tier Application Component Topology (`./diagrams/application_architecture.svg`) + End-to-End `sequenceDiagram`
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Multi-Tier Application & AI Component Architecture
 
-![Application Architecture](diagrams/application_architecture.png)
+![Application Architecture](./diagrams/application_architecture.svg)
 
 ---
 

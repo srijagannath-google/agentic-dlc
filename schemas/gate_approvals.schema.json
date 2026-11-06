@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentic-dlc.local/schemas/gate_approvals.schema.json",
-  "title": "specs/gate_approvals.json (Machine-enforced Human Gate Ledger across Stages 0..8)",
+  "title": "specs/gate_approvals.json (Machine-enforced Human Gate Ledger across Stages 0..9)",
   "type": "object",
   "required": ["schemaVersion", "gates"],
   "additionalProperties": false,

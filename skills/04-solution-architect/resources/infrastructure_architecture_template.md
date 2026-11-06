@@ -1,14 +1,14 @@
 # Infrastructure & Deployment Architecture (`design/infrastructure_architecture.md`)
 
 - **Perspective:** **Infrastructure & Deployment Architecture (Cloud-Agnostic Multi-Region Topology, Kubernetes Compute, Managed Database HA, OpenTelemetry & Multi-Cloud GitOps)**
-- **Visual Archetype:** Concentric Multi-Region Deployment & Network Topology (`diagrams/infrastructure_architecture.png`)
+- **Visual Archetype:** Concentric Multi-Region Deployment & Network Topology (`./diagrams/infrastructure_architecture.svg`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Cloud-Agnostic Multi-Region Infrastructure & Deployment Diagram
 
-![Infrastructure & Deployment Architecture](diagrams/infrastructure_architecture.png)
+![Infrastructure & Deployment Architecture](./diagrams/infrastructure_architecture.svg)
 
 ---
 

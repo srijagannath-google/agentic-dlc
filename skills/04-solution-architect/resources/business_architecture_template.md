@@ -2,14 +2,14 @@
 
 - **Perspective:** **Business Architecture ("Why & What" — Value Streams, Core Business Capabilities & Foundational Capabilities)**
 - **Input Scenario:** `<Legacy Application Modernization | Greenfield Requirements Specification>`
-- **Visual Archetype:** Executive Value-Stream Chevron Ribbon (`1..4`) + Multi-Column Level-2 Capability Grid + Cross-Cutting Outcome Bar + Foundational Capabilities Grid (`diagrams/business_capability_map.png`)
+- **Visual Archetype:** Executive Value-Stream Chevron Ribbon (`1..4`) + Multi-Column Level-2 Capability Grid + Cross-Cutting Outcome Bar + Foundational Capabilities Grid (`./diagrams/business_capability_map.svg`)
 - **Architecture Portfolio Index:** [`design/architecture_design.md`](architecture_design.md)
 
 ---
 
 ## 1. Executive Business Capability Map
 
-![Business Capability Map](diagrams/business_capability_map.png)
+![Business Capability Map](./diagrams/business_capability_map.svg)
 
 ---
 

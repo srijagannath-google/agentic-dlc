@@ -1,6 +1,6 @@
 # GDC Multi-Cloud & On-Prem Portability Guardrails (`REQ-DEPLOY-GDC`) — canonical copy (shared)
 
-**Google Distributed Cloud (GDC) / GKE Enterprise** is the universal abstraction and control plane between containerized applications (`src/`) and any underlying infrastructure (`on-prem-gdc`, `gcp`, `aws`, `azure`). Every Stage 7 (`08-container-and-gdc-packager`) and Stage 8 (`09-gdc-fleet-deployer-and-observability`) artefact must honour these 8 guardrails:
+**Google Distributed Cloud (GDC) / GKE Enterprise** is the universal abstraction and control plane between containerized applications (`src/`) and any underlying infrastructure (`on-prem-gdc`, `gcp`, `aws`, `azure`). Every Stage 8 (`09-container-and-gdc-packager`) and Stage 9 (`10-gdc-fleet-deployer-and-observability`) artefact must honour these 8 guardrails:
 
 1. **Zero Cloud-Vendor SDK Lock-In in Application Code (`src/`):**
    - Application source code (`src/ui/`, `src/backend/`, `src/db/`) must never import provider-proprietary cloud SDKs (`boto3`, `botocore`, `azure.identity`, `azure.storage`, or direct cloud-specific control-plane SDKs). All backing services (database, object storage, identity, telemetry) are consumed via open protocols (SQL, HTTP/REST, OIDC JWT headers, OpenTelemetry OTLP) and 12-Factor environment variables.

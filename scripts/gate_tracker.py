@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Machine-enforced Human Gate Ledger CLI (`specs/gate_approvals.json`).
 
-Records and verifies explicit human approval at every stage boundary (`gate_0_setup` .. `gate_8_deployment`)
+Records and verifies explicit human approval at every stage boundary (`gate_0_setup` .. `gate_9_deployment`)
 so skills and subagents NEVER auto-advance to the next stage without pausing for human review.
 
 Usage:

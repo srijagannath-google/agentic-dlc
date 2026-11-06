@@ -1,6 +1,6 @@
 {
   "schemaVersion": "4.0",
-  "architectureSha256": "907c01c35d1363eee71c4d6a04022f1289ea1a07918ab5936684c8cd96fe1f7d",
+  "architectureSha256": "cd62f313f5b5c657a40a21ca3c009401acbf4bdbe8468ccf3464683e4cc9e5dd",
   "designSha256": "e0224a15d16175bed6e8842a14a68f177bbf1be9270ac161a57b95d87c3f170c",
   "openapiVersion": "3.1.0",
   "tables": [
@@ -275,5 +275,58 @@
     "Submit",
     "Issue",
     "Reject"
-  ]
+  ],
+  "coexistenceStrategy": "clean-cutover",
+  "coexistenceArtifacts": [],
+  "guardrailBindings": {
+    "stateTransitions": [
+      {
+        "from": "DRAFT",
+        "to": "SUBMITTED",
+        "trigger": "Submit",
+        "roles": [
+          "Commercial Buyer"
+        ],
+        "guard": "required fields present; bond amount ≥ required bond (BR-01); every agent satisfies exclusivity (BR-02); no other non-rejected application for the same buyer and licence year (BR-04); evidence: discovery §3 row 1"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "ISSUED",
+        "trigger": "Issue",
+        "roles": [
+          "Licensing Staff"
+        ],
+        "guard": "buyer not suspended; bond amount ≥ required bond (BR-01); every active agent satisfies exclusivity (BR-02) and is not suspended (BR-06); evidence: discovery §3 row 2"
+      },
+      {
+        "from": "SUBMITTED",
+        "to": "REJECTED",
+        "trigger": "Reject",
+        "roles": [
+          "Licensing Staff"
+        ],
+        "guard": "decision reason of at least 10 characters recorded; evidence: discovery §3 row 3 and ASSUMPTION-01"
+      }
+    ],
+    "businessRuleIds": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-05",
+      "BR-06",
+      "BR-07",
+      "BR-08"
+    ],
+    "roles": [
+      "Commercial Buyer",
+      "Licensing Staff"
+    ],
+    "pragmaAnnotations": [
+      "@dlc-guard:<FromState>-><ToState>",
+      "@dlc-rule:<BR-ID>",
+      "@dlc-mask:<sensitive-field>",
+      "@dlc-a11y:<wcag-criterion>"
+    ]
+  }
 }

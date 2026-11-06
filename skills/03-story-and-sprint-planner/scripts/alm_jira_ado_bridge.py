@@ -3304,11 +3304,11 @@ def action_select_groups(ctx: ActionContext) -> int:
 
 
 def action_sync_deployment_status(ctx: ActionContext) -> int:
-    """Stage 8: record GDC deployment traceability on every story (requires deploy/deployment_eval_report.json) and
+    """Stage 9: record GDC deployment traceability on every story (requires deploy/deployment_eval_report.json) and
     post / refresh one deployment comment per story on the live board when credentials are configured."""
     root = ctx.root
     dep_eval_p = dlc.require_file(root / "deploy" / "deployment_eval_report.json",
-                                  "Stage 8 (09/scripts/run_gdc_fleet_deploy_and_verify.py)")
+                                  "Stage 9 (10/scripts/run_gdc_fleet_deploy_and_verify.py)")
     dep_doc = dlc.read_json(dep_eval_p)
     if not isinstance(dep_doc, dict):
         raise dlc.GateFailure(f"{dep_eval_p} is not a JSON object.")

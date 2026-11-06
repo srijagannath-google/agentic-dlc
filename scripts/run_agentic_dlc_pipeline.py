@@ -14,11 +14,12 @@ Order (each step is a subprocess of the sibling skill script, resolved relative 
   → 03 alm_jira_ado_bridge --action audit → 04 extract_contracts → 05 derive_test_cases (only if test_cases.json
   is missing or --rederive) → 05 validate_test_cases → 06 check_testid_contract → 06 validate_build
   → 07 run_closed_loop_eval → 07 alm_jira_ado_bridge --action sync-status-from-eval
-  → 08 validate_gdc_packaging (if deploy/ has files or deployment config present)
-  → 09 run_gdc_fleet_deploy_and_verify (if deploy/ has files or deployment config present)
+  → 08 check_spec_code_drift (pre-deployment spec↔contract↔code alignment gate)
+  → 09 validate_gdc_packaging (if deploy/ has files or deployment config present)
+  → 10 run_gdc_fleet_deploy_and_verify (if deploy/ has files or deployment config present)
 
 Usage:
-  python3 run_agentic_dlc_pipeline.py --project-root <PROJECT_ROOT> [--from-stage 1] [--to-stage 9]
+  python3 run_agentic_dlc_pipeline.py --project-root <PROJECT_ROOT> [--from-stage 1] [--to-stage 10]
       [--autonomous] [--platform jira|ado|both|none] [--browser auto|playwright|chrome|none]
       [--continue-on-failure] [--rederive] [--deterministic] [--skip-backend]
 
@@ -52,9 +53,9 @@ S04 = SKILLS / "04-solution-architect" / "scripts"
 S05 = SKILLS / "05-test-plan-designer" / "scripts"
 S06 = SKILLS / "06-coding-agent" / "scripts"
 S07 = SKILLS / "07-test-runner-and-healer" / "scripts"
-S08 = SKILLS / "08-container-and-gdc-packager" / "scripts"
-S09 = SKILLS / "09-gdc-fleet-deployer-and-observability" / "scripts"
-S10 = SKILLS / "10-drift-and-evolution" / "scripts"
+S08 = SKILLS / "08-drift-and-evolution" / "scripts"
+S09 = SKILLS / "09-container-and-gdc-packager" / "scripts"
+S10 = SKILLS / "10-gdc-fleet-deployer-and-observability" / "scripts"
 
 GATE4_DETAIL = "Gate 4: review test/remediation_and_guardrail_audit_report.md, then re-run with --approve-guardrail-flags"
 
@@ -144,22 +145,22 @@ def build_steps(a: argparse.Namespace) -> list[Step]:
              requires=[("backlog/user_stories.json", "Stage 3 sprint-planner-agent"),
                        ("test/eval_results.json", "Stage 6 run_closed_loop_eval.py")],
              soft_codes={2: "LIVE-SYNC-ERRORS (live Jira/ADO calls failed; local backlog status was updated — see backlog/*_state.json)"}),
-        Step(8, "08-gdc-pkg", "Gate 7 · cloud-agnostic OCI containers & GDC multi-cloud KRM packaging", S08 / "validate_gdc_packaging.py",
-             lambda a: [],
-             requires=[("deploy/containers/Dockerfile.backend", "Stage 7 platform-ops-agent (skill 08-container-and-gdc-packager)"),
-                       ("deploy/gdc/base/workloads.yaml", "Stage 7 platform-ops-agent (skill 08-container-and-gdc-packager)")],
-             condition=lambda root, a: deployment_present(root)),
-        Step(9, "09-gdc-deploy", "Gate 8 · GDC Fleet GitOps deployment, observability & SLO verification", S09 / "run_gdc_fleet_deploy_and_verify.py",
-             lambda a: [*det, *platform] + (["--skip-smoke", "--allow-skipped-smoke"] if a.skip_backend else []),
-             requires=[("deploy/gdc/config-sync/rootsync.yaml", "Stage 8 platform-ops-agent (skill 09-gdc-fleet-deployer-and-observability)"),
-                       ("deploy/observability/otel-collector.yaml", "Stage 8 platform-ops-agent (skill 09-gdc-fleet-deployer-and-observability)"),
-                       ("deploy/deployment_and_runbook.md", "Stage 8 platform-ops-agent (skill 09-gdc-fleet-deployer-and-observability)")],
-             condition=lambda root, a: deployment_present(root)),
-        Step(10, "10-drift", "Stage 9 · continuous spec-to-code & contract drift verification", S10 / "check_spec_code_drift.py",
+        Step(8, "08-drift", "Gate 7 · pre-deployment spec-to-code & contract drift verification", S08 / "check_spec_code_drift.py",
              lambda a: [*det],
              requires=[("specs/application_spec.md", "Stage 2 discovery-architect (skill 02-spec-architect-and-judge)"),
                        ("src", "Stage 5 coding-agent (skill 06-coding-agent)")],
              condition=lambda root, a: (root / "src").is_dir() and any(f.is_file() for f in (root / "src").rglob("*"))),
+        Step(9, "09-gdc-pkg", "Gate 8 · cloud-agnostic OCI containers & GDC multi-cloud KRM packaging", S09 / "validate_gdc_packaging.py",
+             lambda a: [],
+             requires=[("deploy/containers/Dockerfile.backend", "Stage 8 platform-ops-agent (skill 09-container-and-gdc-packager)"),
+                       ("deploy/gdc/base/workloads.yaml", "Stage 8 platform-ops-agent (skill 09-container-and-gdc-packager)")],
+             condition=lambda root, a: deployment_present(root)),
+        Step(10, "10-gdc-deploy", "Gate 9 · GDC Fleet GitOps deployment, observability & SLO verification", S10 / "run_gdc_fleet_deploy_and_verify.py",
+             lambda a: [*det, *platform] + (["--skip-smoke", "--allow-skipped-smoke"] if a.skip_backend else []),
+             requires=[("deploy/gdc/config-sync/rootsync.yaml", "Stage 9 platform-ops-agent (skill 10-gdc-fleet-deployer-and-observability)"),
+                       ("deploy/observability/otel-collector.yaml", "Stage 9 platform-ops-agent (skill 10-gdc-fleet-deployer-and-observability)"),
+                       ("deploy/deployment_and_runbook.md", "Stage 9 platform-ops-agent (skill 10-gdc-fleet-deployer-and-observability)")],
+             condition=lambda root, a: deployment_present(root)),
     ]
 
 
@@ -167,7 +168,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
     ap.add_argument("--from-stage", type=int, default=1, choices=range(0, 11))
-    ap.add_argument("--to-stage", type=int, default=9, choices=range(0, 11))
+    ap.add_argument("--to-stage", type=int, default=10, choices=range(0, 11))
     ap.add_argument("--refresh-from-stage", type=int, default=None, choices=range(1, 11),
                     help="Re-run contract extraction, test-case derivation (preserving authored steps), and downstream hash checks starting at stage N")
     ap.add_argument("--wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01) to pin selectedCapabilityGroups for phased delivery")
@@ -269,7 +270,7 @@ def main() -> int:
             rows.append((step.key, step.label, "NEEDS-HUMAN-APPROVAL", dt, GATE4_DETAIL))
             needs_approval = True
             if not args.continue_on_failure:
-                stop = True  # never run Stages 7/8 (packaging / deployment) past an unapproved Gate 4
+                stop = True  # never run Stages 7/8/9 (drift / packaging / deployment) past an unapproved Gate 4
         elif rc in step.soft_codes:
             rows.append((step.key, step.label, "WARN", dt, f"exit {rc}: {step.soft_codes[rc]}"))
             warnings += 1
