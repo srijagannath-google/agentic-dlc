@@ -56,7 +56,7 @@ FORBIDDEN_REPO_WIDE = [
     r"Authorization:\s*Basic\s+[A-Za-z0-9+/=]{20,}",
 ]
 
-GENERIC_DIRS = ["rules", "agents", "skills", "scripts", "_shared", "schemas", "docs"]
+GENERIC_DIRS = ["rules", "agents", "skills", "scripts", "_shared", "schemas", "docs", "evals"]
 GENERIC_FILES = ["README.md", "plugin.json", "bootstrap.sh", "bootstrap.ps1", "push-to-github.sh"]
 TEXT_EXT = {".md", ".py", ".json", ".txt", ".yaml", ".yml", ".sh", ".ps1", ".csv", ".html", ".css", ".js", ".sql", ".xsd"}
 

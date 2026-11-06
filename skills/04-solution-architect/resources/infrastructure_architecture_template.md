@@ -35,3 +35,15 @@
 | **3. Credential Security & Static Keys** | Embedding static service-account key files or static DB passwords in containers. | Leaked long-lived credentials grant persistent unauthorized access across environments. | Keyless `Workload Identity (OIDC)` issues short-lived tokens per service; `KMS` + `Secrets Manager` inject ephemeral secrets at runtime. |
 | **4. Database Connection Starvation** | Autoscaling `Kubernetes` pods opening unpooled direct connections to `<database.kind>`. | Pod surge exhausts `max_connections`, causing cascading `500` connection failures. | All application and migration traffic routes through `PgBouncer` connection pooling with bounded pool sizing and read-replica offloading. |
 | **5. Environment Sprawl & Governance Drift** | Manual `kubectl` hotfixes or deploying unverified containers without admission guardrails. | Config drift, privileged container execution, or unencrypted service-to-service traffic. | Declarative GitOps reconciliation via `Config Sync`, admission enforcement via `OPA Policy Controller`, and `Service Mesh STRICT mTLS`. |
+
+---
+
+## 3. FinOps Workload Sizing & Multi-Cloud TCO Estimate
+
+| Architecture Tier | Baseline Resource Envelope (Prod HA) | Scaling & FinOps Optimization Lever | Est. Monthly On-Demand Range (USD) | Est. 3-Yr Committed Range (USD) |
+| :-- | :-- | :-- | --: | --: |
+| **Edge, WAF & Global L7 Ingress** | Shared Hub Load Balancer, Edge CDN Cache, OIDC Proxy | Shared across capability services inside Hub Virtual Network | \$180 – \$320 | \$140 – \$250 |
+| **Stateless Web & Application Compute** | `2–6` Kubernetes pods (`1 vCPU`, `2 GiB RAM` request per pod across 2 regions) | HPA CPU/RPS autoscaling + spot/preemptible non-prod pools | \$240 – \$680 | \$150 – \$420 |
+| **Relational Persistence (`<database.kind>` HA)** | Primary + Synchronous Standby (`2–4 vCPU`, `8–16 GiB RAM`, `100 GiB SSD`, `PgBouncer`) | Connection pooling caps instance tier; automated storage tiering | \$310 – \$790 | \$200 – \$510 |
+| **Object Storage, KMS & Observability** | Encrypted buckets, KMS key rotation, OpenTelemetry sampled traces & SLO metrics | Tail-based trace sampling (10% steady, 100% error) & 30-day hot log lifecycle | \$90 – \$210 | \$75 – \$175 |
+| **Estimated Total Target Run-Rate** | **Multi-Region Active-Active Production Footprint** | **FinOps cost-allocation labels (`env`, `service`, `wave`)** | **\$820 – \$2,000 / mo** | **\$565 – \$1,355 / mo** |

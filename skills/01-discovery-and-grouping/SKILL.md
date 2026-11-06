@@ -5,7 +5,7 @@ description: "Stage 1 of the Agentic DLC v4. Confirms the input source location 
 
 # Stage 1 — Current-State ("As-Is") Discovery, Capability Grouping & Gate 1 Intake
 
-**Read before acting:** `_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`,
+**Read before acting:** `_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`,
 `docs/ARCHITECTURE.md` §4.1–§4.2. Subagent: `discovery-architect`. `<PLUGIN>` = installed plugin dir.
 
 > **Strict Current-State ("As-Is") Boundary:** `specs/discovery_architecture_and_inventory.md` documents **only the Current State ("As-Is")** of the legacy application or input problem domain. **Never** combine Future-State ("To-Be") 3NF ERDs, target SQL DDL, future-state component/flow diagrams, or Legacy-to-Target entity mappings into Stage 1 — all future-state architecture, target 3NF schemas, and legacy-to-target mappings belong exclusively in Stage 4A (`design/solution_design.md` and `design/data_migration_and_cutover.md`).
@@ -18,9 +18,10 @@ except the primary input source). Never seed synthetic sample inputs.
 ## Outputs
 | File | Author | Checked by |
 | :-- | :-- | :-- |
-| `specs/input_inventory.json` | script | schema `schemas/input_inventory.schema.json` |
+| `specs/input_inventory.json` & `specs/dependency_dag.json` | script (`scan_input_sources.py`) | schema `schemas/input_inventory.schema.json` (incl. topological dependency tiers, `largeRepoMapReduceRecommended`, `unverifiedAcronyms`) |
 | `specs/discovery_architecture_and_inventory.md` | `discovery-architect` (strictly Current-State "As-Is") | `01/scripts/validate_discovery_blueprint.py` |
 | `specs/target_stack.json` | `discovery-architect` (from Gate 1 answers / defaults) | schema `schemas/target_stack.schema.json`; required by Stages 4A/5/6 |
+| `test/legacy_parity_goldens.jsonl` (optional, `SCENARIO_LEGACY_APP`) | `discovery-architect` (when deterministic legacy I/O fixtures/queries exist) | consumed by `05/scripts/derive_test_cases.py` → `TC-PARITY-*` |
 
 ## Procedure
 
@@ -53,8 +54,12 @@ When `--ado-repo` or `--git-repo` is passed, `scan_input_sources.py` authenticat
 
 When a reference URL or prototype is present, `capture_design_reference.py` launches a headless browser at desktop (`1440×900`) and mobile (`390×844`) viewports, clicks every top-level `[role="tab"]` / navigation route and wizard step, saves per-tab screenshots under `specs/design_reference/screenshots/`, and writes `specs/design_reference/reference_ui_manifest.json` (never writing into user-provided `resources/`) (CSS custom properties, colours, typography, border radii, and view/tab topology).
 Read the scan result: `inputScenario`, `scenarioConfidence`, `scenarioEvidence`, `sourceRepository`, `hasPoliciesOrStatutes`,
-`hasUserProvidedDesignReferences`, `domainSlug`, `files[].category`.
+`hasUserProvidedDesignReferences`, `domainSlug`, `files[].category`, `topLevelModuleCount`, `largeRepoMapReduceRecommended`, `dependencyDagSummary`, and `unverifiedAcronyms`.
 - `scenarioConfidence == LOW` (mixed or thin inputs) → ask the user which scenario applies before step 2.
+- **Large-Estate Map-Reduce Discovery (`largeRepoMapReduceRecommended == true`, > 15 modules or > 60 files):** Never stuff all raw files into a single context window ("Peanuts-and-Hay" attention degradation). Instead, run a **2-Pass Map-Reduce**: (1) **Map** each top-level module/subdomain independently into a compact JSON summary under `<PROJECT_ROOT>/specs/.module_summaries/<module>.json` (`entities`, `states`, `rules`, `inboundDeps`, `outboundDeps`, `acronyms`), then (2) **Reduce** only those compact module summaries + `specs/dependency_dag.json` (`tiers`) into `specs/discovery_architecture_and_inventory.md`.
+- **Dependency-Grounded Strangler Waves (`specs/dependency_dag.json`):** Use `dependency_dag.json#tiers` (`tier 0` leaf foundations → higher dependent tiers) and `cycles` to ground `§6.1 Business Capability Groupings` (`isSharedFoundation: true` on `tier 0` shared registries, `dependsOnGroups` matching cross-module edges).
+- **Strict Acronym Provenance Rule (`unverifiedAcronyms`):** Never guess or invent expansions for domain acronyms listed in `unverifiedAcronyms` unless an input file explicitly defines the full phrase. Keep the literal acronym, tag `[UNVERIFIED_ACRONYM]` in `§3.1 Open Workflow Questions`, and ask the human at Gate 1 (`validate_discovery_blueprint.py` warns on unverified expansions).
+- **Golden Legacy Parity Extraction (`SCENARIO_LEGACY_APP`):** When legacy inputs contain deterministic calculation queries, stored-procedure test vectors, or sample input/output rows, record them in `test/legacy_parity_goldens.jsonl` (`{"id":"GOLD-01","ruleRef":"BR-01","method":"POST","path":"/api/...","input":{...},"expectedStatus":200,"expectedSubset":{...}}`) so Stage 4B automatically derives `TC-PARITY-*` differential oracle tests.
 - Classification drives every later stage (`includeModernizationEnhancementsInSpec`, legacy mapping, migration
   doc). Do not override it silently; if the user corrects it, re-run the scan with their answer recorded.
 

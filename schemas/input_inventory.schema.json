@@ -63,6 +63,36 @@
       "description": "Bare file-name stems of legacy artefacts (not object names). Downstream scripts treat collisions with these as WARN only (forbiddenUiTokens.legacyIdentifiersWarnOnly).",
       "items": { "type": "string" }
     },
+    "dependencyDagSummary": {
+      "type": "object",
+      "description": "Deterministic static dependency & call/FK graph summary written alongside specs/dependency_dag.json to ground §6.1 Business Capability Groupings and wave sequencing.",
+      "required": ["dagFile", "nodeCount", "edgeCount", "tierCount", "hasCycles", "tiers"],
+      "properties": {
+        "dagFile": { "type": ["string", "null"] },
+        "nodeCount": { "type": "integer", "minimum": 0 },
+        "edgeCount": { "type": "integer", "minimum": 0 },
+        "tierCount": { "type": "integer", "minimum": 0 },
+        "hasCycles": { "type": "boolean" },
+        "tiers": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "topLevelModuleCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of distinct top-level source directories/modules in resources/inputs."
+    },
+    "largeRepoMapReduceRecommended": {
+      "type": "boolean",
+      "description": "True when topLevelModuleCount > 15 or totalFilesScanned > 60, recommending hierarchical Peanuts-and-Hay map-reduce discovery."
+    },
+    "unverifiedAcronyms": {
+      "type": "array",
+      "description": "All-caps domain acronyms detected in inputs that lack an explicit inline expansion; Gate 1 must ask rather than guess expansions.",
+      "items": { "type": "string" }
+    },
     "inputFingerprintSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "files": {
       "type": "array",

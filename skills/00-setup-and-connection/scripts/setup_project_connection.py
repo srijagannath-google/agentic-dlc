@@ -167,6 +167,12 @@ def main() -> int:
     ap.add_argument("--branch", default=None, help="Optional Git branch")
     ap.add_argument("--local-path", default=None, help="Local input folder path (for local-dir or resources-inputs)")
     ap.add_argument("--alm-platform", default="tbd", choices=["ado", "jira", "none", "tbd"])
+    ap.add_argument("--ceremony-track", default="standard", choices=["quick", "standard", "regulated"],
+                    help="Adaptive ceremony track: quick (prototype/internal tool), standard (default), or regulated (full compliance + mandatory Red-Team scorecard)")
+    ap.add_argument("--domain-packs", nargs="*", default=[],
+                    choices=["mainframe-mat", "cloud-dms", "bqms", "hadoop-oozie-flink", "agentic-audit"],
+                    help="Optional pluggable MCP modernization domain packs to activate")
+    ap.add_argument("--active-wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01)")
     ap.add_argument("--persist-env", action="store_true", help="Persist non-secret org/project settings into <PROJECT_ROOT>/.env")
     ap.add_argument("--notes", default="")
     args = ap.parse_args()
@@ -345,6 +351,9 @@ def main() -> int:
             "schemaVersion": dlc.SCHEMA_VERSION,
             "updatedAtUtc": dlc.utc_now_iso(False),
             "setupStatus": "AWAITING_HUMAN_REVIEW",
+            "ceremonyTrack": args.ceremony_track,
+            "domainPacks": list(dict.fromkeys(args.domain_packs or [])),
+            "activeWave": args.active_wave,
             "inputSource": {
                 "kind": args.input_kind,
                 "adoOrgUrl": ado_org or None,
@@ -366,6 +375,13 @@ def main() -> int:
         }
         out = _write_setup(root, setup_payload)
         dlc.info(f"wrote {out}")
+        if args.ceremony_track != "standard" or dlc.gate_approvals_path(root).is_file():
+            ga_data = dlc.load_gate_approvals(root)
+            if not ga_data.get("gates"):
+                ga_data = dlc.new_gate_ledger(autonomous=False, ceremony_track=args.ceremony_track)
+            else:
+                ga_data["ceremonyTrack"] = args.ceremony_track
+            dlc.write_json(dlc.gate_approvals_path(root), ga_data)
         dlc.mark_gate_awaiting_human(
             root,
             "gate_0_setup",

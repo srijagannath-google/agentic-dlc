@@ -52,7 +52,8 @@ Gaps are reported upstream, not reconstructed.
    - **`frontend.kind == "react" | "nextjs"`:** `src/ui/package.json`, `tsconfig.json`, `vite.config.ts` / `next.config.js`, modular `.tsx`/`.jsx` components, state-driven role views, and build output (`dist/` or `build/`).
    - **`frontend.kind == "angular"`:** `src/ui/package.json`, `angular.json`, `tsconfig.json`, modular `.component.ts`/`.component.html` components and services.
    - **`frontend.kind == "vue"`:** `src/ui/package.json`, `vite.config.ts`, modular `.vue` single-file components and services.
-   - **`frontend.kind == "static-html"` (only when explicitly chosen in `target_stack.json`):** `src/ui/index.html`, `src/ui/app.js`, `src/ui/styles.css`.
+   - **`frontend.kind == "gemini-enterprise-a2ui"`:** declarative `A2UI v0.9` agent surface (`skills/google-cloud-ui-design/references/gemini-enterprise-a2ui.md`) emitting `createSurface` / `updateComponents` / `updateDataModel` envelopes bound to registered `--g-*` ShadCN catalog widgets alongside a dual-mode local web host.
+   - **`frontend.kind == "static-html"` (only when explicitly chosen in `target_stack.json`):** `src/ui/index.html`, `src/ui/app.js`, `src/ui/styles.css` (render all views in DOM and toggle `[role="tabpanel"]` `hidden` state so static a11y/leak lint inspects every view).
    - **`backend.kind == "java-spring-boot"`:** `src/backend/pom.xml` (or `build.gradle`), `src/backend/src/main/java/...` (`@SpringBootApplication`, `@RestController` controllers implementing `src/contracts/openapi.yaml`, `@Service` workflow state machine & `BR-*` rule engine, `@Repository`/JPA/JDBC persistence), and `src/backend/src/main/resources/application.yml` supporting `spring.profiles.active=${APP_ENV:local}` and `DATABASE_URL`.
    - **`backend.kind == "node-express"`:** `src/backend/package.json`, `src/backend/src/` (`.ts`/`.js` Express/Fastify routes, workflow & `BR-*` rule services, `pg`/SQLite dual-mode repository adapter reading `DATABASE_URL` and `APP_ENV`).
    - **`backend.kind == "python-fastapi"` or `"python-flask"`:** `src/backend/requirements.txt` (or `pyproject.toml`), `src/backend/app/` (`FastAPI`/`Flask` routers, Pydantic/DTO ViewModels, SQLAlchemy/`psycopg` connection pool reading `DATABASE_URL` in `APP_ENV=production` with local embedded DB fallback in `APP_ENV=local`, ASGI/WSGI entrypoint).
@@ -86,7 +87,8 @@ Encode the §3.3 table as one data structure shared (or duplicated verbatim) by 
   lifecycle state selector must reactively update available transition controls or display which role owns the next
   transition.
 - **Backend:** every transition endpoint validates `(fromState, trigger, role)` and returns 4xx + readable
-  `message` otherwise. The UI is never the only guard.
+  `message` otherwise. The UI is never the only guard. When `target_stack.json#commands.reset` is configured (e.g., `POST /__test/reset` enabled strictly under `APP_ENV=local`), re-seed deterministic fixture state between Stage 6 tests and disable the endpoint (`404`) under `APP_ENV=production`.
+- **Guardrail Contract Pragmas (`@dlc-*`):** Annotate transition guards with `@dlc-guard:<From>-><To>`, business-rule calculations with `@dlc-rule:BR-NN`, PII masking helpers with `@dlc-mask:<field>`, and custom accessibility widgets with `@dlc-a11y:<rule>` so Stage 4A/Stage 6 diff auditing (`design/.contracts_index.json#guardrailBindings`) binds hunks with deterministic precision.
 
 ### 4. Business rules, labels, leakage
 - Every `BR-NN` depending on input recomputes on `input`; one semantic status element per view; validation

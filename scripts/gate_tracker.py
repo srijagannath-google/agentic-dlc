@@ -32,9 +32,10 @@ def _validate_and_write_ledger(root: Path, data: dict) -> None:
     dlc.write_json(dlc.gate_approvals_path(root), data)
 
 
-def cmd_init(root: Path, autonomous: bool) -> int:
+def cmd_init(root: Path, autonomous: bool, track: str | None = None) -> int:
     path = dlc.gate_approvals_path(root)
-    fresh = dlc.new_gate_ledger(autonomous=autonomous)
+    resolved_track = track if track in dlc.CEREMONY_TRACKS else dlc.active_ceremony_track(root)
+    fresh = dlc.new_gate_ledger(autonomous=autonomous, ceremony_track=resolved_track)
     if path.exists():
         existing = dlc.load_gate_approvals(root)
         ex_gates = existing.get("gates") or {}
@@ -46,29 +47,60 @@ def cmd_init(root: Path, autonomous: bool) -> int:
                 fresh["gates"][gid] = cur
         if existing.get("initializedAtUtc"):
             fresh["initializedAtUtc"] = existing["initializedAtUtc"]
+        if track is None and existing.get("ceremonyTrack") in dlc.CEREMONY_TRACKS:
+            fresh["ceremonyTrack"] = existing["ceremonyTrack"]
     _validate_and_write_ledger(root, fresh)
+    setup_p = root / "specs" / "project_setup.json"
+    if track in dlc.CEREMONY_TRACKS and setup_p.is_file():
+        setup_obj = dlc.read_json(setup_p)
+        if isinstance(setup_obj, dict):
+            setup_obj["ceremonyTrack"] = track
+            dlc.write_json(setup_p, setup_obj)
     dlc.info(
-        f"initialised human gate ledger at {path}"
+        f"initialised human gate ledger at {path} (ceremonyTrack={fresh.get('ceremonyTrack', 'standard')})"
         + (" (autonomous defaults applied to Gates 0/1/3/4)" if autonomous else "")
     )
     return 0
 
 
+def cmd_set_track(root: Path, track: str) -> int:
+    if track not in dlc.CEREMONY_TRACKS:
+        raise dlc.GateFailure(f"Invalid track '{track}'. Choose from: {', '.join(dlc.CEREMONY_TRACKS)}")
+    data = dlc.load_gate_approvals(root)
+    if not data.get("gates"):
+        data = dlc.new_gate_ledger(autonomous=False, ceremony_track=track)
+    else:
+        data["ceremonyTrack"] = track
+    _validate_and_write_ledger(root, data)
+    setup_p = root / "specs" / "project_setup.json"
+    if setup_p.is_file():
+        setup_obj = dlc.read_json(setup_p)
+        if isinstance(setup_obj, dict):
+            setup_obj["ceremonyTrack"] = track
+            dlc.write_json(setup_p, setup_obj)
+    dlc.info(f"updated ceremonyTrack -> '{track}' in {dlc.gate_approvals_path(root)}")
+    return 0
+
+
 def cmd_status(root: Path) -> int:
     p = dlc.gate_approvals_path(root)
+    track = dlc.active_ceremony_track(root)
     if not p.exists():
         print(f"Human Gate Approval Ledger — {p} (MISSING — run `--action init` or Stage 0 first)")
     else:
         print(f"Human Gate Approval Ledger — {p}")
+    print(f"Active Ceremony Track: {track}")
     data = dlc.load_gate_approvals(root)
     gates = data.get("gates") or {}
-    print(f"{'Gate ID':<26} {'Status':<24} {'Approved At':<22} Stage")
-    print("-" * 105)
+    print(f"{'Gate ID':<26} {'Status':<30} {'Approved At':<22} Stage")
+    print("-" * 112)
     for gid, label in dlc.GATE_DEFINITIONS.items():
         entry = gates.get(gid) if isinstance(gates.get(gid), dict) else {}
         st = entry.get("status", "NOT_STARTED")
         app_at = entry.get("approvedAtUtc") or "—"
-        print(f"{gid:<26} {st:<24} {str(app_at):<22} {label}")
+        brief = entry.get("decisionBriefPath")
+        extra = f" [brief: {brief}]" if brief else ""
+        print(f"{gid:<26} {st:<30} {str(app_at):<22} {label}{extra}")
     return 0
 
 
@@ -141,6 +173,7 @@ def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous:
         "approvedAtUtc": now_iso,
         "userResponse": resp,
         "summary": existing.get("summary") or f"{dlc.GATE_DEFINITIONS[gate_id]} approved.",
+        "decisionBriefPath": existing.get("decisionBriefPath"),
     }
     _validate_and_write_ledger(root, data)
 
@@ -167,8 +200,9 @@ def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
-    ap.add_argument("--action", required=True, choices=["init", "status", "approve", "mark-ready", "reset"])
+    ap.add_argument("--action", required=True, choices=["init", "status", "approve", "mark-ready", "reset", "set-track"])
     ap.add_argument("--gate", default=None, help=f"Gate ID ({', '.join(dlc.GATE_DEFINITIONS.keys())})")
+    ap.add_argument("--track", default=None, choices=list(dlc.CEREMONY_TRACKS), help="Adaptive ceremony track (quick | standard | regulated)")
     ap.add_argument("--user-response", default=None, help="Verbatim quote from the human's chat reply approving the gate")
     ap.add_argument("--summary", default="", help="Optional summary when marking a gate ready")
     ap.add_argument("--autonomous", action="store_true", help="Pre-approve only when the user explicitly requested autonomous mode")
@@ -176,7 +210,11 @@ def main() -> int:
 
     root = dlc.resolve_project_root(args.project_root)
     if args.action == "init":
-        return cmd_init(root, autonomous=args.autonomous)
+        return cmd_init(root, autonomous=args.autonomous, track=args.track)
+    if args.action == "set-track":
+        if not args.track:
+            raise dlc.GateFailure("--track is required for --action set-track")
+        return cmd_set_track(root, args.track)
     if args.action == "status":
         return cmd_status(root)
     if args.action == "mark-ready":
@@ -193,7 +231,7 @@ def main() -> int:
         if args.gate and args.gate not in dlc.GATE_DEFINITIONS:
             raise dlc.GateFailure(f"--gate must be one of: {', '.join(dlc.GATE_DEFINITIONS.keys())}")
         if not args.gate:
-            fresh = dlc.new_gate_ledger(autonomous=False)
+            fresh = dlc.new_gate_ledger(autonomous=False, ceremony_track=args.track or dlc.active_ceremony_track(root))
             _validate_and_write_ledger(root, fresh)
         else:
             data = dlc.load_gate_approvals(root)
@@ -208,6 +246,7 @@ def main() -> int:
                 "approvedAtUtc": None,
                 "userResponse": None,
                 "summary": f"{label} — reset to pending.",
+                "decisionBriefPath": None,
             }
             _validate_and_write_ledger(root, data)
         dlc.info(f"reset gate ledger ({args.gate or 'ALL'}) in {dlc.gate_approvals_path(root)}")

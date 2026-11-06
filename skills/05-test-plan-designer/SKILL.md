@@ -24,15 +24,16 @@ description: "Stage 4B of the Agentic DLC v4 (parallel with 04-solution-architec
 
 ### 1. Derive the skeleton (never hand-write ids or token lists)
 ```bash
-python3 <PLUGIN>/skills/05-test-plan-designer/scripts/derive_test_cases.py --project-root "<PROJECT_ROOT>"
+python3 <PLUGIN>/skills/05-test-plan-designer/scripts/derive_test_cases.py --project-root "<PROJECT_ROOT>" [--group-state-tests]
 ```
 | Category | Derived from | What the script emits |
 | :-- | :-- | :-- |
 | `Positive` / `Negative` / `Edge` | each AC by tag (`TC-POS/NEG/EDGE-*`) + `TC-POS-JOURNEY-01` (Default Landing Persona Entry-to-Submit Journey without `setRole` override) | `storyRef`, `acRef`, `capabilityGroup`, `expected` = AC `then`, `steps: []`, `needsSteps: true` for stories in `selectedCapabilityGroups` (or all stories when `selectedCapabilityGroups == ["ALL"]`); unselected-group stories in `Product Backlog` are emitted with `optional: true, deferredByGroupSelection: true, needsSteps: false` |
-| `State` (`TC-STATE-*`) | §3.3 table: every (state, trigger) **not** allowed; every (role, trigger) the role does not own; plus external-role visibility of internal controls | one TC per pair, `role` set |
+| `State` (`TC-STATE-*`) | §3.3 table: every (state, trigger) **not** allowed; every (role, trigger) the role does not own; plus external-role visibility of internal controls | one TC per pair (or one parametrised `matrixCases` test per trigger when `--group-state-tests` is passed), `role` set |
+| `Parity` (`TC-PARITY-*`) | `test/legacy_parity_goldens.jsonl` (when present in `SCENARIO_LEGACY_APP`) | differential input/output parity tests with `httpRequest` steps (or `optional: true` + `intentionalDivergenceRef: "REQ-ENH-NN"` when a modernization enhancement intentionally alters legacy behaviour) |
 | `UiLeak` (`TC-UI-LEAK-01..04`) | `forbiddenUiTokens`: DDL identifiers, state/enum codes, legacy file stems (legacy scenario), PII regexes from Pillar 2 | static scan tests |
 | `Interact` (`TC-UI-INTERACT-01` + `TC-UI-INTERACT-TAB-01..N`) | generic + §4.2 View & Component Topology table | every interactive element has a handler; every navigation tab `T_i` clicked on `runtime: "browser"` asserts `expectAttribute(T_i, "aria-selected", "true")`, `expectVisible(P_i)`, and `expectHidden(P_j)` for every sibling panel `P_j != P_i` |
-| `Api` (`TC-API-*`) | each OpenAPI operation, when `backend.kind != none` | status-code smoke with `httpRequest` |
+| `Api` (`TC-API-*`) | each OpenAPI operation, when `backend.kind != none` | status-code & payload checks with `httpRequest` (`expectStatus`, `expectJsonPath`, `expectBodyContains`, `expectBodyNotContains`, `expectJsonPathAbsent`) |
 | `A11y` (`TC-A11Y-01`) | generic WCAG 2.1 AA static checks (+ named standards) | labels, roles, contrast tokens |
 
 ### 2. Complete every `needsSteps` test (`testing-agent`)
@@ -50,14 +51,14 @@ Use only the step vocabulary of ARCHITECTURE §4.6. Rules of good steps:
   previously active sibling panel.
 - **Contract-first ids:** choose `data-testid` values now (`<entity>-<field>`, `<action>-btn`,
   `<entity>-status`, `<role>-view`, `tab-<view>`, `panel-<view>`); the coder implements exactly these. Keep one glossary in `test_plan.md`.
-- **State tests:** reach state S (through the UI or by seeding via `httpRequest` when a backend exists), act as
+- **State tests:** reach state S (through the UI or by seeding via `httpRequest` inside a `browser` test when a backend exists), act as
   the role, attempt the trigger, assert the control is hidden/disabled **or** the attempt shows the blocking
   reason and the status text is unchanged.
-- **Negative tests** assert the human-readable reason from the AC, never a code.
+- **Negative & API Zero-Leak tests** assert the human-readable reason from the AC (never a raw code) and use `expectBodyNotContains` / `expectJsonPathAbsent` on `httpRequest` steps to prove internal fields and unmasked PII are excluded from API payloads.
 - **Edge tests** from `BR-NN`: `fill` the threshold, threshold−1 unit, threshold+1 unit and assert the
   recomputed value/status **without** clicking submit (live calculation guardrail).
 - **UX guardrail checks** where the AC calls for them: `expectCount` of primary buttons per view ≤ 1, visible
-  inputs outside `<details>` per step ≤ 5, tabs per role ≤ 3 — unless §4 of the spec records an override.
+  inputs outside `<details>` (`:not(details *)`) per step ≤ 5, tabs per role ≤ 3 — unless §4 of the spec records an override. When using `setRole`, pass the exact option label rendered in `[data-testid=role-switcher]`.
 - Set `runtime` (`browser` | `http` | `static`) and `role` (from §3.5) on every test.
 
 **Scenario differences:** legacy projects get `legacyIdentifiers` in `forbiddenUiTokens` (legacy object names

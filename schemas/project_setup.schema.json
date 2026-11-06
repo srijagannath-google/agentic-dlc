@@ -35,6 +35,24 @@
         "connectionVerified": { "type": "boolean" }
       }
     },
+    "ceremonyTrack": {
+      "type": "string",
+      "enum": ["quick", "standard", "regulated"],
+      "default": "standard",
+      "description": "Adaptive governance ceremony track: 'quick' streamlines intermediate gates for rapid prototypes/hackathons while preserving critical scope, stack/contract, and guardrail eval stops; 'standard' enforces balanced human-in-the-loop gates; 'regulated' enforces every human gate plus Stage 4A adversarial red-team scorecard."
+    },
+    "domainPacks": {
+      "type": "array",
+      "description": "Optional specialized MCP domain packs enabled for legacy/enterprise estates (e.g., mainframe AST, database migration, warehouse SQL translation, distributed batch migration, or 3P agent codebase auditing).",
+      "items": {
+        "type": "string",
+        "enum": ["mainframe-mat", "cloud-dms", "bqms", "hadoop-oozie-flink", "agentic-audit"]
+      }
+    },
+    "activeWave": {
+      "type": ["string", "null"],
+      "description": "Optional active Strangler Capability Group wave ID (e.g. 'GRP-01') for incremental wave execution."
+    },
     "notes": { "type": "string" }
   }
 }

@@ -13,15 +13,14 @@
 
 | Dimension | `agentic-dlc` Capability |
 | :-- | :-- |
-| **Who Authors vs. Who Verifies** | **The LLM (7 subagents, 11 skills) authors every artefact** from user inputs; Python scripts **scan, crawl, derive, lint, execute, and enforce human gates** |
-| **Machine-Enforced Human Gate Stops** | **Stage 0 (`00-setup-and-connection`)** connects to ADO/Jira, lists ADO Projects & Repos, asks which ADO Project to work on, and stops at **Gate 0**. Every stage (`Gate 0` .. `Gate 7`) locks `specs/gate_approvals.json` (`AWAITING_HUMAN_REVIEW`) and blocks the next stage until explicit human approval via `scripts/gate_tracker.py` |
-| **Domain Neutrality** | Zero domain or organization literals baked into prompts, templates, or examples (`scripts/lint_domain_neutrality.py`) |
-| **Dual Input Scenarios** | First-class support for both legacy modernization (`SCENARIO_LEGACY_APP`) and greenfield requirements (`SCENARIO_REQUIREMENTS_DOC`) |
-| **Current-State vs. Future-State Separation** | **Stage 1 (`specs/discovery_architecture_and_inventory.md`)** is strictly Current-State ("As-Is"). **Stage 4A (`design/architecture_design.md` + `design/solution_design.md`)** owns 100% of Future-State ("To-Be") target architecture, 3NF `erDiagram`, DDL, and OpenAPI 3.1 contracts |
-| **Capability Grouping & Scope Selection** | Stage 1 groups capabilities into **Business Capability Groupings (`GRP-01..N`)** by **Business Functionality (`functional`)** or **Business Unit / Department (`business-unit`)** (`§6.1`). Users can select specific group(s) or `["ALL"]` at Gate 1 / Gate 3 |
-| **Google Cloud Architecture & UI Design** | Stage 4A generates **Business Capability Maps**, **Logical Business Capability Architectures**, and **Technical Platform-of-Choice Architectures** (`design/diagrams/*.svg` & `.png`). Stage 5 builds target-stack UIs following the **Google Cloud UI Design System** (`skills/google-cloud-ui-design`) |
-| **Closed-Loop Eval & Non-Overwriting History** | Stage 6 executes native Playwright / headless Chrome hit-testing, HTTP API tests, and static zero-leakage audits while archiving every iteration in `test/history/iter-N/` and `test/*.iter-NN.*` |
-| **GDC Multi-Cloud & On-Premises Deployment** | Stages 7 & 8 package rootless OCI containers, KRM Kustomize overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + RBAC, Config Sync GitOps waves, and OpenTelemetry SLO observability |
+| **Who Authors vs. Who Verifies** | **The LLM (8 subagents, 12 skills) authors every artefact** from user inputs; Python scripts **scan, crawl, derive, lint, execute, and enforce human gates** |
+| **Adaptive Ceremony Tracks & Gate Briefs** | **Stage 0 (`00-setup-and-connection`)** configures ceremony tracks (`quick`, `standard`, `regulated`) and auto-generates 1-page **Executive Gate Decision Briefs** (`specs/gate_briefs/<gate_id>.md`) while locking `specs/gate_approvals.json` via `scripts/gate_tracker.py` |
+| **Domain Neutrality & Acronym Provenance** | Zero domain literals baked into prompts (`scripts/lint_domain_neutrality.py`), plus strict `unverifiedAcronyms` detection preventing hallucinated domain acronym expansions |
+| **Large-Estate Map-Reduce & Strangler Waves** | Stage 1 builds `specs/dependency_dag.json` topological tiers, recommends 2-pass Map-Reduce discovery on large estates, and supports phased Strangler Fig waves (`--wave GRP-ID`) with disposable Boundary ACLs isolated under `deploy/coexistence/` |
+| **Dual Adversarial Judges (`spec-judge` + `architecture-critic`)** | Stage 2 scores the 5-Pillar Spec (`schemas/spec_rubric.json`) and Stage 4A scores the 7-Perspective Architecture + 3NF DDL + OpenAPI + FinOps TCO (`schemas/architecture_rubric.json`, `≥ 90` with verbatim evidence) |
+| **Google Cloud UI Design & `A2UI v0.9` Surfaces** | Stage 5 builds target-stack UIs following the **Google Cloud UI Design System** (`skills/google-cloud-ui-design`) including declarative **`A2UI v0.9`** generative agent surfaces (`references/gemini-enterprise-a2ui.md`) |
+| **Differential Parity Oracles & Closed-Loop Eval** | Stage 4B derives `TC-PARITY-*` tests from `test/legacy_parity_goldens.jsonl`; Stage 6 executes hermetic `commands.reset` hooks, Playwright / headless Chrome hit-testing, inline browser `httpRequest` steps, negative API assertions, and `@dlc-guard` pragma-backed diff audits |
+| **GDC Multi-Cloud, Drift Detection & Skill Evals** | Stages 7–8 package OCI containers + GDC KRM multi-cloud overlays; Stage 9 (`10-drift-and-evolution`) audits bidirectional spec↔code drift & ADRs; `evals/` runs counterfactual A/B skill ablation benchmarks |
 
 ---
 
@@ -62,11 +61,12 @@ flowchart LR
 | **1. Discovery** | [`01-discovery-and-grouping`](skills/01-discovery-and-grouping/SKILL.md) | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (As-Is only), `specs/target_stack.json` | **Gate 1 (`gate_1_discovery`)** · `scan_input_sources.py`, `validate_discovery_blueprint.py` |
 | **2. Spec & Judge** | [`02-spec-architect-and-judge`](skills/02-spec-architect-and-judge/SKILL.md) | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | **Gate 2 (`gate_2_spec`, `≥ 90`)** · `lint_spec_structure.py`, `validate_spec_scorecard.py` |
 | **3. Stories & ALM** | [`03-story-and-sprint-planner`](skills/03-story-and-sprint-planner/SKILL.md) | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | **Gate 3 (`gate_3_backlog`)** · `alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) |
-| **4A. Architecture** | [`04-solution-architect`](skills/04-solution-architect/SKILL.md) | `solution-architect` | 7 separate perspective artifacts (`business`, `high_level_solution`, `logical`, `application`, `data`, `security`, `infrastructure`) + `architecture_design.md` (index) + `solution_design.md` | **Gate 4A/4B (`gate_4_design_and_tests`)** · `extract_contracts.py` → `openapi.yaml`, `schema.sql`, 7 `.svg`/`.png` diagrams |
-| **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` | **Gate 4A/4B (`gate_4_design_and_tests`)** · `derive_test_cases.py`, `validate_test_cases.py` |
-| **5. Clean Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md) + [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Runnable `src/` in confirmed Target Stack (`src/ui/`, `src/backend/`, `src/run.sh`) | **Gate 5 (`gate_5_build`)** · `validate_build.py` (transitions stories to `In Progress`) |
+| **4A. Architecture** | [`04-solution-architect`](skills/04-solution-architect/SKILL.md) | `solution-architect`, `architecture-critic` | 7 separate perspective artifacts + `architecture_design.md` (index) + `solution_design.md` + `architecture_eval_scorecard.{md,json}` | **Gate 4A/4B (`gate_4_design_and_tests`)** · `extract_contracts.py`, `validate_architecture_scorecard.py` |
+| **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` (incl. `TC-PARITY-*`) | **Gate 4A/4B (`gate_4_design_and_tests`)** · `derive_test_cases.py`, `validate_test_cases.py` |
+| **5. Clean Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md) + [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Runnable `src/` in confirmed Target Stack (`src/ui/`, `src/backend/`, `src/run.sh`, `@dlc-guard` pragmas) | **Gate 5 (`gate_5_build`)** · `validate_build.py` (transitions stories to `In Progress`) |
 | **6. Closed Loop** | [`07-test-runner-and-healer`](skills/07-test-runner-and-healer/SKILL.md) | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `test/remediation_and_guardrail_audit_report.md`, `test/history/iter-N/` | **Gate 6 (`gate_6_eval`)** · `run_closed_loop_eval.py` (transitions stories to `Done`) |
-| **7–8. GDC Fleet** | [`08-container-and-gdc-packager`](skills/08-container-and-gdc-packager/SKILL.md), [`09-gdc-fleet-deployer-and-observability`](skills/09-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gate 7 (`gate_7_packaging`) & Gate 8** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
+| **7–8. GDC Fleet** | [`08-container-and-gdc-packager`](skills/08-container-and-gdc-packager/SKILL.md), [`09-gdc-fleet-deployer-and-observability`](skills/09-gdc-fleet-deployer-and-observability/SKILL.md) | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | **Gate 7 (`gate_7_packaging`) & Gate 8** · `validate_gdc_packaging.py`, `run_gdc_fleet_deploy_and_verify.py` |
+| **9. Drift & ADR** | [`10-drift-and-evolution`](skills/10-drift-and-evolution/SKILL.md) | `discovery-architect`, `solution-architect` | `specs/drift_report.{md,json}`, `specs/adr/ADR-NNNN-*.md` | **Continuous Brownfield Governance** · `check_spec_code_drift.py`, `--refresh-from-stage` |
 
 ---
 
@@ -180,6 +180,10 @@ python3 ~/.gemini/config/plugins/agentic-dlc/skills/03-story-and-sprint-planner/
 
 # Run the repo-wide domain-neutrality & PII linter (must report 0 hits)
 python3 ~/.gemini/config/plugins/agentic-dlc/scripts/lint_domain_neutrality.py
+
+# Run the counterfactual A/B skill ablation suite & guardrail classifier selftest
+python3 ~/.gemini/config/plugins/agentic-dlc/evals/run_skill_ablation.py --selftest
+python3 ~/.gemini/config/plugins/agentic-dlc/skills/07-test-runner-and-healer/scripts/run_closed_loop_eval.py --selftest-guardrail-patterns
 
 # Run the full golden project verification suite (both greenfield and legacy MS Access scenarios)
 python3 ~/.gemini/config/plugins/agentic-dlc/scripts/verify_golden_projects.py

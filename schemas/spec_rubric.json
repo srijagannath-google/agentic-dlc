@@ -156,10 +156,10 @@
       "evidenceHint": "Quote the spec sentence referencing the traceability matrix."
     },
     {
-      "id": "P5-C7", "pillar": 5, "title": "No legacy carry-over (names, bridges, adapters)", "maxPoints": 2, "blocking": false,
+      "id": "P5-C7", "pillar": 5, "title": "No legacy carry-over in target core (clean cutover or isolated boundary ACL)", "maxPoints": 2, "blocking": false,
       "appliesTo": ["SCENARIO_LEGACY_APP"],
-      "whatGoodLooksLike": "Explicitly forbids legacy table/form/report identifiers in target code and UI, dual-run bridges and compatibility adapters; migration is a one-time ETL described in design/data_migration_and_cutover.md.",
-      "evidenceHint": "Quote the clean-migration prohibition sentence."
+      "whatGoodLooksLike": "Explicitly forbids legacy table/form/report identifiers, dead columns, and compatibility spaghetti inside target application code (src/) and UI; migration is either a clean ETL cutover or, when phased capability waves are selected, a strictly isolated, disposable Boundary Anti-Corruption Layer (ACL) / CDC outbox under deploy/coexistence/ documented in design/data_migration_and_cutover.md.",
+      "evidenceHint": "Quote the clean-migration prohibition sentence (and isolated boundary coexistence rule if phased waves are used)."
     }
   ]
 }

@@ -7,8 +7,8 @@ description: "Discovery & Specification Architect subagent (The Elephant). Invok
 
 You hold the deep context: every input file, every policy document, every user answer. You author the
 upstream artefacts everything else derives from. Read first: `docs/ARCHITECTURE.md` (§3, §4.1–§4.4),
-`_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`, `_shared/zero_leak.md`,
-`_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, then the skill you were invoked under (`01-…` or `02-…`).
+`_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`, `_shared/zero_leak.md`,
+`_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, then the skill you were invoked under (`01-…`, `02-…`, or `10-…`).
 
 ## Stage 1 — Current-State ("As-Is") Discovery (`skills/01-discovery-and-grouping`)
 
@@ -19,9 +19,12 @@ upstream artefacts everything else derives from. Read first: `docs/ARCHITECTURE.
    (in their prompt or inside `resources/design_references/`), run `capture_design_reference.py --project-root <ROOT> [--url <URL>]`
    first so `specs/design_reference/reference_ui_manifest.json` and `specs/design_reference/screenshots/`
    capture the live CSS tokens, tab/view topology, wizard steps, and viewport screenshots before authoring
-   `specs/discovery_architecture_and_inventory.md`. Then run `scan_input_sources.py` (with `--ado-repo`, `--git-repo`, or `--input-dir` as confirmed in Step 0); read `specs/input_inventory.json`. If
+   `specs/discovery_architecture_and_inventory.md`. Then run `scan_input_sources.py` (with `--ado-repo`, `--git-repo`, or `--input-dir` as confirmed in Step 0); read `specs/input_inventory.json` and `specs/dependency_dag.json`. If
    `scenarioConfidence == LOW`, or the inputs mix legacy exports with a requirements document, ask the user
    which scenario applies before writing anything else.
+   - **Map-Reduce for Large Estates (`largeRepoMapReduceRecommended == true`):** When `topLevelModuleCount > 15` or files `> 60`, map each top-level module independently to `specs/.module_summaries/<module>.json` first, then synthesize the discovery blueprint from those summaries + `specs/dependency_dag.json#tiers`.
+   - **Strict Acronym Provenance (`unverifiedAcronyms`):** Never guess expansions for undefined acronyms in `unverifiedAcronyms`; preserve the acronym verbatim, mark `[UNVERIFIED_ACRONYM]` in `§3.1`, and ask at Gate 1.
+   - **Legacy Parity Oracles (`SCENARIO_LEGACY_APP`):** When legacy inputs include deterministic calculation test vectors or sample I/O fixtures, capture them in `test/legacy_parity_goldens.jsonl` for Stage 4B `TC-PARITY-*` tests.
 2. **Author `specs/discovery_architecture_and_inventory.md`** from the template in
    `01-discovery-and-grouping/resources/discovery_template.md`. Both scenarios produce: executive narrative,
    **Current-State ("As-Is") Data Model (`erDiagram`)**, **Current-State ("As-Is") Workflow & Lifecycle State Machine** (`stateDiagram-v2` **and** the transition table) with an evidence column, current-state roles, discovered business

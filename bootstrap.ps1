@@ -81,6 +81,7 @@ $StalePaths = @(
   (Join-Path $GeminiConfig "skills\07-test-runner-and-healer"),
   (Join-Path $GeminiConfig "skills\08-container-and-gdc-packager"),
   (Join-Path $GeminiConfig "skills\09-gdc-fleet-deployer-and-observability"),
+  (Join-Path $GeminiConfig "skills\10-drift-and-evolution"),
   (Join-Path $GeminiConfig "skills\google-cloud-ui-design")
 )
 foreach ($p in $StalePaths) {

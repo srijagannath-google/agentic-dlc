@@ -59,3 +59,12 @@ Every Stage 4A `design/infrastructure_architecture.md` MUST challenge the target
 | **3. Credential & Identity Security** | Are long-lived static service account keys or static DB passwords embedded in workloads? | Static credential files or hardcoded secrets in `ConfigMap` or container layers. | Keyless `Workload Identity (OIDC)` bound to least-privilege service accounts; secrets injected from `Secrets Manager` and encrypted at rest with `KMS (CMEK)`. |
 | **4. Database Scalability & Connection Starvation** | When `Kubernetes` pods autoscale under peak load, will database connections saturate? | Direct unpooled database connections from autoscaling pods; unindexed full-table scans. | Managed `PgBouncer` connection pooling between `Kubernetes` pods and `PostgreSQL HA`, B-Tree indexes on foreign-key and status columns, and read-replica offloading. |
 | **5. Environment Sprawl & Governance Drift** | Are workloads mutated manually via `kubectl` or deployed without policy guardrails? | Manual console/CLI drift; unverified privileged containers or missing RBAC/mTLS policies. | Declarative GitOps reconciliation via `Config Sync`, admission enforcement via `OPA Policy Controller`, and `Service Mesh STRICT` mTLS across all services. |
+
+---
+
+## 3. FinOps & Multi-Cloud TCO Sizing Estimation (`design/infrastructure_architecture.md §3`)
+
+Every `design/infrastructure_architecture.md` SHOULD include a `§3 FinOps Workload Sizing & Multi-Cloud TCO Estimate` table (grounded by optional `cloud-finops` MCP pricing tools when connected, or transparent standard list-price assumptions otherwise) detailing:
+1. **Right-Sized Tier Resource Envelope:** Stateless Web/UI pods (`vCPU`, `GiB RAM`, min/max HPA replicas), Stateless API/Domain pods, `PgBouncer` + `Managed PostgreSQL HA` (`vCPU`, `GiB RAM`, `IOPS`, HA storage GiB), Object Storage & Backup retention, and OpenTelemetry ingestion volume.
+2. **Portable Environment Cost Matrix:** Estimated monthly steady-state run-rate across target environments (`on-prem-gdc`, `gcp`, `aws`, `azure`) with 1-year / 3-year committed-use optimization levers.
+3. **Legacy Retirement Cost Offset (Modernization Scenarios):** Decommissioned legacy licensing, server hosting, and manual operational toil offset by each Strangler cutover wave.

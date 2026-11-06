@@ -57,6 +57,13 @@ jobs:
       - name: Domain-neutrality lint (no business-domain literals outside examples/)
         run: python3 scripts/lint_domain_neutrality.py
 
+      - name: Guardrail classifier & A/B skill ablation selftests
+        run: |
+          set -euo pipefail
+          python3 skills/07-test-runner-and-healer/scripts/run_closed_loop_eval.py --selftest-guardrail-patterns
+          python3 evals/run_skill_ablation.py --validate-only
+          python3 evals/run_skill_ablation.py --selftest
+
       - name: Golden projects (verify + derive pipeline over examples/*/expected_artifacts)
         env:
           PYTHONUNBUFFERED: "1"

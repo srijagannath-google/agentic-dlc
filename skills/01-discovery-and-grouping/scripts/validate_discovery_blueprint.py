@@ -202,6 +202,16 @@ def main() -> int:
                 if unknown:
                     fails.append(f"specs/target_stack.json#selectedCapabilityGroups contains unknown group ID(s) {unknown} (known: {sorted(known_ids)} or 'ALL').")
 
+    # 9b. Strict Acronym Provenance Check (warn if unverified domain acronyms are expanded without provenance marker)
+    unverified_acrs = inv.get("unverifiedAcronyms") or []
+    for acr in unverified_acrs:
+        if re.search(rf"\b[A-Z][A-Za-z0-9/& -]{{4,60}}\(\s*{re.escape(str(acr))}\s*\)", md):
+            if "UNVERIFIED_ACRONYM" not in md and not re.search(rf"\b{re.escape(str(acr))}\b.*(?:\?|confirm|verify|open)", md, re.IGNORECASE):
+                warns.append(
+                    f"Acronym '{acr}' had no definition in scanned inputs (`unverifiedAcronyms`), yet appears expanded in {args.file}. "
+                    f"Verify expansion against input sources or tag as `[UNVERIFIED_ACRONYM]` for Gate 1 confirmation."
+                )
+
     # 10. Zero internal harness workings leak check
     fails.extend(dlc.scan_deliverable_internal_leaks(root, [args.file]))
 

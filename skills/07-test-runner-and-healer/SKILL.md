@@ -31,13 +31,13 @@ python3 <PLUGIN>/skills/07-test-runner-and-healer/scripts/run_closed_loop_eval.p
 ```
 What it does — and what it refuses to fake:
 - Snapshots `src/` → `test/.snapshots/iter-N/`.
-- Starts `commands.start` (if a backend exists), polls `commands.healthcheck`, loads `commands.uiEntry`.
+- Starts `commands.start` (if a backend exists), polls `commands.healthcheck`, loads `commands.uiEntry`, and runs `commands.reset` (when configured in `specs/target_stack.json#commands.reset`) before each `browser`/`http` test for hermetic per-test isolation.
 - **browser** tests: adapter chain `playwright` (native Playwright `page.locator(selector)` hit-testing,
-  `locator.bounding_box()` layout visibility checks, automatic `[role="tab"]` / `[role="tabpanel"]` mutual-exclusivity
+  `locator.bounding_box()` layout visibility checks, inline `httpRequest` seeding/assertions, automatic `[role="tab"]` / `[role="tabpanel"]` mutual-exclusivity
   verification, real tab-click interactivity probes, and viewport PNG screenshots in
-  `test/.snapshots/iter-N/screenshots/`) → `chrome-headless` (headless Chrome with bounding-box & tab-exclusivity
+  `test/.snapshots/iter-N/screenshots/`) → `chrome-headless` (headless Chrome with bounding-box, inline `httpRequest`, & tab-exclusivity
   verification + `--screenshot` capture) → `none` ⇒ every browser test is `NOT_RUN`. `NOT_RUN` never counts as PASS.
-- **http** tests: `urllib` against the started backend.
+- **http** & **parity (`TC-PARITY-*`)** tests: `urllib` against the started backend supporting `expectStatus`, `expectJsonPath`, `expectBodyContains`, `expectBodyNotContains`, and `expectJsonPathAbsent`.
 - **static** tests: visible-text leakage scan over every role/view (tokens from `forbiddenUiTokens`; generic
   `UPPER_SNAKE` / UUID heuristics are warnings), handler-wiring scan for every interactive element, a11y lint.
 - Verdict `PASS` only when zero `FAIL/ERROR/NOT_RUN` among non-optional tests, zero leakage hits, zero
@@ -59,7 +59,7 @@ Never: weaken an assertion, mark a test optional to pass, hard-code expected val
 relax masking. Re-run step 1 after each iteration.
 
 ### 3. Gate 4 — guardrail review
-The audit report §3 classifies every diff hunk. Hunks touching a **role check, state guard (§3.3), business
+The audit report §3 classifies every diff hunk (matching explicit `@dlc-guard` / `@dlc-rule` / `@dlc-mask` / `@dlc-a11y` contract pragmas plus structural AST/regex heuristics while ignoring ISO-8601 fixture timestamps). Hunks touching a **role check, state guard (§3.3), business
 formula (§3.4), PII masking, or accessibility attribute/role/label** set
 `GUARDRAIL_REVIEW_STATUS: FLAGGED_REQUIRES_HUMAN_APPROVAL`. When flagged:
 1. present the hunk table (file, lines, guardrail touched, why the change was needed, before/after);

@@ -33,7 +33,9 @@ def is_assertion_step(st: dict) -> bool:
     a = str(st.get("action") or "")
     if a.startswith("expect"):
         return True
-    return a == "httpRequest" and ("expectStatus" in st or "expectJsonPath" in st)
+    return a == "httpRequest" and any(
+        k in st for k in ("expectStatus", "expectJsonPath", "expectJsonPathAbsent", "expectBodyContains", "expectBodyNotContains")
+    )
 
 
 def story_is_deferred(story: dict | None, is_all: bool, selected_groups: set[str]) -> bool:
@@ -128,7 +130,15 @@ def main() -> int:
             if a in NEEDS_VALUE and not str(st.get("value", "")).strip():
                 fails.append(f"{tid} step {i}: '{a}' requires a value")
             if a == "expectText" and not (st.get("contains") or st.get("equals") is not None):
-                fails.append(f"{tid} step {i}: expectText needs 'contains' or 'equals'")
+                fails.append(f"{tid} step {i}: expectText needs non-empty 'contains' or 'equals'")
+            if a == "expectBodyNotContains":
+                nb = st.get("value") if st.get("value") is not None else (st.get("contains") if st.get("contains") is not None else st.get("expectBodyNotContains"))
+                if not str(nb or "").strip():
+                    fails.append(f"{tid} step {i}: expectBodyNotContains requires a non-empty 'value' or 'contains'")
+            if a == "expectJsonPathAbsent":
+                jp_abs = st.get("path") if st.get("path") is not None else st.get("expectJsonPathAbsent")
+                if not str(jp_abs or "").strip():
+                    fails.append(f"{tid} step {i}: expectJsonPathAbsent requires a non-empty JSON 'path'")
             if a == "expectCount" and not any(isinstance(st.get(k), int) and not isinstance(st.get(k), bool) for k in ("equals", "min", "max")):
                 fails.append(f"{tid} step {i}: expectCount needs an integer 'equals', 'min' or 'max'")
             if a == "expectNoVisibleTextMatching":
@@ -138,16 +148,26 @@ def main() -> int:
                     fails.append(f"{tid} step {i}: invalid regex pattern ({e})")
                 if not st.get("pattern"):
                     fails.append(f"{tid} step {i}: expectNoVisibleTextMatching needs 'pattern'")
+                elif str(st.get("pattern")).strip() == "(?!)":
+                    fails.append(f"{tid} step {i}: tautological regex '(?!)' never fails — write a real pattern")
             if a == "httpRequest":
                 for k in ("method", "path", "expectStatus"):
                     if k not in st:
                         fails.append(f"{tid} step {i}: httpRequest needs '{k}'")
-                if t.get("runtime") != "http":
-                    warns.append(f"{tid}: httpRequest step inside a '{t.get('runtime')}' test — runtime should be 'http'")
+                if st.get("expectBodyContains") == "":
+                    fails.append(f"{tid} step {i}: httpRequest expectBodyContains cannot be empty (tautological assertion)")
+                if t.get("runtime") == "static":
+                    warns.append(f"{tid}: httpRequest step inside a 'static' test — runtime should be 'http' or 'browser'")
+                elif t.get("runtime") == "browser" and all(s.get("action") in ("httpRequest", "wait") for s in steps):
+                    warns.append(f"{tid}: browser test contains only httpRequest/wait steps — consider runtime='http'")
             if a == "goto" and not st.get("target"):
                 fails.append(f"{tid} step {i}: goto needs 'target' ('ui' or a URL)")
             if a == "wait" and not isinstance(st.get("ms"), int):
                 fails.append(f"{tid} step {i}: wait needs integer 'ms'")
+        if t.get("category") == "Parity" and t.get("intentionalDivergenceRef"):
+            div_ref = str(t["intentionalDivergenceRef"]).strip()
+            if not re.match(r"^(REQ-ENH-[0-9]+|BR-[0-9]+|POL-[A-Za-z0-9_-]+)$", div_ref):
+                fails.append(f"{tid}: intentionalDivergenceRef '{div_ref}' must cite REQ-ENH-NN, BR-NN, or POL-*")
         if t.get("runtime") == "browser" and steps and steps[0].get("action") != "goto":
             warns.append(f"{tid}: browser test should start with a 'goto' step")
 

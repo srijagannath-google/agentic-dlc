@@ -1,0 +1,218 @@
+{
+  "suiteVersion": "1.0",
+  "description": "Domain-neutral A/B skill ablation, counterfactual trap, and routing abstention benchmark for agentic-dlc v4.4",
+  "cases": [
+    {
+      "id": "EVAL-01-ACRONYM-PROVENANCE",
+      "kind": "skill_trap",
+      "targetSkill": "01-discovery-and-grouping",
+      "counterfactualPairId": "EVAL-02-ACRONYM-DEFINED",
+      "prompt": "Stage 1 discovery intake: legacy COBOL/SQL export for an asset inspection system references status code 'QVRP' four times in TBL_ASSET_INSP without defining what QVRP stands for. Draft the Current-State workflow notes and Gate 1 intake questions.",
+      "mustMatchRegex": [
+        "QVRP",
+        "(?:UNVERIFIED_ACRONYM|Open Workflow Questions|confirm.*QVRP|what.*QVRP)"
+      ],
+      "mustNotMatchRegex": [
+        "Quality Verification Review Process\\s*\\(QVRP\\)",
+        "Quarterly Vendor Audit\\s*\\(QVRP\\)",
+        "CREATE\\s+TABLE\\s+asset_inspections"
+      ],
+      "syntheticBaselineOutput": "In the Current-State workflow, Quality Verification Review Process (QVRP) governs inspections. Future-State 3NF DDL:\nCREATE TABLE asset_inspections (id UUID PRIMARY KEY);",
+      "syntheticTreatmentOutput": "Current-State ('As-Is') observation: `TBL_ASSET_INSP` transitions records into code `QVRP` (`[UNVERIFIED_ACRONYM]` — never defined in scanned inputs).\n\n### Open Workflow Questions (Gate 1)\n- Please confirm the exact business meaning and actor role for status code `QVRP`."
+    },
+    {
+      "id": "EVAL-02-ACRONYM-DEFINED",
+      "kind": "skill_trap",
+      "targetSkill": "01-discovery-and-grouping",
+      "counterfactualPairId": "EVAL-01-ACRONYM-PROVENANCE",
+      "prompt": "Stage 1 discovery intake: policy manual section 2.1 explicitly defines 'Quantitative Calibration Variance Review (QVRP)' and states only a Senior Metrologist may clear QVRP holds. Summarize the evidenced Current-State rule and state transition.",
+      "mustMatchRegex": [
+        "Quantitative Calibration Variance Review\\s*\\(QVRP\\)",
+        "Senior Metrologist"
+      ],
+      "mustNotMatchRegex": [
+        "UNVERIFIED_ACRONYM",
+        "CREATE\\s+TABLE"
+      ],
+      "syntheticBaselineOutput": "QVRP is an unknown code. Proposed target schema: CREATE TABLE calibrations (id INT PRIMARY KEY);",
+      "syntheticTreatmentOutput": "Evidenced Current-State Rule (Policy Manual §2.1): Quantitative Calibration Variance Review (QVRP) holds can only be cleared by actor role `Senior Metrologist`."
+    },
+    {
+      "id": "EVAL-03-COUNTERFACTUAL-FORMULA-A",
+      "kind": "skill_trap",
+      "targetSkill": "02-spec-architect-and-judge",
+      "counterfactualPairId": "EVAL-04-COUNTERFACTUAL-FORMULA-B",
+      "prompt": "Author Spec §3.4 Business Rules table row BR-01 from the BRD: 'Late calibration surcharge is flat 3.5% of base_fee when overdue_days > 14 (capped at 120.00 USD); 0.00 USD when overdue_days <= 14.'",
+      "mustMatchRegex": [
+        "BR-01",
+        "3\\.5%|0\\.035",
+        "14",
+        "120\\.00"
+      ],
+      "mustNotMatchRegex": [
+        "1\\.5%\\s*per\\s*month",
+        "30\\s*days"
+      ],
+      "syntheticBaselineOutput": "BR-01: Standard late fee is 1.5% per month after 30 days overdue.",
+      "syntheticTreatmentOutput": "| Rule ID | Title | Inputs | Deterministic Formula / Condition | Source |\n| :-- | :-- | :-- | :-- | :-- |\n| `BR-01` | Late Calibration Surcharge | `base_fee`, `overdue_days` | If `overdue_days > 14`, `min(round(base_fee * 0.035, 2), 120.00)`; else `0.00` USD | BRD §4.2 |"
+    },
+    {
+      "id": "EVAL-04-COUNTERFACTUAL-FORMULA-B",
+      "kind": "skill_trap",
+      "targetSkill": "02-spec-architect-and-judge",
+      "counterfactualPairId": "EVAL-03-COUNTERFACTUAL-FORMULA-A",
+      "prompt": "Author Spec §3.4 Business Rules table row BR-01 from the BRD: 'Late calibration surcharge is 12.00 USD per day for each day overdue_days > 5 (capped at 240.00 USD); waived when overdue_days <= 5.'",
+      "mustMatchRegex": [
+        "BR-01",
+        "12\\.00",
+        "overdue_days\\s*>\\s*5|>\\s*5",
+        "240\\.00"
+      ],
+      "mustNotMatchRegex": [
+        "3\\.5%",
+        "30\\s*days"
+      ],
+      "syntheticBaselineOutput": "BR-01: Standard late surcharge is 5% after 30 days.",
+      "syntheticTreatmentOutput": "| Rule ID | Title | Inputs | Deterministic Formula / Condition | Source |\n| :-- | :-- | :-- | :-- | :-- |\n| `BR-01` | Daily Calibration Overdue Fee | `overdue_days` | If `overdue_days > 5`, `min((overdue_days - 5) * 12.00, 240.00)`; else `0.00` USD | BRD §4.2 |"
+    },
+    {
+      "id": "EVAL-05-STRANGLER-BOUNDARY-ACL",
+      "kind": "skill_trap",
+      "targetSkill": "04-solution-architect",
+      "counterfactualPairId": null,
+      "prompt": "Stage 4A design: Wave 1 modernizes GRP-01 (Intake) while GRP-02 (Billing) stays on legacy DB table TBL_LEG_INVHDR for 2 quarters using coexistenceStrategy='boundary-acl-cdc'. Where must CDC / anti-corruption translation live, and how should src/db/schema.sql name target tables?",
+      "mustMatchRegex": [
+        "deploy/coexistence/",
+        "snake_case|invoice_headers|intake_requests",
+        "retirement|decommission|cutover"
+      ],
+      "mustNotMatchRegex": [
+        "CREATE\\s+TABLE\\s+TBL_LEG_INVHDR"
+      ],
+      "syntheticBaselineOutput": "Keep compatibility by creating CREATE TABLE TBL_LEG_INVHDR directly inside src/db/schema.sql and querying TBL_LEG_INVHDR in src/backend/.",
+      "syntheticTreatmentOutput": "Keep `src/db/schema.sql` and `src/backend/` 100% pure target snake_case domain nouns (e.g., `intake_requests`, `invoice_summaries` — zero `TBL_LEG_INVHDR` references in `src/`). Isolate the disposable CDC outbox / Boundary Anti-Corruption Layer inside `deploy/coexistence/` with an explicit Wave 2 retirement milestone in `design/data_migration_and_cutover.md`."
+    },
+    {
+      "id": "EVAL-06-REDTEAM-BOLA-RACE",
+      "kind": "skill_trap",
+      "targetSkill": "04-solution-architect",
+      "counterfactualPairId": null,
+      "prompt": "Act as architecture-critic reviewing a Stage 4A design where `PATCH /api/v1/work-orders/{id}/approve` checks only that the caller has role 'Supervisor' (ignoring department scope) and executes `UPDATE work_orders SET status='Approved' WHERE id=$1` without checking current status or version. Identify the blocking rubric failures.",
+      "mustMatchRegex": [
+        "ARCH-SEC-01|BOLA|object-level",
+        "ARCH-DL-02|optimistic|WHERE.*status|concurrent|race"
+      ],
+      "mustNotMatchRegex": [
+        "verdict.*PASS",
+        "100/100"
+      ],
+      "syntheticBaselineOutput": "The endpoint checks the Supervisor role and uses parameterized SQL ($1), so security and design look solid. Verdict: PASS (100/100).",
+      "syntheticTreatmentOutput": "Blocking Red-Team Failures (`verdict: FAIL`):\n1. `ARCH-SEC-01` (Broken Object-Level Authorization / BOLA): Checking role `'Supervisor'` alone allows cross-department privilege escalation; query must predicate on caller's authorized `department_id`.\n2. `ARCH-DL-02` (Concurrent Transition Race): `UPDATE work_orders` lacks `AND status = 'Pending_Review' AND version = $2`, allowing double-approval or illegal state jumps."
+    },
+    {
+      "id": "EVAL-07-PARITY-ORACLE-DIVERGENCE",
+      "kind": "skill_trap",
+      "targetSkill": "05-test-plan-designer",
+      "counterfactualPairId": null,
+      "prompt": "Stage 4B test design: legacy golden record #4 returns `status='HOLD_MANUAL'` for amount=5000, whereas modern Spec enhancement `REQ-ENH-02` auto-approves amounts up to 5000 (`status='Approved'`). How should this case be represented in `test/legacy_parity_goldens.jsonl` and `TC-PARITY-*`?",
+      "mustMatchRegex": [
+        "TC-PARITY-",
+        "intentionalDivergenceRef",
+        "REQ-ENH-02"
+      ],
+      "mustNotMatchRegex": [
+        "delete.*golden|ignore.*mismatch"
+      ],
+      "syntheticBaselineOutput": "Delete golden record #4 from the parity test file so the test suite passes without mismatch.",
+      "syntheticTreatmentOutput": "Retain the golden case in `test/legacy_parity_goldens.jsonl` with `\"legacyExpectedOutput\": \"HOLD_MANUAL\"`, `\"modernExpectedOutput\": \"Approved\"`, and `\"intentionalDivergenceRef\": \"REQ-ENH-02\"`, deriving `TC-PARITY-04` so the intentional modernization divergence is explicitly traced and verified."
+    },
+    {
+      "id": "EVAL-08-CONTRACT-PRAGMA-ZERO-LEAK",
+      "kind": "skill_trap",
+      "targetSkill": "06-coding-agent",
+      "counterfactualPairId": null,
+      "prompt": "Stage 5 implementation: write a backend state-transition handler snippet for transitioning a grant application from `Under Review` to `Approved` (role `Grant Officer`, rule `BR-04`, masking `tax_id` in DTO) with contract-pinned Stage 6 guardrail annotations and zero UI internal token leakage.",
+      "mustMatchRegex": [
+        "@dlc-guard:",
+        "@dlc-rule:BR-04",
+        "@dlc-mask:",
+        "\\*\\*\\*-|\\*{3,}|masked"
+      ],
+      "mustNotMatchRegex": [
+        "UNDER_REVIEW.*visible",
+        "raw_tax_id"
+      ],
+      "syntheticBaselineOutput": "function approve(req) { db.update({status: 'UNDER_REVIEW_APPROVED', raw_tax_id: req.tax_id}); return {status: 'UNDER_REVIEW_APPROVED'}; }",
+      "syntheticTreatmentOutput": "// @dlc-guard:Under_Review->Approved\n// @dlc-rule:BR-04\n// @dlc-mask:tax_id\nexport function approveGrantApplication(record, actorRole) {\n  if (actorRole !== 'Grant Officer' || record.state !== 'Under Review') {\n    throw new DomainGuardError('Only a Grant Officer may approve an application currently Under Review.');\n  }\n  return { displayStatus: 'Approved', maskedTaxId: '***-**-' + String(record.taxId).slice(-4) };\n}"
+    },
+    {
+      "id": "EVAL-09-DAY2-DRIFT-EVOLUTION",
+      "kind": "skill_trap",
+      "targetSkill": "10-drift-and-evolution",
+      "counterfactualPairId": null,
+      "prompt": "Day-2 evolution: a developer added `POST /api/v1/calibrations/{id}/expedite` directly in `src/backend/routes.py` without updating `specs/application_spec.md`, `design/solution_design.md`, or `src/contracts/openapi.yaml`. What happens when Stage 9 runs, and how do we reconcile an intentional feature addition?",
+      "mustMatchRegex": [
+        "check_spec_code_drift\\.py|drift_report",
+        "design/adrs/ADR-",
+        "--refresh-from-stage"
+      ],
+      "mustNotMatchRegex": [
+        "edit openapi\\.yaml manually without updating solution_design"
+      ],
+      "syntheticBaselineOutput": "Just hand-edit openapi.yaml to add the expedite route and merge the PR.",
+      "syntheticTreatmentOutput": "Run `check_spec_code_drift.py` to generate `test/drift_report.{json,md}`. Because `POST /api/v1/calibrations/{id}/expedite` introduces a new lifecycle trigger/route, record the architectural decision in `design/adrs/ADR-001-expedite-calibration.md`, add the `Expedite` transition to `specs/application_spec.md §3.3` and OpenAPI in `design/solution_design.md`, and run `run_agentic_dlc_pipeline.py --refresh-from-stage 4 --to-stage 10` to regenerate `src/contracts/openapi.yaml` and preserve existing `test/test_cases.json` steps."
+    },
+    {
+      "id": "EVAL-10-NEGATIVE-CONTROL-GIT-REBASE",
+      "kind": "negative_abstention",
+      "targetSkill": null,
+      "counterfactualPairId": null,
+      "prompt": "How do I squash the last 3 commits on my local feature branch using interactive git rebase?",
+      "mustMatchRegex": [
+        "git\\s+rebase\\s+-i"
+      ],
+      "mustNotMatchRegex": [
+        "specs/input_inventory\\.json",
+        "gate_tracker\\.py",
+        "discovery_architecture_and_inventory\\.md"
+      ],
+      "syntheticBaselineOutput": "Run `git rebase -i HEAD~3` and change `pick` to `squash` (or `s`) on the second and third commits.",
+      "syntheticTreatmentOutput": "Run `git rebase -i HEAD~3` and mark the newer two commits as `squash` (`s`) to combine them into one commit."
+    },
+    {
+      "id": "EVAL-11-NEGATIVE-CONTROL-PYTHON-SORT",
+      "kind": "negative_abstention",
+      "targetSkill": null,
+      "counterfactualPairId": null,
+      "prompt": "In Python, what is the difference between `list.sort()` and `sorted(iterable)`?",
+      "mustMatchRegex": [
+        "in[- ]place|None",
+        "new\\s+list"
+      ],
+      "mustNotMatchRegex": [
+        "application_spec\\.md",
+        "target_stack\\.json",
+        "run_agentic_dlc_pipeline\\.py"
+      ],
+      "syntheticBaselineOutput": "`list.sort()` mutates the list in-place and returns `None`, whereas `sorted()` accepts any iterable and returns a new sorted list.",
+      "syntheticTreatmentOutput": "`list.sort()` sorts a list in-place and returns `None`; `sorted(iterable)` leaves the input unchanged and returns a new list."
+    },
+    {
+      "id": "EVAL-12-NEGATIVE-CONTROL-CSS-TYPO",
+      "kind": "negative_abstention",
+      "targetSkill": null,
+      "counterfactualPairId": null,
+      "prompt": "Why does `justify-items: center` not center children inside a `display: flex` container?",
+      "mustMatchRegex": [
+        "justify-content",
+        "grid|flexbox|flex"
+      ],
+      "mustNotMatchRegex": [
+        "gate_approvals\\.json",
+        "validate_spec_scorecard\\.py"
+      ],
+      "syntheticBaselineOutput": "In Flexbox, `justify-items` is ignored; use `justify-content: center` on the flex container (`justify-items` applies to CSS Grid).",
+      "syntheticTreatmentOutput": "`justify-items` applies to CSS Grid layouts and has no effect on flex containers. Use `justify-content: center` (main axis) and `align-items: center` (cross axis) in Flexbox."
+    }
+  ]
+}

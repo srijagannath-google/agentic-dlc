@@ -5,8 +5,8 @@ description: "Stage 4A of the Agentic DLC v4 (parallel with 05-test-plan-designe
 
 # Stage 4A — Future-State ("To-Be") Multi-Perspective Target Architecture & Solution Design
 
-**Read before acting:** `docs/ARCHITECTURE.md` §3, §4.2, §4.6, `_shared/well_architected_and_diagram_standards.md`, `skills/04-solution-architect/resources/reference_high_level_solution_architecture.png`, `skills/04-solution-architect/resources/reference_business_capability_map.png`, `skills/04-solution-architect/resources/reference_gcp_architecture_diagram.png`, `_shared/zero_leak.md`,
-`_shared/workflow_chain_of_custody.md` ("Stage 5"), `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `skills/google-cloud-ui-design/SKILL.md`. Subagent: `solution-architect`.
+**Read before acting:** `docs/ARCHITECTURE.md` §3, §4.2, §4.6, `_shared/well_architected_and_diagram_standards.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`, `skills/04-solution-architect/resources/reference_high_level_solution_architecture.png`, `skills/04-solution-architect/resources/reference_business_capability_map.png`, `skills/04-solution-architect/resources/reference_gcp_architecture_diagram.png`, `_shared/zero_leak.md`,
+`_shared/workflow_chain_of_custody.md` ("Stage 5"), `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `skills/google-cloud-ui-design/SKILL.md` (incl. `references/gemini-enterprise-a2ui.md` when `frontend.kind == "gemini-enterprise-a2ui"`). Subagents: `solution-architect`, `architecture-critic`.
 
 > **CRITICAL RULE 1 — Separate Artifact per Architectural Perspective & Flexible Multi-Layout Rendering:**
 > Never cram all architecture perspectives into a single monolithic file or render every perspective with the same fixed diagram layout. Stage 4A authors **7 Dedicated Architecture Perspective Artifacts** (indexed by **`design/architecture_design.md`**), each rendered with its own purpose-built visual layout in `04/scripts/gcp_diagram_renderer.py`:
@@ -71,13 +71,18 @@ Using the templates in `skills/04-solution-architect/resources/*_template.md`:
 8. **`design/architecture_design.md`** (`resources/architecture_design_template.md`): Executive Multi-Perspective Architecture Portfolio Index linking all 7 artifacts and embedding a visual gallery of all 7 rendered SVGs.
 
 ### 2. Author `design/solution_design.md` (and `design/data_migration_and_cutover.md` for Legacy Apps)
-Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§1.1` Legacy→Target 3NF Entity Mapping (`SCENARIO_LEGACY_APP` only), `§1.2` ```` ```sql ddl ````, `§2` ```` ```yaml openapi ````, `§3` ViewModel/DTO Boundary, `§4` Workflow & Authorization Enforcement, `§5` Frontend Tokens, `§6` Cross-Cutting Concerns, and `§7` Target-State Build & Packaging Specification.
+Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§1.1` Legacy→Target 3NF Entity Mapping (`SCENARIO_LEGACY_APP` only), `§1.2` ```` ```sql ddl ````, `§2` ```` ```yaml openapi ````, `§3` ViewModel/DTO Boundary (including `A2UI v0.9` catalog bindings when `frontend.kind == "gemini-enterprise-a2ui"`), `§4` Workflow & Authorization Enforcement, `§5` Frontend Tokens, `§6` Cross-Cutting Concerns, and `§7` Target-State Build & Packaging Specification. Include the **FinOps & Multi-Cloud TCO Sizing Matrix** in `design/infrastructure_architecture.md §3` (and when `coexistenceStrategy.mode != "big-bang"`, document the disposable Strangler Boundary ACL isolated under `deploy/coexistence/` with its retirement wave in `design/data_migration_and_cutover.md` while keeping `src/` 100% pure).
 
-### 3. Validate All Perspectives, Render All 7 Diagrams & Extract Contracts
+### 3. Validate All Perspectives, Render All 7 Diagrams, Extract Contracts & Run Adversarial `architecture-critic`
 ```bash
 python3 <PLUGIN>/skills/04-solution-architect/scripts/extract_contracts.py --project-root "<PROJECT_ROOT>"
 ```
-Validates all 7 perspective artifacts + `architecture_design.md` + `solution_design.md`, renders all 7 SVG/PNG diagram pairs in `design/diagrams/`, and extracts `src/contracts/openapi.yaml` and `src/db/schema.sql`. Fix any reported issues and re-run until PASS.
+Validates all 7 perspective artifacts + `architecture_design.md` + `solution_design.md`, renders all 7 SVG/PNG diagram pairs in `design/diagrams/`, and extracts `src/contracts/openapi.yaml` and `src/db/schema.sql`.
+Then invoke **`architecture-critic`** (mandatory when `ceremonyTrack == "regulated"` or when requested; recommended on `standard`) to score the design against `schemas/architecture_rubric.json` into `design/architecture_eval_scorecard.{json,md}` and verify:
+```bash
+python3 <PLUGIN>/skills/04-solution-architect/scripts/validate_architecture_scorecard.py --project-root "<PROJECT_ROOT>"
+```
+Iterate on any blocking gaps (`totalScore < 90` or `awarded == 0` on a blocking criterion) and re-run `extract_contracts.py` + `validate_architecture_scorecard.py` until PASS.
 
 ### 4. Mandatory STOP at Gate 4A/4B (`gate_4_design_and_tests`) — Wait for Human Architecture & Test Plan Approval
 `extract_contracts.py` (together with Stage 4B `validate_test_cases.py`) stamps `gate_4_design_and_tests = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 5 (`check_testid_contract.py` & `validate_build.py`).

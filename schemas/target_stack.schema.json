@@ -10,7 +10,7 @@
       "type": "object",
       "required": ["kind"],
       "properties": {
-        "kind": { "type": "string", "enum": ["tbd", "static-html", "react", "angular", "vue", "nextjs", "other"] },
+        "kind": { "type": "string", "enum": ["tbd", "static-html", "react", "angular", "vue", "nextjs", "gemini-enterprise-a2ui", "other"] },
         "notes": { "type": "string" }
       }
     },
@@ -85,7 +85,24 @@
         "start": { "type": "string", "description": "REQUIRED by Stage 4A when backend.kind is not 'none' or 'tbd'; must serve UI + API" },
         "healthcheck": { "type": "string", "description": "REQUIRED when start is set" },
         "uiEntry": { "type": "string", "description": "Local file path or URL Stage 6 loads the UI from (REQUIRED by Stage 4A when frontend.kind != 'tbd')" },
+        "reset": { "type": "string", "description": "Optional hermetic state-reset hook invoked between Stage 6 test cases (either an HTTP endpoint such as 'POST /__test/reset' or a shell command)." },
         "test": { "type": "string" }
+      }
+    },
+    "coexistenceStrategy": {
+      "type": "string",
+      "enum": ["clean-cutover", "boundary-acl-cdc", "strangler-gateway"],
+      "description": "Cutover vs. incremental Strangler wave coexistence strategy. When selectedCapabilityGroups != ['ALL'], 'boundary-acl-cdc' or 'strangler-gateway' isolates temporary translation/CDC adapters strictly under deploy/coexistence/ so src/ stays 100% legacy-free."
+    },
+    "aiSurface": {
+      "type": "object",
+      "description": "Optional Gemini Enterprise / Agent-to-UI (A2UI v0.9) declarative interactive surface configuration.",
+      "properties": {
+        "protocol": { "type": "string", "enum": ["none", "a2ui-v0.9", "mcp-ui"] },
+        "components": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["Canvas", "RichTable", "VegaChart", "ActionCard", "CitationChip", "ApprovalCard"] }
+        }
       }
     },
     "deployment": {

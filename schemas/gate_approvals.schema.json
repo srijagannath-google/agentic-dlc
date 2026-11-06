@@ -8,6 +8,7 @@
   "properties": {
     "schemaVersion": { "type": "string", "const": "4.0" },
     "initializedAtUtc": { "type": ["string", "null"] },
+    "ceremonyTrack": { "type": "string", "enum": ["quick", "standard", "regulated"] },
     "gates": {
       "type": "object",
       "additionalProperties": {
@@ -25,14 +26,16 @@
               "AWAITING_HUMAN_REVIEW",
               "APPROVED_BY_USER",
               "PRE_APPROVED_AUTONOMOUS",
-              "AUTONOMOUS_DEFAULT"
+              "AUTONOMOUS_DEFAULT",
+              "AUTO_SKIPPED_BY_CEREMONY_TRACK"
             ]
           },
           "readyAtUtc": { "type": ["string", "null"] },
           "readyAtEpoch": { "type": ["number", "null"] },
           "approvedAtUtc": { "type": ["string", "null"] },
           "userResponse": { "type": ["string", "null"] },
-          "summary": { "type": ["string", "null"] }
+          "summary": { "type": ["string", "null"] },
+          "decisionBriefPath": { "type": ["string", "null"] }
         }
       }
     }

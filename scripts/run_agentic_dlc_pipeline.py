@@ -54,6 +54,7 @@ S06 = SKILLS / "06-coding-agent" / "scripts"
 S07 = SKILLS / "07-test-runner-and-healer" / "scripts"
 S08 = SKILLS / "08-container-and-gdc-packager" / "scripts"
 S09 = SKILLS / "09-gdc-fleet-deployer-and-observability" / "scripts"
+S10 = SKILLS / "10-drift-and-evolution" / "scripts"
 
 GATE4_DETAIL = "Gate 4: review test/remediation_and_guardrail_audit_report.md, then re-run with --approve-guardrail-flags"
 
@@ -119,6 +120,9 @@ def build_steps(a: argparse.Namespace) -> list[Step]:
         Step(4, "04-contracts", "Gate 4a · validate 7-perspective architecture suite + extract OpenAPI & DDL from solution design", S04 / "extract_contracts.py", lambda a: [],
              requires=[("design/architecture_design.md", "Stage 4A solution-architect (skill 04-solution-architect)"),
                        ("design/solution_design.md", "Stage 4A solution-architect (skill 04-solution-architect)")]),
+        Step(4, "04-arch-judge", "Gate 4a · multi-persona architecture Red-Team scorecard validation", S04 / "validate_architecture_scorecard.py", lambda a: [],
+             requires=[("design/architecture_eval_scorecard.json", "Stage 4A architecture-critic (scores design/ against schemas/architecture_rubric.json)")],
+             condition=lambda root, a: (root / "design" / "architecture_eval_scorecard.json").is_file() or dlc.active_ceremony_track(root) == "regulated"),
         Step(4, "04-migration", "Stage 4A · legacy data migration plan present", None, lambda a: [],
              requires=[("design/data_migration_and_cutover.md", "Stage 4A solution-architect — required only for SCENARIO_LEGACY_APP")],
              condition=lambda root, a: scenario_is_legacy(root)),
@@ -151,14 +155,22 @@ def build_steps(a: argparse.Namespace) -> list[Step]:
                        ("deploy/observability/otel-collector.yaml", "Stage 8 platform-ops-agent (skill 09-gdc-fleet-deployer-and-observability)"),
                        ("deploy/deployment_and_runbook.md", "Stage 8 platform-ops-agent (skill 09-gdc-fleet-deployer-and-observability)")],
              condition=lambda root, a: deployment_present(root)),
+        Step(10, "10-drift", "Stage 9 · continuous spec-to-code & contract drift verification", S10 / "check_spec_code_drift.py",
+             lambda a: [*det],
+             requires=[("specs/application_spec.md", "Stage 2 discovery-architect (skill 02-spec-architect-and-judge)"),
+                       ("src", "Stage 5 coding-agent (skill 06-coding-agent)")],
+             condition=lambda root, a: (root / "src").is_dir() and any(f.is_file() for f in (root / "src").rglob("*"))),
     ]
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
-    ap.add_argument("--from-stage", type=int, default=1, choices=range(0, 10))
-    ap.add_argument("--to-stage", type=int, default=9, choices=range(0, 10))
+    ap.add_argument("--from-stage", type=int, default=1, choices=range(0, 11))
+    ap.add_argument("--to-stage", type=int, default=9, choices=range(0, 11))
+    ap.add_argument("--refresh-from-stage", type=int, default=None, choices=range(1, 11),
+                    help="Re-run contract extraction, test-case derivation (preserving authored steps), and downstream hash checks starting at stage N")
+    ap.add_argument("--wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01) to pin selectedCapabilityGroups for phased delivery")
     ap.add_argument("--autonomous", action="store_true", help="Explicitly run in autonomous mode (sets DLC_AUTONOMOUS=1, records autonomous gate ledger defaults, and pre-approves Gate 3)")
     ap.add_argument("--platform", default=None, choices=["jira", "ado", "both", "none"], help="ALM platform for the Stage 3 bridge (default: target_stack.json#almPlatform)")
     ap.add_argument("--browser", default="auto", choices=["auto", "playwright", "chrome", "none"])
@@ -169,9 +181,27 @@ def main() -> int:
     ap.add_argument("--approve-guardrail-flags", action="store_true", help="Pass through to Stage 6 after a human reviewed the audit report")
     args = ap.parse_args()
 
+    if args.refresh_from_stage is not None:
+        args.from_stage = args.refresh_from_stage
+        args.rederive = True
+
     root = dlc.resolve_project_root(args.project_root)
     if dlc.is_installer_dir(root) or root == PLUGIN_ROOT:
         raise dlc.GateFailure(f"{root} is the plugin directory, not a project root (see _shared/project_root.md).")
+
+    if args.wave:
+        ts_p = root / "specs" / "target_stack.json"
+        if ts_p.is_file():
+            ts_obj = dlc.read_json(ts_p)
+            if isinstance(ts_obj, dict):
+                ts_obj["selectedCapabilityGroups"] = [args.wave]
+                dlc.write_json(ts_p, ts_obj)
+        ps_p = root / "specs" / "project_setup.json"
+        if ps_p.is_file():
+            ps_obj = dlc.read_json(ps_p)
+            if isinstance(ps_obj, dict):
+                ps_obj["activeWave"] = args.wave
+                dlc.write_json(ps_p, ps_obj)
     child_env = dict(os.environ)
     if args.autonomous:
         os.environ["DLC_AUTONOMOUS"] = "1"

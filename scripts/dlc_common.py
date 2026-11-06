@@ -1087,13 +1087,27 @@ GATE_DEFINITIONS: dict[str, str] = {
 # and the Stage 6 guardrail approval keep their documented semantics inside their own scripts.
 AUTONOMOUS_DEFAULT_GATES: tuple[str, ...] = ("gate_0_setup", "gate_1_discovery", "gate_3_backlog", "gate_4_design_and_tests")
 
-# Ledger statuses (schemas/gate_approvals.schema.json#status enum).
+# Ledger statuses (schemas/gate_approvals.schema.json#status enum) & Ceremony Tracks.
+CEREMONY_TRACKS: tuple[str, ...] = ("quick", "standard", "regulated")
+QUICK_TRACK_AUTO_SKIP_GATES: frozenset[str] = frozenset({
+    "gate_2_spec",
+    "gate_3_backlog",
+    "gate_5_build",
+    "gate_7_packaging",
+})
+
 GATE_STATUS_PENDING = "PENDING"
 GATE_STATUS_AWAITING = "AWAITING_HUMAN_REVIEW"
 GATE_STATUS_APPROVED = "APPROVED_BY_USER"
 GATE_STATUS_PRE_APPROVED = "PRE_APPROVED_AUTONOMOUS"
 GATE_STATUS_AUTONOMOUS_DEFAULT = "AUTONOMOUS_DEFAULT"
-GATE_APPROVED_STATUSES: frozenset[str] = frozenset({GATE_STATUS_APPROVED, GATE_STATUS_PRE_APPROVED, GATE_STATUS_AUTONOMOUS_DEFAULT})
+GATE_STATUS_AUTO_SKIPPED_TRACK = "AUTO_SKIPPED_BY_CEREMONY_TRACK"
+GATE_APPROVED_STATUSES: frozenset[str] = frozenset({
+    GATE_STATUS_APPROVED,
+    GATE_STATUS_PRE_APPROVED,
+    GATE_STATUS_AUTONOMOUS_DEFAULT,
+    GATE_STATUS_AUTO_SKIPPED_TRACK,
+})
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
 
@@ -1139,10 +1153,154 @@ def gate_tracker_command(root: Path, action: str, gate_id: str | None = None, ex
     return cmd
 
 
-def new_gate_ledger(autonomous: bool = False) -> dict[str, Any]:
+def active_ceremony_track(root: Path) -> str:
+    """Return the active ceremony track ('quick' | 'standard' | 'regulated', default 'standard')."""
+    gp = gate_approvals_path(root)
+    if gp.is_file():
+        try:
+            gdata = read_json(gp)
+            if isinstance(gdata, dict) and gdata.get("ceremonyTrack") in CEREMONY_TRACKS:
+                return str(gdata["ceremonyTrack"])
+        except Exception:
+            pass
+    sp = root / "specs" / "project_setup.json"
+    if sp.is_file():
+        try:
+            sdata = read_json(sp)
+            if isinstance(sdata, dict) and sdata.get("ceremonyTrack") in CEREMONY_TRACKS:
+                return str(sdata["ceremonyTrack"])
+        except Exception:
+            pass
+    return "standard"
+
+
+def _sanitize_brief_line(line: str) -> str:
+    """Ensure generated executive gate briefs never contain internal harness script/skill/subagent tokens."""
+    cleaned = DELIVERABLE_INTERNAL_LEAK_RE.sub("[governance-check]", line)
+    return cleaned.strip()
+
+
+def generate_gate_decision_brief(
+    root: Path,
+    gate_id: str,
+    summary: str = "",
+    deterministic: bool = False,
+) -> str:
+    """Generate a concise 1-page Executive Gate Decision Brief at `specs/gate_briefs/<gate_id>.md`."""
+    label = GATE_DEFINITIONS.get(gate_id, gate_id)
+    track = active_ceremony_track(root)
+    now_iso = utc_now_iso(deterministic)
+    rel_path = f"specs/gate_briefs/{gate_id}.md"
+
+    wave_line = "All selected capabilities (`ALL`)"
+    coex_line = "Clean cutover (`clean-cutover`)"
+    ts_path = root / "specs" / "target_stack.json"
+    if ts_path.is_file():
+        try:
+            ts = read_json(ts_path)
+            if isinstance(ts, dict):
+                grps = ts.get("selectedCapabilityGroups")
+                if isinstance(grps, list) and grps:
+                    wave_line = ", ".join(f"`{g}`" for g in grps)
+                if ts.get("coexistenceStrategy"):
+                    coex_line = f"`{ts['coexistenceStrategy']}`"
+        except Exception:
+            pass
+
+    assumptions: list[str] = []
+    divergences: list[str] = []
+    spec_path = root / "specs" / "application_spec.md"
+    if spec_path.is_file():
+        spec_txt = read_text(spec_path)
+        for raw_line in spec_txt.splitlines():
+            s = raw_line.strip()
+            if re.search(r"\bASSUMPTION-[0-9]+\b", s):
+                assumptions.append(_sanitize_brief_line(s.lstrip("-*|> ")))
+            if re.search(r"\bREQ-ENH-[0-9]+\b", s):
+                divergences.append(_sanitize_brief_line(s.lstrip("-*|> ")))
+
+    arch_section: list[str] = []
+    arch_sc_path = root / "design" / "architecture_eval_scorecard.json"
+    if arch_sc_path.is_file():
+        try:
+            asc = read_json(arch_sc_path)
+            if isinstance(asc, dict):
+                arch_section.append(
+                    f"- **Architecture Red-Team Score:** `{asc.get('totalScore', 'N/A')}/100` "
+                    f"(Verdict: `{asc.get('verdict', 'UNKNOWN')}`)"
+                )
+                for bg in (asc.get("blockingGaps") or [])[:5]:
+                    arch_section.append(f"- **Blocking Gap:** {_sanitize_brief_line(str(bg))}")
+        except Exception:
+            pass
+
+    guardrail_section: list[str] = []
+    gr_path = root / "test" / ".guardrail_state.json"
+    if gr_path.is_file():
+        try:
+            gr = read_json(gr_path)
+            if isinstance(gr, dict):
+                pending = gr.get("pendingHunks") or []
+                if pending:
+                    guardrail_section.append(f"- **Pending Guardrail Diff Hunks Requiring Sign-Off:** `{len(pending)}`")
+                    for h in pending[:5]:
+                        if isinstance(h, dict):
+                            guardrail_section.append(
+                                f"  - `{h.get('file', 'file')}`: {_sanitize_brief_line(str(h.get('reason', 'guardrail touch')))}"
+                            )
+        except Exception:
+            pass
+
+    lines = [
+        f"# Executive Gate Decision Brief — {_sanitize_brief_line(label)}",
+        "",
+        f"- **Gate Identifier:** `{gate_id}`",
+        f"- **Generated (UTC):** `{now_iso}`",
+        f"- **Ceremony Track:** `{track}`",
+        f"- **Active Capability Wave:** {wave_line}",
+        f"- **Coexistence Strategy:** {coex_line}",
+        "",
+        "## 1. Stage Validation Summary",
+        _sanitize_brief_line(summary or f"{label} deliverables passed automated verification and are ready for review."),
+        "",
+        "## 2. Open Assumptions & Scope Decisions",
+    ]
+    if assumptions:
+        for item in dict.fromkeys(assumptions):
+            lines.append(f"- {item[:220]}")
+    else:
+        lines.append("- None recorded in current specification.")
+
+    lines.extend(["", "## 3. Documented Modernization Enhancements & Intentional Divergences"])
+    if divergences:
+        for item in dict.fromkeys(divergences):
+            lines.append(f"- {item[:220]}")
+    else:
+        lines.append("- None recorded (strict parity or greenfield specification).")
+
+    if arch_section:
+        lines.extend(["", "## 4. Architecture Red-Team Review Highlights", *arch_section])
+
+    if guardrail_section:
+        lines.extend(["", "## 5. Guardrail-Sensitive Remediation Hunks", *guardrail_section])
+
+    lines.extend([
+        "",
+        "## Decision Options",
+        "1. **Approve Gate:** Confirm scope, assumptions, and validated deliverables to advance to the next stage.",
+        "2. **Request Revisions:** Specify any business rule, role permission, architecture, or UX adjustments needed.",
+        "3. **Adjust Capability Wave:** Narrow or expand `selectedCapabilityGroups` before continuing.",
+        "",
+    ])
+    write_text(root / rel_path, "\n".join(lines))
+    return rel_path
+
+
+def new_gate_ledger(autonomous: bool = False, ceremony_track: str = "standard") -> dict[str, Any]:
     """Return a fresh ledger with every gate PENDING (with `autonomous=True`, the Gates that autonomous mode may
     skip — `AUTONOMOUS_DEFAULT_GATES` — are recorded as AUTONOMOUS_DEFAULT instead)."""
     now_iso = utc_now_iso(False)
+    track = ceremony_track if ceremony_track in CEREMONY_TRACKS else "standard"
     gates: dict[str, Any] = {}
     for gid, label in GATE_DEFINITIONS.items():
         auto = autonomous and gid in AUTONOMOUS_DEFAULT_GATES
@@ -1155,8 +1313,14 @@ def new_gate_ledger(autonomous: bool = False) -> dict[str, Any]:
             "approvedAtUtc": now_iso if auto else None,
             "userResponse": "Autonomous mode (--autonomous / DLC_AUTONOMOUS=1) explicitly requested by the user" if auto else None,
             "summary": f"{label} — {'autonomous default (no human stop)' if auto else 'pending: stage not yet validated'}.",
+            "decisionBriefPath": None,
         }
-    return {"schemaVersion": SCHEMA_VERSION, "initializedAtUtc": now_iso, "gates": gates}
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "initializedAtUtc": now_iso,
+        "ceremonyTrack": track,
+        "gates": gates,
+    }
 
 
 def load_gate_approvals(root: Path) -> dict[str, Any]:
@@ -1188,7 +1352,8 @@ def mark_gate_awaiting_human(
     deterministic: bool = False,
     force_reset: bool = False,
 ) -> None:
-    """Stamp `gate_id` as AWAITING_HUMAN_REVIEW in `specs/gate_approvals.json` and print a mandatory STOP notice.
+    """Stamp `gate_id` as AWAITING_HUMAN_REVIEW in `specs/gate_approvals.json`, emit a 1-page Executive Decision Brief,
+    and print a mandatory STOP notice (or auto-advance intermediate gates when ceremonyTrack == 'quick').
 
     No-op in autonomous / golden runs (`is_autonomous_or_golden`). An existing APPROVED_BY_USER entry is preserved
     on re-runs (e.g. Stage 6 healing) unless `force_reset=True`.
@@ -1198,13 +1363,35 @@ def mark_gate_awaiting_human(
     import time as _time
 
     data = load_gate_approvals(root)
+    track = active_ceremony_track(root)
+    data.setdefault("ceremonyTrack", track)
     gates = data.setdefault("gates", {})
     existing = gates.get(gate_id) if isinstance(gates.get(gate_id), dict) else {}
     if existing.get("status") == GATE_STATUS_APPROVED and not force_reset:
-        # Preserve an already-granted human approval during subsequent validation re-runs (e.g. Stage 6 healing).
         return
+    if existing.get("status") == GATE_STATUS_AUTO_SKIPPED_TRACK and track == "quick" and not force_reset:
+        return
+
     label = GATE_DEFINITIONS.get(gate_id, gate_id)
     now_iso = utc_now_iso(False)
+    brief_rel = generate_gate_decision_brief(root, gate_id, summary=summary, deterministic=deterministic)
+
+    if track == "quick" and gate_id in QUICK_TRACK_AUTO_SKIP_GATES and not force_reset:
+        gates[gate_id] = {
+            "gateId": gate_id,
+            "stage": label,
+            "status": GATE_STATUS_AUTO_SKIPPED_TRACK,
+            "readyAtUtc": now_iso,
+            "readyAtEpoch": round(_time.time(), 3),
+            "approvedAtUtc": now_iso,
+            "userResponse": "Auto-advanced under 'quick' ceremony track after deterministic gate verification passed.",
+            "summary": summary or f"{label} auto-advanced under 'quick' ceremony track.",
+            "decisionBriefPath": brief_rel,
+        }
+        write_json(gate_approvals_path(root), data)
+        info(f"ceremonyTrack='quick' auto-advanced {gate_id} (decision brief: {brief_rel})")
+        return
+
     gates[gate_id] = {
         "gateId": gate_id,
         "stage": label,
@@ -1214,6 +1401,7 @@ def mark_gate_awaiting_human(
         "approvedAtUtc": None,
         "userResponse": None,
         "summary": summary or f"{label} artifacts validated and ready for human review.",
+        "decisionBriefPath": brief_rel,
     }
     write_json(gate_approvals_path(root), data)
     tracker_cmd = gate_tracker_command(root, "approve", gate_id, '--user-response "<verbatim quote from user approval reply>"')
@@ -1221,8 +1409,10 @@ def mark_gate_awaiting_human(
         f"\n{'=' * 78}\n"
         f"[STOP — HUMAN APPROVAL REQUIRED AT {gate_id.upper()}]\n"
         f"  Gate   : {label}\n"
+        f"  Track  : {track}\n"
+        f"  Brief  : {root / brief_rel}\n"
         f"  Status : {GATE_STATUS_AWAITING}\n"
-        f"  Action : 1) Present this stage's deliverables and open questions to the user.\n"
+        f"  Action : 1) Present the Executive Decision Brief ({brief_rel}), stage deliverables, and open questions to the user.\n"
         f"           2) END YOUR TURN NOW (call no more tools) and wait for the user's reply.\n"
         f"           3) NEVER self-approve or start the next stage in the same turn!\n"
         f"           4) Only AFTER the human replies approving this gate in a subsequent turn, run:\n"
@@ -1309,20 +1499,20 @@ def parse_scenario_label(text: str) -> str | None:
 
 
 DELIVERABLE_INTERNAL_LEAK_CORE_PATTERNS = [
-    r"\b0[0-9]/scripts/[A-Za-z0-9_.-]+",
+    r"\b(?:0[0-9]|10)/scripts/[A-Za-z0-9_.-]+",
     r"\bscripts/(?:dlc_common|gate_tracker|lint_domain_neutrality|run_agentic_dlc_pipeline|verify_golden_projects)\.py\b",
     r"\b(?:setup_project_connection|scan_input_sources|capture_design_reference|validate_discovery_blueprint|"
-    r"lint_spec_structure|validate_spec_scorecard|alm_jira_ado_bridge|extract_contracts|gcp_diagram_renderer|"
-    r"derive_test_cases|validate_test_cases|check_testid_contract|validate_build|run_closed_loop_eval|"
-    r"validate_gdc_packaging|run_gdc_fleet_deploy_and_verify|run_agentic_dlc_pipeline|gate_tracker|"
+    r"lint_spec_structure|validate_spec_scorecard|alm_jira_ado_bridge|extract_contracts|validate_architecture_scorecard|"
+    r"gcp_diagram_renderer|derive_test_cases|validate_test_cases|check_testid_contract|validate_build|run_closed_loop_eval|"
+    r"validate_gdc_packaging|run_gdc_fleet_deploy_and_verify|check_spec_code_drift|run_agentic_dlc_pipeline|gate_tracker|"
     r"dlc_common|lint_domain_neutrality|verify_golden_projects)\.py\b",
     r"(?<![A-Za-z0-9_/-])_shared/[A-Za-z0-9_.-]+",
     r"\bskills/[0-9]{2}-[A-Za-z0-9_-]+",
     r"\bresources/reference_[A-Za-z0-9_.-]+",
-    r"\bschemas/(?:spec_rubric|input_inventory|target_stack|user_stories|test_cases|eval_results|deployment_eval_results)[A-Za-z0-9_.-]*\.json\b",
+    r"\bschemas/(?:spec_rubric|architecture_rubric|architecture_scorecard|drift_report|input_inventory|target_stack|user_stories|test_cases|eval_results|deployment_eval_results)[A-Za-z0-9_.-]*\.json\b",
     r"\b(?:doit-agentic-dlc|agentic-dlc)\b",
-    r"\b(?:00-setup-and-connection|01-discovery-and-grouping|02-spec-architect-and-judge|03-story-and-sprint-planner|04-solution-architect|05-test-plan-designer|06-coding-agent|07-test-runner-and-healer|08-container-and-gdc-packager|09-gdc-fleet-deployer-and-observability)\b",
-    r"\b(?:discovery-architect|spec-judge|sprint-planner-agent|solution-architect|testing-agent|coding-agent|platform-ops-agent)\b",
+    r"\b(?:00-setup-and-connection|01-discovery-and-grouping|02-spec-architect-and-judge|03-story-and-sprint-planner|04-solution-architect|05-test-plan-designer|06-coding-agent|07-test-runner-and-healer|08-container-and-gdc-packager|09-gdc-fleet-deployer-and-observability|10-drift-and-evolution)\b",
+    r"\b(?:discovery-architect|spec-judge|sprint-planner-agent|solution-architect|architecture-critic|testing-agent|coding-agent|platform-ops-agent)\b",
     r"\bARCHITECTURE(?:\.md|\s*§\d)",
     r"\bdiagram-dsl\b",
     r"\btest/\.snapshots/",

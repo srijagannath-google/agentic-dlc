@@ -496,22 +496,191 @@ def design_type(path: Path) -> str:
     return "sample_ui"
 
 
+GENERIC_XSD_XML_STOPWORDS = frozenset({
+    "dataroot", "createdon", "updatedon", "modifiedon", "deletedon", "timestamp",
+    "root", "row", "rows", "record", "records", "item", "items", "schema", "element",
+    "complextype", "simpletype", "sequence", "attribute", "value", "id", "name",
+    "type", "status", "version", "description", "notes", "comments",
+})
+
+COMMON_TECH_ACRONYMS = frozenset({
+    "API", "SQL", "DDL", "DML", "XML", "XSD", "CSV", "JSON", "HTML", "CSS", "HTTP", "HTTPS",
+    "REST", "GRPC", "SOAP", "UUID", "UTF", "ASCII", "PDF", "DOCX", "XLSX", "URL", "URI", "UTC",
+    "GMT", "ISO", "RFC", "JWT", "OIDC", "SAML", "OAUTH", "RBAC", "ABAC", "MFA", "SSO", "TLS",
+    "MTLS", "CORS", "CSRF", "XSS", "CRUD", "ORM", "CLI", "GUI", "DOM", "SPA", "SSR", "PWA",
+    "WCAG", "ARIA", "SLA", "SLO", "SLI", "KPI", "OKR", "TCO", "ROI", "CAPEX", "OPEX", "PII",
+    "PHI", "PCI", "HIPAA", "GDPR", "SOC", "FEDRAMP", "NIST", "OWASP", "GDC", "GCP", "AWS",
+    "OCI", "KRM", "OPA", "CDC", "ACL", "ADR", "BRD", "PRD", "SRS", "RFP", "RFI", "SOW", "MVP",
+    "UAT", "SIT", "E2E", "TDD", "BDD", "CI", "CD", "CICD", "SCM", "VCS", "ALM", "ADO", "IDE",
+    "SDK", "CPU", "RAM", "SSD", "DNS", "TCP", "UDP", "VPC", "NAT", "WAF", "CDN", "IAM", "KMS",
+    "HSM", "ETL", "ELT", "OLTP", "OLAP", "RDBMS", "NOSQL", "DBMS", "VBA", "VB6", "COBOL", "JCL",
+    "CICS", "VSAM", "DB2", "IMS", "RPG", "ABAP", "PLSQL", "TSQL", "NULL", "TRUE", "FALSE",
+    "TODO", "TBD", "MAX", "MIN", "AVG", "SUM", "CNT", "ASC", "DESC", "AND", "NOT", "FOR",
+})
+
+
 def legacy_object_names(path: Path, category: str, text: str) -> list[str]:
     """Real object names inside legacy artefacts (CREATE TABLE names, XSD elements, `Name=` object lines, Access
-    prefixed object identifiers) for zero-leak lists. Bare file stems are NOT object names — they are reported
-    separately as `legacyFileStems` and only ever produce warnings downstream."""
+    prefixed object identifiers) for zero-leak lists. Filters generic XSD/XML envelope & audit column tokens
+    (e.g. `dataroot`, `CreatedOn`) so Stage 4B/6 UiLeak checks never fire on ordinary domain words."""
     names: dict[str, None] = {}
     if category not in LEGACY_CATEGORIES:
         return []
     for m in re.finditer(r"CREATE\s+(?:TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"\[]?([A-Za-z_][\w$]*)", text, re.IGNORECASE):
-        names.setdefault(m.group(1), None)
+        tok = m.group(1)
+        if tok.lower() not in GENERIC_XSD_XML_STOPWORDS:
+            names.setdefault(tok, None)
     for m in re.finditer(r"<xs(?:d)?:element\s+[^>]*?name=\"([A-Za-z_][\w$]*)\"", text):
-        names.setdefault(m.group(1), None)
+        tok = m.group(1)
+        if tok.lower() not in GENERIC_XSD_XML_STOPWORDS:
+            names.setdefault(tok, None)
     for m in re.finditer(r"^\s*Name\s*=\s*\"?([A-Za-z_][\w]{2,})", text, re.MULTILINE):
-        names.setdefault(m.group(1), None)  # object names only; captions are human labels and stay allowed
+        tok = m.group(1)
+        if tok.lower() not in GENERIC_XSD_XML_STOPWORDS:
+            names.setdefault(tok, None)  # object names only; captions are human labels and stay allowed
     for m in re.finditer(r"\b((?:tbl|frm|rpt|qry|cmd|txt|cbo|lst|chk)[A-Z][A-Za-z0-9_]{2,})\b", text):
         names.setdefault(m.group(1), None)
     return sorted(names)
+
+
+def extract_unverified_acronyms(texts_by_rel: dict[str, str]) -> list[str]:
+    """Detect 3-6 letter uppercase domain acronyms appearing in inputs without an explicit `Phrase (ACR)` or
+    `ACR: Phrase` definition in the input corpus, enforcing the Strict Acronym Provenance Rule."""
+    combined = "\n".join(texts_by_rel.values())
+    if not combined.strip():
+        return []
+    defined: set[str] = set()
+    for m in re.finditer(r"\b[A-Z][A-Za-z0-9/& -]{4,60}\(\s*([A-Z]{3,6})\s*\)", combined):
+        defined.add(m.group(1))
+    for m in re.finditer(r"\b([A-Z]{3,6})\s*\(\s*[A-Z][A-Za-z0-9/& -]{4,60}\)", combined):
+        defined.add(m.group(1))
+    for m in re.finditer(r"^\s*[-*]?\s*\*\*?([A-Z]{3,6})\*\*?\s*[:—–-]\s+[A-Za-z]{3,}", combined, re.MULTILINE):
+        defined.add(m.group(1))
+
+    counts: dict[str, int] = {}
+    for m in re.finditer(r"\b([A-Z]{3,6})\b", combined):
+        tok = m.group(1)
+        if tok in COMMON_TECH_ACRONYMS or tok in defined:
+            continue
+        # Ignore SQL keywords and ALL-CAPS table/column headers when they appear as common English words
+        if re.search(rf"\b{re.escape(tok.capitalize())}\b", combined) or re.search(rf"\b{re.escape(tok.lower())}\b", combined):
+            continue
+        counts[tok] = counts.get(tok, 0) + 1
+    return sorted(k for k, v in counts.items() if v >= 2)[:40]
+
+
+def build_dependency_dag(
+    files: list[dict[str, Any]],
+    texts_by_rel: dict[str, str],
+    deterministic: bool,
+) -> tuple[dict[str, Any], dict[str, Any], int]:
+    """Build a static, deterministic Current-State Dependency DAG across schemas, queries, forms/reports, and source modules."""
+    nodes: dict[str, dict[str, Any]] = {}
+    known_symbols: dict[str, str] = {}  # lowercase symbol -> node id
+    top_modules: set[str] = set()
+
+    for f in files:
+        cat = f["category"]
+        rel = f["relativePath"]
+        parts = Path(rel).parts
+        # e.g. resources/inputs/<module>/... -> <module>
+        if len(parts) >= 3 and parts[0] == "resources" and parts[1] == "inputs":
+            top_modules.add(parts[2])
+        if cat not in LEGACY_CATEGORIES:
+            continue
+        stem = Path(rel).stem
+        nid = f"{cat}:{stem}"
+        nodes[nid] = {
+            "id": nid,
+            "name": stem,
+            "kind": cat,
+            "sourcePath": rel,
+        }
+        known_symbols.setdefault(stem.lower(), nid)
+        text = texts_by_rel.get(rel, "")
+        for m in re.finditer(r"CREATE\s+(?:TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"\[]?([A-Za-z_][\w$]*)", text, re.IGNORECASE):
+            tname = m.group(1)
+            tid = f"table:{tname}"
+            nodes.setdefault(tid, {"id": tid, "name": tname, "kind": "table", "sourcePath": rel})
+            known_symbols[tname.lower()] = tid
+        for m in re.finditer(r"<xs(?:d)?:element\s+[^>]*?name=\"((?:tbl|TB)[A-Za-z0-9_]*)\"", text):
+            tname = m.group(1)
+            tid = f"table:{tname}"
+            nodes.setdefault(tid, {"id": tid, "name": tname, "kind": "table", "sourcePath": rel})
+            known_symbols[tname.lower()] = tid
+
+    edges_set: set[tuple[str, str, str]] = set()
+    ref_patterns: list[tuple[re.Pattern[str], str]] = [
+        (re.compile(r"\b(?:FROM|JOIN|INTO|UPDATE|REFERENCES)\s+[`\"\[]?([A-Za-z_][\w$]*)", re.IGNORECASE), "data-access"),
+        (re.compile(r"^\s*(?:RecordSource|RowSource|SourceObject)\s*=\s*\"?([A-Za-z_][\w$.]*)", re.MULTILINE | re.IGNORECASE), "record-source"),
+        (re.compile(r"\b(?:OpenForm|OpenReport|OpenQuery)\s*[(\s]*\"([A-Za-z_][\w$]*)\"", re.IGNORECASE), "ui-navigation"),
+        (re.compile(r"\b(?:CALL|COPY)\s+['\"]?([A-Za-z0-9_-]{3,})['\"]?", re.IGNORECASE), "module-call"),
+        (re.compile(r"^\s*(?:import|from|using)\s+([A-Za-z_][A-Za-z0-9_.]*)", re.MULTILINE), "module-import"),
+    ]
+
+    for f in files:
+        cat = f["category"]
+        if cat not in LEGACY_CATEGORIES:
+            continue
+        rel = f["relativePath"]
+        src_id = f"{cat}:{Path(rel).stem}"
+        text = texts_by_rel.get(rel, "")
+        for rx, rel_kind in ref_patterns:
+            for m in rx.finditer(text):
+                raw_sym = m.group(1).split(".")[-1].strip()
+                dst_id = known_symbols.get(raw_sym.lower())
+                if dst_id and dst_id != src_id:
+                    edges_set.add((src_id, dst_id, rel_kind))
+        # Direct prefixed identifier mentions (e.g. tbl*, qry*, frm*, rpt*)
+        for m in re.finditer(r"\b((?:tbl|frm|rpt|qry)[A-Z][A-Za-z0-9_]{2,})\b", text):
+            dst_id = known_symbols.get(m.group(1).lower())
+            if dst_id and dst_id != src_id:
+                edges_set.add((src_id, dst_id, "object-reference"))
+
+    edges = [
+        {"from": s, "to": d, "relationship": k}
+        for s, d, k in sorted(edges_set)
+    ]
+
+    # Deterministic bottom-up topological tiering (leaf data tables = tier 0; callers = higher tiers; cycles grouped cleanly)
+    adj_deps: dict[str, set[str]] = {nid: set() for nid in nodes}
+    for s, d, _ in edges_set:
+        if s in adj_deps and d in adj_deps:
+            adj_deps[s].add(d)
+
+    remaining = set(nodes.keys())
+    tiers: list[list[str]] = []
+    has_cycles = False
+    while remaining:
+        ready = sorted(nid for nid in remaining if not (adj_deps[nid] & remaining))
+        if not ready:
+            has_cycles = True
+            # Break cycle deterministically by picking nodes with fewest remaining dependencies
+            min_deg = min(len(adj_deps[nid] & remaining) for nid in remaining)
+            ready = sorted(nid for nid in remaining if len(adj_deps[nid] & remaining) == min_deg)
+        tiers.append(ready)
+        remaining -= set(ready)
+
+    dag_doc = {
+        "schemaVersion": dlc.SCHEMA_VERSION,
+        "generatedAtUtc": dlc.utc_now_iso(deterministic),
+        "nodeCount": len(nodes),
+        "edgeCount": len(edges),
+        "tierCount": len(tiers),
+        "hasCycles": has_cycles,
+        "tiers": tiers,
+        "nodes": [nodes[k] for k in sorted(nodes)],
+        "edges": edges,
+    }
+    summary = {
+        "dagFile": "specs/dependency_dag.json",
+        "nodeCount": len(nodes),
+        "edgeCount": len(edges),
+        "tierCount": len(tiers),
+        "hasCycles": has_cycles,
+        "tiers": tiers,
+    }
+    return dag_doc, summary, len(top_modules)
 
 
 def _sha256_and_size(path: Path, chunk: int = 1 << 20) -> tuple[str, int]:
@@ -577,6 +746,7 @@ def scan(
         buckets.append((b, root / "resources" / b))
 
     files: list[dict[str, Any]] = []
+    texts_by_rel: dict[str, str] = {}
     seen: set[str] = set()
     legacy_names: dict[str, None] = {}
     legacy_stems: dict[str, None] = {}
@@ -615,6 +785,8 @@ def scan(
                 continue
             seen.add(rel)
             text = head_text(f)
+            if bucket == "inputs" and text:
+                texts_by_rel[rel] = text
             cat, reason = categorise(f, bucket, text)
             sha, size = _sha256_and_size(f)
             entry = {
@@ -679,6 +851,14 @@ def scan(
     hasher_input = "".join(f"{e['relativePath']}:{e['sha256']}\n" for e in files).encode("utf-8")
     policy_files = [e for e in files if e["category"] == "policy"]
 
+    dag_doc, dag_summary, top_module_count = build_dependency_dag(files, texts_by_rel, deterministic)
+    if dag_doc["nodeCount"] > 0:
+        dlc.write_json(root / "specs" / "dependency_dag.json", dag_doc)
+    else:
+        dag_summary["dagFile"] = None
+    unverified_acronyms = extract_unverified_acronyms(texts_by_rel)
+    large_repo_mr = bool(top_module_count > 15 or len(files) > 60)
+
     result: dict[str, Any] = {
         "schemaVersion": dlc.SCHEMA_VERSION,
         "scannedAtUtc": dlc.utc_now_iso(deterministic),
@@ -698,6 +878,10 @@ def scan(
         "userProvidedDesignReferences": user_design_refs,
         "legacyObjectNames": sorted(legacy_names) if scenario == "SCENARIO_LEGACY_APP" or legacy_n else [],
         "legacyFileStems": sorted(legacy_stems) if scenario == "SCENARIO_LEGACY_APP" or legacy_n else [],
+        "dependencyDagSummary": dag_summary,
+        "topLevelModuleCount": top_module_count,
+        "largeRepoMapReduceRecommended": large_repo_mr,
+        "unverifiedAcronyms": unverified_acronyms,
         "inputFingerprintSha256": dlc.sha256_bytes(hasher_input),
         "totalFilesScanned": len(files),
         "files": files,

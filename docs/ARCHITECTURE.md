@@ -45,24 +45,32 @@ agentic-dlc/
 ├── docs/ARCHITECTURE.md                 # this file
 ├── _shared/                             # referenced by every skill & agent (never pasted)
 │   ├── project_root.md                  # PROJECT_ROOT resolution rule (short)
-│   ├── ux_guardrails.md                 # the 10 generic UX guardrails (single canonical copy)
+│   ├── gate_matrix.md                   # Adaptive ceremony tracks (quick/standard/regulated) & gate decision briefs
+│   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (DB migration, Spanner, FinOps, Apigee)
+│   ├── ux_guardrails.md                 # the generic UX guardrails (single canonical copy)
+│   ├── google_cloud_ui_design.md        # Material 3 (--g-*) tokens, ShadCN/Radix & A2UI v0.9 standards
+│   ├── well_architected_and_diagram_standards.md # 7-perspective Well-Architected + FinOps TCO standards
 │   ├── zero_leak.md                     # zero internal-data-leakage rule + how token lists are derived
 │   ├── workflow_chain_of_custody.md     # state machine extraction / ask-don't-assume / derivation rules
 │   └── gdc_multicloud_guardrails.md     # GDC Fleet multi-cloud & on-prem portability guardrails
 ├── schemas/                             # JSON schemas / canonical shapes for every machine artefact
-│   ├── project_setup.schema.json        # Stage 0 connection & ADO/Jira project selection
-│   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger (gate_0_setup .. gate_7_packaging)
-│   ├── input_inventory.schema.json
-│   ├── target_stack.schema.json
-│   ├── spec_rubric.json                 # the 100-pt rubric the LLM judge scores against
+│   ├── project_setup.schema.json        # Stage 0 connection, ceremonyTrack, domainPacks, activeWave
+│   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger + decisionBriefPath
+│   ├── input_inventory.schema.json      # Stage 1 inventory + dependencyDagSummary + unverifiedAcronyms
+│   ├── target_stack.schema.json         # Stack + commands.reset + coexistenceStrategy + aiSurface (A2UI v0.9)
+│   ├── spec_rubric.json                 # Stage 2 100-pt rubric the LLM spec-judge scores against
 │   ├── spec_scorecard.schema.json
+│   ├── architecture_rubric.json         # Stage 4A 100-pt rubric the LLM architecture-critic scores against
+│   ├── architecture_scorecard.schema.json
 │   ├── user_stories.schema.json
-│   ├── test_cases.schema.json
+│   ├── test_cases.schema.json           # Includes TC-PARITY-*, matrixCases & negative HTTP assertions
 │   ├── eval_results.schema.json
-│   └── deployment_eval_results.schema.json
-├── rules/AGENTS.md                      # router (generic)
-├── agents/*.md                          # 7 subagents (generic)
-├── skills/0X-*/SKILL.md (+ resources/, scripts/)
+│   ├── deployment_eval_results.schema.json
+│   └── drift_report.schema.json         # Stage 9 bidirectional spec-to-code drift report
+├── rules/AGENTS.md                      # progressive-disclosure router
+├── agents/*.md                          # 8 subagents (incl. architecture-critic)
+├── skills/00..10-*/SKILL.md (+ resources/, scripts/)
+├── evals/                               # Counterfactual A/B skill ablation suite (evalset.json + run_skill_ablation.py)
 ├── scripts/
 │   ├── dlc_common.py                    # shared helpers (project root, json io, md parsing, state machine, gate ledger)
 │   ├── gate_tracker.py                  # CLI for human gate status & anti-self-approval gate unlocking
@@ -312,8 +320,9 @@ Derivation rules (`05/scripts/derive_test_cases.py`):
 | 4b Tests | `05/derive_test_cases.py` + `05/validate_test_cases.py` | every AC has a TC; every TC has steps; schema valid |
 | 5 Build | `06/validate_build.py` | `install/build/start/healthcheck` succeed per `target_stack.json` |
 | 6 Closed loop | `07/run_closed_loop_eval.py` | verdict PASS, leakage 0 hits, no unwired controls, guardrail flags approved |
-| 7 Container & GDC pkg | `08/validate_gdc_packaging.py` | Zero cloud-provider SDK lock-in in `src/`, hardened rootless OCI images, Kustomize base + 4 GDC overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + Spec `§3.5` RBAC |
+| 7 Container & GDC pkg | `08/validate_gdc_packaging.py` | Zero cloud-provider SDK lock-in in `src/` (any disposable Strangler Boundary ACL isolated under `deploy/coexistence/`), hardened rootless OCI images, Kustomize base + 4 GDC overlays (`on-prem-gdc`, `gcp`, `aws`, `azure`), Policy Controller constraints, Cloud Service Mesh mTLS + Spec `§3.5` RBAC |
 | 8 GDC Fleet deploy & obs | `09/run_gdc_fleet_deploy_and_verify.py` | Config Sync GitOps RootSync & ClusterSelectors valid, OpenTelemetry Collector + SLOs + multi-cloud dashboard valid, runbook complete, local `/health` smoke probe PASS (`MANIFEST_VALIDATED` by default; `DEPLOYED` / `gdc-live-fleet` only when `--live` `kubectl apply` succeeds across all target environments) |
+| 9 Drift & ADR evolution | `10/check_spec_code_drift.py` | Bidirectional verification across `specs/application_spec.md` (§3.3/§3.4/§3.5), `src/contracts/openapi.yaml`, `src/db/schema.sql`, `test/test_cases.json`, and `src/` (`ALIGNED` vs `DRIFT_DETECTED`), writing `specs/drift_report.{json,md}` and recording intentional brownfield changes in `specs/adr/ADR-NNNN-*.md` |
 
 ## 6. Writing rules for skills & agents (v4)
 

@@ -1,9 +1,17 @@
-# Known Issues & Friction Log (v4.3.1)
+# Known Issues & Friction Log (v4.4.0)
 
 Collected while dogfooding both golden projects (`examples/*`). Items marked ✅ were fixed before release;
 the rest are open and prioritised.
 
-## Fixed during dogfooding ✅
+## Fixed in v4.4.0 ✅
+- **TC-STATE explosion (#1):** `05/scripts/derive_test_cases.py --group-state-tests` groups illegal `(state, trigger)` and `(role, trigger)` pairs into compact parametrised `matrixCases` test definitions per trigger (`schemas/test_cases.schema.json`).
+- **Per-test state reset & inline browser `httpRequest` (#2):** `target_stack.json#commands.reset` is invoked automatically before each `browser`/`http` test in `run_closed_loop_eval.py`, and both `PlaywrightAdapter` and `dom_driver.js` (`chrome-headless`) now execute `httpRequest` steps inline inside `browser` tests.
+- **Guardrail classifier false positives (#3):** `04/scripts/extract_contracts.py` indexes explicit `@dlc-guard`/`@dlc-rule`/`@dlc-mask`/`@dlc-a11y` pragmas into `design/.contracts_index.json#guardrailBindings`, and `run_closed_loop_eval.py` strips ISO-8601 timestamp literals and generic column words before numeric formula proximity matching.
+- **Downstream hash refresh (#4):** `run_agentic_dlc_pipeline.py --refresh-from-stage <N>` re-hashes and re-derives downstream contracts/tests after an intentional brownfield spec/design edit (`10-drift-and-evolution`) while preserving authored test steps by `derivationKey`.
+- **Negative HTTP assertions (#5):** `validate_test_cases.py` and `run_closed_loop_eval.py` now support `expectBodyNotContains` and `expectJsonPathAbsent` on `httpRequest` steps (plus anti-tautology checks).
+- **Generic XSD/XML stopwords (#8):** `01/scripts/scan_input_sources.py` filters generic XSD/XML wrapper identifiers (`dataroot`, `CreatedOn`, `UpdatedAt`, `rowguid`, etc.) from `legacyObjectNames` and extracts `unverifiedAcronyms` + `specs/dependency_dag.json`.
+
+## Fixed during v4.3 dogfooding ✅
 - `dlc_common.strip_md` removed `_` inside identifiers (`MANAGER_APPROVED` → `MANAGERAPPROVED`).
 - `scan_input_sources.py`: domain slug included document-type prefixes; `--domain-slug` override was lost on
   re-scan.
@@ -19,36 +27,17 @@ the rest are open and prioritised.
   guardrail-classified; stale server on the healthcheck port detected.
 - Docs: `set-approval` syntax, roles table header without a pipe.
 
-## Open — high value
-1. **TC-STATE explosion.** Synthesising one test per illegal `(state, trigger)` and `(role, trigger)` pair
-   produced 47–61 state tests per project. Proposal: group per trigger with a single parametrised test, or
-   let Stage 4B mark a subset `optional: true` with justification.
-2. **Per-test state reset.** Browser tests share one backend database; authors had to design unique data slots
-   and clean-up steps. Proposal: `target_stack.commands.reset` (e.g. `POST /__test/reset`) invoked between
-   tests when present, and a `httpRequest` action available inside browser tests.
-3. **Guardrail classifier false positives.** The "business rule formula" heuristic flags any numeric change near
-   a rule identifier (e.g. seed timestamps). Proposal: restrict to files/functions the solution design marks as
-   rule implementations (`design/.contracts_index.json#ruleLocations`).
-4. **Downstream hash refresh.** A mid-stream spec amendment invalidates scorecard and test cases (by design)
-   but there is no single "re-judge + re-derive preserving steps" command. Proposal:
-   `run_agentic_dlc_pipeline.py --refresh-from-stage 2`.
-
 ## Open — medium
-5. `http` runtime lacks negative assertions (`expectBodyNotContains`, `expectJsonPathAbsent`).
-6. `dom_driver.isVisible` treats fields inside a closed `<details>` as visible; UX metric compensates, tests
-   should use `:not(details *)` — document in skill 05.
-7. `setRole` text matching is "contains"; multi-identity switchers need exact option labels — document.
-8. `scan_input_sources.legacyObjectNames` picks generic XSD names (`dataroot`, `CreatedOn`); add a stop-list.
-9. Static a11y/leak lint runs on the raw `index.html`; apps that render views lazily need the "render all
-   views in DOM, toggle visibility" pattern — document in skill 06.
-10. Playwright adapter is implemented but untested (not installable in the build environment); the
-    chrome-headless adapter is the verified path.
+6. `dom_driver.isVisible` treats fields inside a closed `<details>` as visible; UX metric compensates, and `skills/05-test-plan-designer/SKILL.md` documents `:not(details *)`.
+7. `setRole` text matching is "contains"; multi-identity switchers use exact option labels (documented in `skills/05-test-plan-designer/SKILL.md`).
+9. Static a11y/leak lint runs on the raw `index.html`; `skills/06-coding-agent/SKILL.md` documents the "render all views in DOM, toggle visibility" pattern for `static-html`.
+10. Playwright adapter falls back cleanly to the verified `chrome-headless` adapter when Python `playwright` is not installed on the host.
 
 ## Non-goals (by design)
 - Scripts never author content; a missing artefact is always an LLM task.
 - `NOT_RUN` never counts as a pass; without a browser the pipeline cannot go green.
 
-## Remaining by design (v4.3.1) — read before relying on a gate
+## Remaining by design (v4.4.0) — read before relying on a gate
 
 11. **`shell=True` on `target_stack.json#commands.*` is a trust boundary.** `validate_build.py`,
     `run_closed_loop_eval.py` and `run_gdc_fleet_deploy_and_verify.py` execute `commands.install/build/start/test`

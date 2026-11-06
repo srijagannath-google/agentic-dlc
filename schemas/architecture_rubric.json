@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-dlc.local/schemas/architecture_rubric.json",
+  "title": "100-point Multi-Persona Stage 4A Architecture Red-Team Rubric (scored by architecture-critic; validated by 04/scripts/validate_architecture_scorecard.py)",
+  "rubricVersion": "4.0",
+  "passingScore": 90,
+  "maxScore": 100,
+  "scoringRules": [
+    "Operate strictly in Critique-First, Sycophancy-Free mode: lead with failure modes, broken invariants, and attack surfaces rather than praise.",
+    "Score every criterion 0..maxPoints. Any criterion awarded > 0 MUST quote verbatim evidence (>= 25 chars, >= 5 words) from design/solution_design.md, design/architecture_design.md, design/*_architecture.md, or design/data_migration_and_cutover.md.",
+    "Criteria with 'appliesTo' not containing the project's inputScenario are not applicable: award maxPoints and set evidence to 'N/A — not applicable to greenfield requirements specifications'.",
+    "Any blocking criterion scored 0 forces verdict FAIL regardless of totalScore.",
+    "Verdict is PASS iff totalScore >= 90 and zero blocking criteria scored 0."
+  ],
+  "dimensions": [
+    { "dimension": "DomainLogic", "persona": "DomainLogicSkeptic", "title": "Domain Logic, 3NF Integrity & State Concurrency", "maxPoints": 30 },
+    { "dimension": "SecurityZeroTrust", "persona": "ZeroTrustSecurityAdversary", "title": "Zero-Trust Security, BOLA Prevention & Zero-Leak Boundary", "maxPoints": 30 },
+    { "dimension": "ResilienceScale", "persona": "SREFinOpsCritic", "title": "Multi-Zone Resilience, Access Paths & Coexistence Latency", "maxPoints": 20 },
+    { "dimension": "OperabilityFinOps", "persona": "SREFinOpsCritic", "title": "Cloud-Neutral Operability, SLOs & FinOps TCO Sizing", "maxPoints": 20 }
+  ],
+  "criteria": [
+    {
+      "id": "ARCH-DL-01",
+      "dimension": "DomainLogic",
+      "title": "3NF relational normalization, primary/foreign keys & snake_case purity",
+      "maxPoints": 12,
+      "blocking": true,
+      "whatGoodLooksLike": "Every entity in design/solution_design.md has a primary key, explicit foreign-key relationships, snake_case naming, zero repeating groups, and zero legacy table/form identifier carry-over."
+    },
+    {
+      "id": "ARCH-DL-02",
+      "dimension": "DomainLogic",
+      "title": "Atomic state-transition guards & optimistic/transactional race prevention",
+      "maxPoints": 12,
+      "blocking": true,
+      "whatGoodLooksLike": "Transition endpoints enforce (fromState, trigger, actorRole) atomically inside a database transaction or conditional UPDATE (WHERE current_state = expected_state) so concurrent requests cannot double-approve or skip states."
+    },
+    {
+      "id": "ARCH-DL-03",
+      "dimension": "DomainLogic",
+      "title": "Legacy-to-3NF entity mapping & isolated Strangler coexistence boundary",
+      "maxPoints": 6,
+      "blocking": false,
+      "appliesTo": ["SCENARIO_LEGACY_APP"],
+      "whatGoodLooksLike": "Maps every legacy store/object to normalized 3NF tables in design/solution_design.md §1.1 and isolates any phased-wave CDC/ACL bridge under deploy/coexistence/ with reconciliation checksums in design/data_migration_and_cutover.md."
+    },
+    {
+      "id": "ARCH-SEC-01",
+      "dimension": "SecurityZeroTrust",
+      "title": "Object-level authorization (BOLA/IDOR) & server-side RBAC enforcement",
+      "maxPoints": 12,
+      "blocking": true,
+      "whatGoodLooksLike": "Every OpenAPI mutation and entity-read path enforces server-side RBAC and tenant/owner scoping so an external actor cannot read or mutate another actor's record by guessing an ID."
+    },
+    {
+      "id": "ARCH-SEC-02",
+      "dimension": "SecurityZeroTrust",
+      "title": "Zero-Leak ViewModel/DTO boundary & PII masking at serialization",
+      "maxPoints": 10,
+      "blocking": true,
+      "whatGoodLooksLike": "Defines an explicit DTO/ViewModel serialization layer that strips internal surrogate keys/audit columns, masks sensitive identifiers per Spec Pillar 2, and maps UPPER_SNAKE enum codes to human display labels."
+    },
+    {
+      "id": "ARCH-SEC-03",
+      "dimension": "SecurityZeroTrust",
+      "title": "Keyless workload identity, STRICT mTLS & AI Trust Layer guardrails",
+      "maxPoints": 8,
+      "blocking": false,
+      "whatGoodLooksLike": "Eliminates static secrets via OIDC Workload Identity and KMS/Secrets Manager, enforces STRICT service-mesh mTLS, and applies PII redaction + grounded citations before any AI prompt invocation."
+    },
+    {
+      "id": "ARCH-RES-01",
+      "dimension": "ResilienceScale",
+      "title": "Regional/zonal blast-radius isolation, stateless compute & DB HA failover",
+      "maxPoints": 10,
+      "blocking": true,
+      "whatGoodLooksLike": "Web and API tiers are 100% stateless across multi-zone/multi-region Kubernetes pipelines with synchronous HA database standby failover, PgBouncer connection pooling, and PITR backups."
+    },
+    {
+      "id": "ARCH-RES-02",
+      "dimension": "ResilienceScale",
+      "title": "Indexed query access paths, N+1 avoidance & coexistence chatty-latency budget",
+      "maxPoints": 10,
+      "blocking": false,
+      "whatGoodLooksLike": "Declares B-Tree indexes on foreign keys and workflow status/filter columns, avoids per-row N+1 RPC loops, and budgets for >100 ms cross-boundary latency via async CDC/caching when coexisting with on-prem stores."
+    },
+    {
+      "id": "ARCH-OPS-01",
+      "dimension": "OperabilityFinOps",
+      "title": "Cloud-agnostic KRM portability, OPA policy guardrails & GitOps waves",
+      "maxPoints": 10,
+      "blocking": false,
+      "whatGoodLooksLike": "Targets rootless OCI containers, portable KRM base + overlays across declared targetEnvironments, OPA admission constraints, and declarative GitOps wave promotion."
+    },
+    {
+      "id": "ARCH-OPS-02",
+      "dimension": "OperabilityFinOps",
+      "title": "FinOps capacity sizing, autoscaling bounds & Spec-derived SLO burn-rate alerts",
+      "maxPoints": 10,
+      "blocking": false,
+      "whatGoodLooksLike": "Documents compute/database right-sizing, HPA min/max bounds, shared-network cost efficiency, TCO drivers, and OpenTelemetry SLIs/SLOs tied to workflow latency and availability."
+    }
+  ]
+}

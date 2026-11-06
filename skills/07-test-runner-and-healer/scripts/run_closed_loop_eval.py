@@ -122,12 +122,13 @@ GUARDRAIL_PATTERNS: dict[str, re.Pattern[str]] = {
     "accessibility": re.compile(r"(aria-|\brole=|<label\b|tabindex|\balt=|\blang=|\bfor=|accesskey)", re.I),
     "leakage label mapping": re.compile(r"(label\s*map|_LABELS\b|labelFor|toLabel|displayName|statusLabel|humanLabel|enumLabel|LABELS\s*[=:])", re.I),
     "business formula / threshold": stem_regex(["formula", "rate", "threshold", "accrual", "balance", "penalt", "surcharge", "percent", "rounding"], [r"\bround\("]),
+    "contract-pinned @dlc-guard/@dlc-rule/@dlc-mask/@dlc-a11y annotation": re.compile(r"@dlc-(?:guard|rule|mask|a11y)\b", re.I),
 }
 # Every identifier here must be matched by at least one GUARDRAIL_PATTERNS entry (checked by --selftest-guardrail-patterns).
 GUARDRAIL_SELFTEST = ["allowedRoles", "userRole", "hasRole(", "canApprove(", "@PreAuthorize", "hasPermission(", "checkRole(",
                       "ALLOWED_TRANSITIONS", "aria-label", "maskSsn", "redactEmail", "ROLE_PERMISSIONS", "isTransitionAllowed",
                       "guardFor(", "nextState", "APPROVAL_THRESHOLD", "accrualRate", "<label for=", "tabindex=\"0\"",
-                      "STATUS_LABELS", "authorizeTransition", "can_transition("]
+                      "STATUS_LABELS", "authorizeTransition", "can_transition(", "@dlc-guard:Draft->Submitted"]
 DIFF_CONTEXT_LINES = 6  # unified-diff context so a one-line change inside a guard function is classified with its surroundings
 GUARDRAIL_STATE_FILE = "test/.guardrail_state.json"
 BACKEND_PIDFILE = "test/.build_logs/backend.pid"  # process-group id of the backend started by validate_build.py / this script
@@ -1163,6 +1164,13 @@ class PlaywrightAdapter:
             if m:
                 return False, f'matched "{m.group(0)}"'
             return True, "no match"
+        if a == "httpRequest":
+            base_u = ""
+            if self.ui.is_url:
+                u = urllib.parse.urlsplit(self.ui.raw)
+                base_u = f"{u.scheme}://{u.netloc}"
+            r_http = run_http_steps({"steps": [step]}, base_u)
+            return r_http.get("status") == "PASS", str(r_http.get("actual") or r_http.get("message") or "")
         return False, f"Unknown step action: {a}"
 
     def run(self, tc: dict[str, Any], app_html: str) -> dict[str, Any]:
@@ -1335,17 +1343,61 @@ def pick_browser(choice: str, chrome_binary: str | None, ui: UiEntry, tmp: Path)
 # ======================================================================================
 # HTTP runtime
 # ======================================================================================
+def run_reset_hook(commands: dict[str, Any], base_url: str, root: Path) -> None:
+    """Optional hermetic per-test reset hook (`specs/target_stack.json#commands.reset`).
+    Accepts either an HTTP endpoint ('POST /api/test/reset', '/api/test/reset', 'http://...') or a shell command."""
+    reset_spec = str(commands.get("reset") or "").strip()
+    if not reset_spec:
+        return
+    m_http = re.match(r"^(?:(GET|POST|PUT|DELETE)\s+)?((?:https?://|/)[^\s]+)$", reset_spec, re.IGNORECASE)
+    if m_http:
+        method = (m_http.group(1) or "POST").upper()
+        target = m_http.group(2)
+        if not target.startswith(("http://", "https://")):
+            if not base_url:
+                return
+            target = urllib.parse.urljoin(base_url + "/", target.lstrip("/"))
+        req = urllib.request.Request(target, data=b"{}" if method in ("POST", "PUT") else None,
+                                     method=method, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=10):
+                pass
+        except Exception as exc:
+            dlc.warn(f"commands.reset HTTP hook '{reset_spec}' failed: {exc}")
+        return
+    try:
+        subprocess.run(reset_spec, shell=True, cwd=str(root), timeout=15, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as exc:
+        dlc.warn(f"commands.reset command '{reset_spec}' failed: {exc}")
+
+
 def run_http_steps(tc: dict[str, Any], base_url: str) -> dict[str, Any]:
     t0 = now_ms()
     steps = tc.get("steps") or []
     last_json: Any = None
+    last_text: str = ""
     for i, step in enumerate(steps):
         action = step.get("action")
         if action == "wait":
             time.sleep(int(step.get("ms", 100)) / 1000)
             continue
+        if action == "expectBodyNotContains":
+            needle = str(step.get("value") if step.get("value") is not None else (step.get("contains") if step.get("contains") is not None else step.get("expectBodyNotContains", "")))
+            if needle and needle in last_text:
+                return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: response body unexpectedly contained {needle!r}", "actual": last_text[:300], "durationMs": now_ms() - t0}
+            continue
+        if action == "expectJsonPathAbsent":
+            jp_abs = str(step.get("path") or step.get("expectJsonPathAbsent") or "")
+            if last_json is not None and jp_abs:
+                try:
+                    found_val = json_path(last_json, jp_abs)
+                    return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: JSON path {jp_abs} expected absent, found {found_val!r}", "actual": last_text[:300], "durationMs": now_ms() - t0}
+                except KeyError:
+                    pass
+            continue
         if action != "httpRequest":
-            return {"status": "ERROR", "failedStep": i, "message": f"Step {i}: action '{action}' is not valid for runtime=http (use httpRequest/wait)", "actual": "", "durationMs": now_ms() - t0}
+            return {"status": "ERROR", "failedStep": i, "message": f"Step {i}: action '{action}' is not valid for runtime=http (use httpRequest/wait/expectBodyNotContains/expectJsonPathAbsent)", "actual": "", "durationMs": now_ms() - t0}
         if not base_url:
             return {"status": "NOT_RUN", "failedStep": i, "message": "no backend base URL (target_stack.commands.healthcheck missing or backend not started)", "actual": "", "durationMs": now_ms() - t0}
         path = step.get("path") or step.get("url") or "/"
@@ -1367,13 +1419,13 @@ def run_http_steps(tc: dict[str, Any], base_url: str) -> dict[str, Any]:
         except Exception as e:
             return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {method} {url} failed", "actual": str(e), "durationMs": now_ms() - t0}
         text = raw.decode("utf-8", errors="replace")
+        last_text = text
         exp = step.get("expectStatus")
         if exp is not None:
             allowed = exp if isinstance(exp, list) else [exp]
             if status not in [int(x) for x in allowed]:
                 return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {method} {path} expected status {exp}", "actual": f"status={status} body={text[:300]}", "durationMs": now_ms() - t0}
         elif not (200 <= status < 300):
-            # No explicit expectation → a request that does not succeed (2xx) is a failure, never a silent pass.
             return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {method} {path} returned {status} (no expectStatus given, 2xx expected by default)", "actual": f"status={status} body={text[:300]}", "durationMs": now_ms() - t0}
         try:
             last_json = json.loads(text) if text.strip() else None
@@ -1393,8 +1445,17 @@ def run_http_steps(tc: dict[str, Any], base_url: str) -> dict[str, Any]:
                 return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {jp} expected to contain {step['contains']!r}", "actual": repr(val), "durationMs": now_ms() - t0}
             if "matches" in step and not re.search(str(step["matches"]), str(val)):
                 return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: {jp} expected to match /{step['matches']}/", "actual": repr(val), "durationMs": now_ms() - t0}
+        jp_not = step.get("expectJsonPathAbsent")
+        if jp_not and last_json is not None:
+            try:
+                found_val = json_path(last_json, str(jp_not))
+                return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: JSON path {jp_not} expected absent, found {found_val!r}", "actual": text[:300], "durationMs": now_ms() - t0}
+            except KeyError:
+                pass
         if "expectBodyContains" in step and str(step["expectBodyContains"]) not in text:
             return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: body expected to contain {step['expectBodyContains']!r}", "actual": text[:300], "durationMs": now_ms() - t0}
+        if "expectBodyNotContains" in step and str(step["expectBodyNotContains"]) in text:
+            return {"status": "FAIL", "failedStep": i, "message": f"Step {i}: body unexpectedly contained {step['expectBodyNotContains']!r}", "actual": text[:300], "durationMs": now_ms() - t0}
     return {"status": "PASS", "failedStep": None, "message": f"{len(steps)} http step(s) passed", "actual": "", "durationMs": now_ms() - t0}
 
 
@@ -1641,6 +1702,16 @@ def split_hunks(diff_lines: list[str]) -> list[list[str]]:
     return hunks
 
 
+GENERIC_RULE_STOPWORDS = frozenset({
+    "with", "from", "that", "this", "when", "then", "each", "must", "shall", "where", "than", "into",
+    "only", "rule", "formula", "value", "values", "date", "dates", "time", "times", "year", "years",
+    "month", "months", "days", "hours", "created", "updated", "modified", "status", "name", "names",
+    "type", "types", "code", "codes", "number", "total", "count", "notes", "record", "records",
+    "field", "fields", "user", "users", "string", "text", "email", "phone", "address", "active",
+})
+ISO_TIMESTAMP_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?Z?)?\b")
+
+
 def build_guardrail_patterns(spec_md: str) -> dict[str, re.Pattern[str]]:
     pats = dict(GUARDRAIL_PATTERNS)
     if spec_md:
@@ -1652,7 +1723,7 @@ def build_guardrail_patterns(spec_md: str) -> dict[str, re.Pattern[str]]:
         idents: set[str] = set()
         for r in rules:
             for w in re.findall(r"[A-Za-z_][A-Za-z0-9_]{3,}", f"{r.get('inputs', '')} {r.get('rule', '')}"):
-                if w.lower() not in {"with", "from", "that", "this", "when", "then", "each", "must", "shall", "where", "than", "into", "only", "rule", "formula", "value", "values"}:
+                if w.lower() not in GENERIC_RULE_STOPWORDS:
                     idents.add(w)
         if idents:
             alt = "|".join(sorted(map(re.escape, idents), key=len, reverse=True)[:200])
@@ -1667,11 +1738,16 @@ DOC_SUFFIXES = {".md", ".txt", ".rst"}  # documentation under src/ is never a gu
 
 def classify_hunk(hunk: list[str], pats: dict[str, re.Pattern[str]]) -> list[str]:
     """Classify a unified-diff hunk. The WHOLE hunk (changed + context lines) is inspected: a one-line change
-    inside `if (!allowedRoles.includes(role))` is guardrail-sensitive even when the changed line itself is bland."""
+    inside `if (!allowedRoles.includes(role))` is guardrail-sensitive even when the changed line itself is bland.
+    ISO-8601 date/timestamp literals are stripped before evaluating the spec §3.4 formula regex so seed-data timestamps
+    do not falsely trigger Gate 4."""
     cats: list[str] = []
     body = [ln[1:] if ln[:1] in "+- " else ln for ln in hunk if not ln.startswith(("@@", "+++", "---"))]
     for name, rx in pats.items():
-        if any(rx.search(ln) for ln in body):
+        if name == "business rule (spec §3.4) formula":
+            if any(rx.search(ISO_TIMESTAMP_RE.sub("TIMESTAMP_LITERAL", ln)) for ln in body):
+                cats.append(name)
+        elif any(rx.search(ln) for ln in body):
             cats.append(name)
     return cats
 
@@ -2342,6 +2418,8 @@ def main() -> int:
                     if not ui_source:
                         results.append({**base, "status": "ERROR", "durationMs": 0, "failedStep": None, "message": ui.error or "UI entry unavailable", "actual": ""})
                         continue
+                    if be.started:
+                        run_reset_hook(commands, be.base_url, root)
                     res = adapter.run(tc, ui_source)
                     if res.get("status") in ("PASS", "FAIL") and res.get("controls") is not None:
                         browser_states_reached += 1  # only an observed DOM (with a control audit) counts as a reached state
@@ -2386,6 +2464,7 @@ def main() -> int:
                     elif not be.started:
                         results.append({**base, "status": "NOT_RUN", "durationMs": 0, "failedStep": None, "message": f"backend not available: {be.error or 'not started'}", "actual": be.log_tail(8)})
                     else:
+                        run_reset_hook(commands, be.base_url, root)
                         results.append({**base, **run_http_steps(tc, be.base_url)})
                 elif runtime == "static":
                     if not ui_source:

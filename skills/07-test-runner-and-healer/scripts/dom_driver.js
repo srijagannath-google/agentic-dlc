@@ -487,6 +487,35 @@
         var m = re.exec(txt);
         return { ok: !m, actual: m ? 'matched "' + m[0] + '" near: ' + txt.slice(Math.max(0, m.index - 40), m.index + 60).replace(/\n/g, ' | ') : 'no match' };
       }
+      case 'httpRequest': {
+        var reqMethod = String(step.method || 'GET').toUpperCase();
+        var reqPath = String(step.path || step.url || '/');
+        var reqHeaders = Object.assign({ 'Accept': 'application/json' }, step.headers || {});
+        var reqInit = { method: reqMethod, headers: reqHeaders };
+        if (step.json !== undefined) {
+          reqInit.body = JSON.stringify(step.json);
+          if (!reqHeaders['Content-Type'] && !reqHeaders['content-type']) reqHeaders['Content-Type'] = 'application/json';
+        } else if (step.body !== undefined) {
+          reqInit.body = String(step.body);
+        }
+        var resp = await fetch(reqPath, reqInit);
+        var respText = await resp.text();
+        if (step.expectStatus !== undefined) {
+          var allowed = Array.isArray(step.expectStatus) ? step.expectStatus.map(Number) : [Number(step.expectStatus)];
+          if (allowed.indexOf(resp.status) === -1) {
+            return { ok: false, actual: 'status=' + resp.status + ' expected=' + JSON.stringify(step.expectStatus) + ' body=' + respText.slice(0, 200) };
+          }
+        } else if (resp.status < 200 || resp.status >= 300) {
+          return { ok: false, actual: 'status=' + resp.status + ' body=' + respText.slice(0, 200) };
+        }
+        if (step.expectBodyContains !== undefined && respText.indexOf(String(step.expectBodyContains)) === -1) {
+          return { ok: false, actual: 'body missing ' + JSON.stringify(step.expectBodyContains) };
+        }
+        if (step.expectBodyNotContains !== undefined && respText.indexOf(String(step.expectBodyNotContains)) !== -1) {
+          return { ok: false, actual: 'body unexpectedly contained ' + JSON.stringify(step.expectBodyNotContains) };
+        }
+        return { ok: true, actual: reqMethod + ' ' + reqPath + ' -> ' + resp.status };
+      }
       default:
         throw new Error('Unknown step action: ' + a);
     }

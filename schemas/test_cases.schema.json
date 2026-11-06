@@ -43,14 +43,23 @@
       "type": "object",
       "required": ["id", "category", "title", "expected", "runtime", "steps", "needsSteps"],
       "properties": {
-        "id": { "type": "string", "pattern": "^TC-(POS|POS-JOURNEY|NEG|EDGE|UI-LEAK|STATE|UI-INTERACT|UI-INTERACT-TAB|A11Y|API)-[0-9]{2,}$" },
-        "category": { "type": "string", "enum": ["Positive", "Negative", "Edge", "UiLeak", "State", "Interact", "A11y", "Api"] },
+        "id": { "type": "string", "pattern": "^TC-(POS|POS-JOURNEY|NEG|EDGE|UI-LEAK|STATE|UI-INTERACT|UI-INTERACT-TAB|A11Y|API|PARITY)-[0-9]{2,}$" },
+        "category": { "type": "string", "enum": ["Positive", "Negative", "Edge", "UiLeak", "State", "Interact", "A11y", "Api", "Parity"] },
         "storyRef": { "type": ["string", "null"] },
         "acRef": { "type": ["string", "null"] },
         "capabilityGroup": { "type": ["string", "null"] },
         "deferredByGroupSelection": {
           "type": "boolean",
           "description": "True when the parent story belongs to an unselected Capability Group in Product Backlog (when selectedCapabilityGroups != ['ALL'])."
+        },
+        "intentionalDivergenceRef": {
+          "type": ["string", "null"],
+          "description": "For TC-PARITY-* cases: optional REQ-ENH-NN or policy rule ID when modernized output intentionally diverges from historical legacy output."
+        },
+        "matrixCases": {
+          "type": "array",
+          "description": "Optional parameterised matrix combinations (e.g. grouped illegal state/role transitions) executed under a single test case.",
+          "items": { "type": "object" }
         },
         "requirementRefs": { "type": "array", "items": { "type": "string" } },
         "title": { "type": "string", "minLength": 1 },
@@ -74,7 +83,8 @@
             "goto", "setRole", "fill", "select", "click", "expectText", "expectVisible", "expectHidden", "expectDisabled",
             "expectEnabled", "expectCount", "expectNoVisibleTextMatching", "expectAllControlsWired", "expectA11yBaseline",
             "httpRequest", "wait",
-            "check", "uncheck", "pressKey", "expectAttribute", "expectSourceContains", "expectSourceMatches"
+            "check", "uncheck", "pressKey", "expectAttribute", "expectSourceContains", "expectSourceMatches",
+            "expectBodyNotContains", "expectJsonPathAbsent"
           ]
         },
         "target": { "type": "string", "description": "goto: 'ui' (target_stack.commands.uiEntry) or a URL/path" },
@@ -91,6 +101,9 @@
         "headers": { "type": "object" },
         "expectStatus": { "anyOf": [ { "type": "integer" }, { "type": "array", "items": { "type": "integer" }, "minItems": 1 } ] },
         "expectJsonPath": { "type": "string" },
+        "expectJsonPathAbsent": { "type": "string", "description": "JSON path that MUST NOT be present in the HTTP response body (zero-leak / BOLA negative assertion)." },
+        "expectBodyContains": { "type": "string" },
+        "expectBodyNotContains": { "type": "string", "description": "Substring that MUST NOT appear in the HTTP response body." },
         "note": { "type": "string" }
       }
     }

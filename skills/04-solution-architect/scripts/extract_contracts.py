@@ -922,6 +922,28 @@ def main() -> int:
         stage4a_deliverables.append("design/data_migration_and_cutover.md")
     fails.extend(dlc.scan_deliverable_internal_leaks(root, stage4a_deliverables))
 
+    # ---- Coexistence Boundary Isolation Check (if deploy/coexistence/ exists, src/ must still stay 100% clean)
+    coex_dir = root / "deploy" / "coexistence"
+    coex_files = sorted(str(p.relative_to(root)) for p in coex_dir.rglob("*") if p.is_file()) if coex_dir.is_dir() else []
+
+    # ---- Guardrail Bindings for Contract-Pinned Stage 6 Diff Auditing (@dlc-guard / @dlc-rule / @dlc-mask / @dlc-a11y)
+    spec_rules = dlc.parse_business_rules(spec)
+    spec_roles = dlc.parse_roles(spec)
+    guardrail_bindings = {
+        "stateTransitions": [
+            {"from": t.src, "to": t.dst, "trigger": t.trigger, "roles": t.roles, "guard": t.guard}
+            for t in sm.transitions
+        ],
+        "businessRuleIds": [r["id"] for r in spec_rules if r.get("id")],
+        "roles": [r["role"] for r in spec_roles if r.get("role")],
+        "pragmaAnnotations": [
+            "@dlc-guard:<FromState>-><ToState>",
+            "@dlc-rule:<BR-ID>",
+            "@dlc-mask:<sensitive-field>",
+            "@dlc-a11y:<wcag-criterion>",
+        ],
+    }
+
     # ---- Index
     index = {
         "schemaVersion": dlc.SCHEMA_VERSION,
@@ -934,6 +956,9 @@ def main() -> int:
         "internalFields": api["internalFields"],
         "schemas": api["schemas"],
         "stateTriggers": sm.triggers(),
+        "coexistenceStrategy": (stack.get("coexistenceStrategy") if isinstance(stack, dict) else None) or "clean-cutover",
+        "coexistenceArtifacts": coex_files,
+        "guardrailBindings": guardrail_bindings,
     }
     dlc.write_json(root / "design" / ".contracts_index.json", index)
 

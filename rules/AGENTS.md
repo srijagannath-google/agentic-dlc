@@ -1,188 +1,88 @@
-# Agentic DLC Router & Gates (`agentic-dlc`)
+# Agentic DLC Router & Gates (`agentic-dlc` v4.4)
 
-You are operating inside the **Agentic Development Lifecycle (DLC) harness v4** — "Think Big, Start Small,
-Move Fast": the **Elephant** (deep-context discovery/spec author), the **Judge** (adversarial spec judge and
-test runner) and the **Goldfish** (clean-context coder). The harness is **domain-neutral** and
-**scenario-aware**: it modernises **legacy applications** (`SCENARIO_LEGACY_APP`) and builds **greenfield
-systems from requirements documents** (`SCENARIO_REQUIREMENTS_DOC`) as equal, first-class paths.
+You operate inside the **Agentic Development Lifecycle (DLC) harness v4.4** — "Think Big, Start Small, Move Fast":
+the **Elephant** (deep-context discovery/spec author), the **Judge** (adversarial spec/architecture critic and
+closed-loop test runner), and the **Goldfish** (clean-context coder). Both **legacy modernisation**
+(`SCENARIO_LEGACY_APP`) and **greenfield requirements** (`SCENARIO_REQUIREMENTS_DOC`) are equal first-class paths.
 
-> **The one rule that governs everything:** the LLM (skills + subagents) **authors** every project artefact
-> from the user's inputs; scripts only **scan, derive, lint, execute and gate**. No script ever writes a spec,
-> story, design, test plan, UI or backend from a template, and no script prints a static PASS.
+> **Governing Rule:** The LLM (skills + subagents) **authors** every project artefact from user inputs; scripts only
+> **scan, derive, lint, execute, and gate**. Never expose plugin internals (`*.py` scripts, `00..10/scripts/*`,
+> `_shared/*.md`, `skills/*`, `schemas/*.json`, subagent slugs, `<details>`/`diagram-dsl`, or `SCENARIO_*` enums)
+> inside customer deliverables (`specs/`, `backlog/`, `design/`, `test/`, `src/`, `deploy/`).
 
-`<PLUGIN>` below means the installed plugin directory (normally `~/.gemini/config/plugins/agentic-dlc`).
-Before any stage, read `<PLUGIN>/docs/ARCHITECTURE.md` (binding artefact contracts) and the `_shared/*.md`
-files a skill names. Apply their standards directly — **never** paste plugin boilerplate or expose internal
-harness workings (`*.py` script names, `00..09/scripts/*`, `_shared/*.md`, `skills/*`, `schemas/*.json`,
-`resources/reference_*`, subagent slugs, `<details>`/`diagram-dsl` scaffolding, or `SCENARIO_*` enum constants)
-inside generated project deliverables (`specs/`, `backlog/`, `design/`, `test/`, `src/`, `deploy/`).
+`<PLUGIN>` = installed plugin directory (`~/.gemini/config/plugins/agentic-dlc`). Read `<PLUGIN>/docs/ARCHITECTURE.md`
+and the `_shared/*.md` guides named by the active skill before acting (**progressive disclosure** — load deep stage
+references only when executing that stage).
 
 ---
 
-## 0. `<PROJECT_ROOT>` (read `<PLUGIN>/_shared/project_root.md` — summary only)
+## 0. `<PROJECT_ROOT>` (`_shared/project_root.md`)
 
-1. The plugin directory (any folder named `agentic-dlc*`) is **never** `<PROJECT_ROOT>`; never create
-   `resources/ specs/ backlog/ design/ test/ src/` inside it.
-2. Resolve in order: `~/.gemini/config/project_root.txt` → cwd (if not a plugin dir) → parent of a plugin dir
-   nested in a project → otherwise **ask the user** before writing anything.
-3. Pass `--project-root "<PROJECT_ROOT>"` to every script; scripts refuse plugin directories.
-4. Write only inside `<PROJECT_ROOT>/{resources,specs,backlog,design,test,src,deploy}/`; never write scratch files
-   there and never attach artifact metadata to project files.
+1. Any folder named `agentic-dlc*` is **never** `<PROJECT_ROOT>`.
+2. Resolve in order: `~/.gemini/config/project_root.txt` → `cwd` (if not a plugin/home/tmp dir) → parent of nested plugin → else **ask the user**.
+3. Pass `--project-root "<PROJECT_ROOT>"` to every script. Write only inside `<PROJECT_ROOT>/{resources,specs,backlog,design,test,src,deploy}/`.
 
 ```text
 <PROJECT_ROOT>/
-├── resources/{inputs,design_references,policies_and_statutes,shared_services}/   # user-provided only (never written by scripts)
-├── specs/     project_setup.json · gate_approvals.json · input_inventory.json · design_reference/ (crawled manifest + screenshots)
+├── resources/{inputs,design_references,policies_and_statutes,shared_services}/   # user-provided only (read-only)
+├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · input_inventory.json · dependency_dag.json
 │              discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md
-│              application_eval_scorecard.{md,json}
-├── backlog/   user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv · jira_state.json · azure_devops_state.json
-├── design/    architecture_design.md (portfolio index) · business_architecture.md · high_level_solution_architecture.md
-│              logical_architecture.md · application_architecture.md · data_architecture.md · security_architecture.md
-│              infrastructure_architecture.md · diagrams/ · solution_design.md · data_migration_and_cutover.md (legacy scenario only)
-├── test/      test_plan.md · test_cases.json · eval_report.md · eval_results.json
-│              remediation_and_guardrail_audit_report.md · history/iter-N/ · .snapshots/iter-N/ · *.iter-NN.*
-│              .build_logs/ (degraded_mode.json only if src/run.sh fell back — ARCHITECTURE §4.2.2)
+│              application_eval_scorecard.{md,json} · drift_report.{md,json} · adr/ADR-*.md
+├── backlog/   user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv
+├── design/    architecture_design.md · {business,high_level_solution,logical,application,data,security,infrastructure}_architecture.md
+│              diagrams/ · solution_design.md · architecture_eval_scorecard.{md,json} · data_migration_and_cutover.md (legacy)
+├── test/      test_plan.md · test_cases.json · legacy_parity_goldens.jsonl (opt) · eval_report.md · eval_results.json
+│              remediation_and_guardrail_audit_report.md · history/iter-N/ · .snapshots/iter-N/ · .build_logs/
 ├── src/       contracts/openapi.yaml · db/schema.sql · ui/ · backend/ · run.sh · README.md
-└── deploy/    containers/ (incl. the only docker-compose.yaml) · gdc/{base,overlays/<env>,policy-controller,service-mesh,config-sync}/
-               observability/ · deployment_and_runbook.md · deployment_eval_report.{md,json} · history/iter-N/
+└── deploy/    containers/ · coexistence/ (legacy strangler ACL only) · gdc/{base,overlays/<env>,policy-controller,service-mesh,config-sync}/
+               observability/ · deployment_and_runbook.md · deployment_eval_report.{md,json}
 ```
-Full tree incl. script-written dot-files: `docs/ARCHITECTURE.md` §3.
 
 ---
 
-## 1. Lifecycle, skills, subagents and gates
+## 1. Lifecycle, Ceremony Tracks & Machine-Enforced Human Gates (`_shared/gate_matrix.md`)
 
-> **HARD-STOP HUMAN GATE RULE (MANDATORY AT EVERY STAGE IN INTERACTIVE MODE):**
-> 1. **Execute AT MOST ONE STAGE per user turn.** Never chain Stage 0 → Stage 1, Stage 1 → Stage 2, Stage 2 → Stage 3, etc., without returning to the human first.
-> 2. **Stage 0 (`00-setup-and-connection`) comes first** whenever the user asks to configure/connect Azure DevOps (ADO) or Jira, initialize a project, or start the DLC. If connecting to ADO, you **MUST** list the available ADO Projects (`setup_project_connection.py --action list-ado-projects`), **ask the user which ADO Project (and repository) they want to work on**, save `specs/project_setup.json`, and **STOP at Gate 0** — never start Stage 1 during connection setup!
-> 3. **End Your Turn at Every Gate (`gate_0_setup` .. `gate_7_packaging`):** When a stage completes validation, `dlc_common.mark_gate_awaiting_human` stamps `AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking all downstream stage scripts. Present the stage's deliverables and open questions to the user, and **END YOUR TURN IMMEDIATELY (call zero more tools)**.
-> 4. **Record Approval Only in the Next Turn:** Only **after** the human replies in a subsequent turn explicitly approving the gate, run `python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate <gate_id> --user-response "<verbatim user quote>"` before starting the next stage. Never self-approve a gate in the same turn!
+> **HARD-STOP HUMAN GATE RULE (INTERACTIVE MODE):**
+> 1. **At most ONE stage per user turn** unless a gate is auto-skipped by `--track quick` (`_shared/gate_matrix.md`) or `--autonomous`.
+> 2. **Stage 0 (`00-setup-and-connection`) runs first** when connecting ADO/Jira or initializing a project: list ADO Projects (`list-ado-projects`), ask which ADO Project & repo to use, choose ceremony track (`quick | standard | regulated`), save `specs/project_setup.json`, and **STOP at Gate 0**.
+> 3. **Present the Executive Gate Decision Brief & End Turn:** Each gate script writes `specs/gate_briefs/<gate_id>.md` and marks `AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json` (except gates auto-skipped by `quick` track). Present the brief + open questions and **END YOUR TURN IMMEDIATELY**.
+> 4. **Approve Only in the Next Turn:** After the human approves, run `python3 <PLUGIN>/scripts/gate_tracker.py --project-root "<PROJECT_ROOT>" --action approve --gate <gate_id> --user-response "<verbatim quote>"` before starting the next stage.
 
-| Stage | Skill (`<PLUGIN>/skills/…/SKILL.md`) | Subagent(s) | Authors (LLM) | Verifies / Enforces (script) | Mandatory Human Gate |
-| :-- | :-- | :-- | :-- | :-- | :-- |
-| **0 Setup & connection** | `00-setup-and-connection` | coordinator | Connects to ADO / Jira, **lists ADO Projects & Repos, asks user which ADO Project & repository/input source to work on**, writes `specs/project_setup.json` | `00/scripts/setup_project_connection.py --action check-env \| list-ado-projects \| list-ado-repos \| list-jira-projects \| save-setup` | **Gate 0 (`gate_0_setup`)** — **STOP & wait** for human confirmation of project/repo before Stage 1 |
-| 1 Discovery & intake | `01-discovery-and-grouping` | `discovery-architect` | Authors `specs/discovery_architecture_and_inventory.md` (**Current-State "As-Is" only**), `specs/target_stack.json` (incl. `deployment.targetEnvironments`, default `["on-prem-gdc","gcp","aws","azure"]`) | `01/scripts/scan_input_sources.py` → `specs/input_inventory.json`; `01/scripts/validate_discovery_blueprint.py` | **Gate 1 (`gate_1_discovery`)** — **STOP & wait** for human review + capability group selection |
-| 2 Spec & judge | `02-spec-architect-and-judge` | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | `02/scripts/lint_spec_structure.py`, `02/scripts/validate_spec_scorecard.py` | **Gate 2 (`gate_2_spec`)** — total ≥ 90, no blocking gap, then **STOP & wait** for human spec approval |
-| 3 Stories & sprints | `03-story-and-sprint-planner` | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.md` | `03/scripts/alm_jira_ado_bridge.py [--platform jira\|ado\|both\|none] --action audit \| select-groups \| sync-stories \| set-approval \| sync-sprints \| transition-stories \| sync-status-from-eval \| sync-deployment-status \| export-csv \| test-connection` | **Gate 3 (`gate_3_backlog`)** — **STOP & wait** for human sprint alignment approval |
-| 4A Design | `04-solution-architect` | `solution-architect` | Confirms the **Future-State tech stack and `deployment.targetEnvironments`** with the human (`specs/target_stack.json#decidedBy == "user"`), then authors the **Multi-Perspective Architecture Suite as separate artifacts under `design/`**: (1) `design/business_architecture.md`, (2) `design/high_level_solution_architecture.md` (AI-Era System of Engagement / System of Intelligence & AI / Systems of Record), (3) `design/logical_architecture.md`, (4) `design/application_architecture.md` (C4 components + `sequenceDiagram`), (5) `design/data_architecture.md` (5-stage data/RAG pipeline + 3NF `erDiagram`), (6) `design/security_architecture.md` (5-layer defense-in-depth + AI Trust Layer), (7) `design/infrastructure_architecture.md` (multi-region topology + Well-Architected & Grilling matrices), (8) `design/architecture_design.md` (Executive Portfolio Index), and (9) `design/solution_design.md` (`§1` 3NF `erDiagram`, `§1.1` Legacy→Target mapping, `§1.2` DDL, `§2` OpenAPI, ViewModel/DTO mapping; + `data_migration_and_cutover.md` if legacy) | `04/scripts/extract_contracts.py` → `src/contracts/openapi.yaml`, `src/db/schema.sql`, `design/diagrams/*.{svg,png}` (pattern-based diagram checks, `_shared/well_architected_and_diagram_standards.md`) | **Gate 4A/4B (`gate_4_design_and_tests`)** — human tech-stack choice + **STOP & wait** for human design & test-plan approval |
-| 4B Test plan | `05-test-plan-designer` | `testing-agent` | `test/test_plan.md`; completes `steps` in `test/test_cases.json` | `05/scripts/derive_test_cases.py` (skeleton), `05/scripts/validate_test_cases.py` | **Gate 4A/4B (`gate_4_design_and_tests`)** — every AC has a TC with steps and ≥ 1 assertion; **STOP & wait** before Stage 5 |
-| 5 Build | `06-coding-agent` + `google-cloud-ui-design` | `coding-agent` | `src/**` runnable per `target_stack.json` (+ `src/README.md`, `src/run.sh`) with Google Cloud UI Design (`_shared/google_cloud_ui_design.md`) | `06/scripts/validate_build.py` (transitions active sprint stories `To Do` → `In Progress`; reports degraded mode, ARCHITECTURE §4.2.2) | **Gate 5 (`gate_5_build`)** — install/build/start/healthcheck pass; **STOP & wait** for human build review |
-| 6 Closed loop | `07-test-runner-and-healer` | `testing-agent`, `coding-agent`, `solution-architect` | fixes only | `07/scripts/run_closed_loop_eval.py` → `test/eval_*`, audit report (+ transitions verified stories to `Done` via `sync-status-from-eval`) | **Gate 6 (`gate_6_eval`)** eval PASS + **Gate 4** guardrail flags need human approval — **STOP & wait** for human evaluation & audit approval |
-| 7 Container & GDC pkg | `08-container-and-gdc-packager` | `platform-ops-agent` | `deploy/containers/*`, `deploy/gdc/{base,overlays/<env>,policy-controller,service-mesh}/*` | `08/scripts/validate_gdc_packaging.py` (manifest-level; refuses while `test/.build_logs/degraded_mode.json` exists) | **Gate 7 (`gate_7_packaging`)** — **STOP & wait** for human container & KRM packaging approval |
-| 8 GDC Fleet deploy & obs | `09-gdc-fleet-deployer-and-observability` | `platform-ops-agent` | `deploy/gdc/config-sync/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | `09/scripts/run_gdc_fleet_deploy_and_verify.py` → `deploy/deployment_eval_report.{md,json}` (manifest validation + local smoke; `--live` for `kubectl apply`; + `sync-deployment-status`) | **Gate 8** (ledger: `gate_8_deployment` if present) — GDC Fleet GitOps, SLOs & observability manifests verified |
-
-Stages 4A and 4B run in parallel **only after** human approval of Gate 3 (`gate_3_backlog`). Every other stage runs strictly one stage at a time with an explicit human review & approval stop between stages. Stages 7 and 8 package the verified application for Google Distributed Cloud (GDC) Fleet targets (`deployment.targetEnvironments`, default `on-prem-gdc`, `gcp`, `aws`, `azure`) and validate the manifests; a live `kubectl apply` happens only with `--live`. Gate labels and the pipeline step ↔ stage mapping are canonical in `docs/ARCHITECTURE.md` §2.1 / §5.
-
-### Routing by intent
-| User says (intent) | Load skill | Invoke |
-| :-- | :-- | :-- |
-| "connect to ADO / Jira", "configure connection", "set up project", "which ADO project", "start a new project" | `00-setup-and-connection` | coordinator (**STOP after setup & ADO project selection — NEVER start Stage 1 in the same turn**) |
-| "analyse this legacy app / database export / BRD", "extract ERD, state machine, capabilities" | `01-discovery-and-grouping` | `discovery-architect` (requires `gate_0_setup` approved; **STOP at Gate 1**) |
-| "write the spec", "run the spec judge", "score the spec" | `02-spec-architect-and-judge` | `discovery-architect` then `spec-judge` (requires `gate_1_discovery` approved; **STOP at Gate 2**) |
-| "create user stories / sprint plan", "push to Jira / Azure DevOps" | `03-story-and-sprint-planner` | `sprint-planner-agent` (requires `gate_2_spec` approved; **STOP at Gate 3**) |
-| "design the architecture / schema / API", "data migration plan" | `04-solution-architect` | `solution-architect` (requires `gate_3_backlog` approved; **STOP at Gate 4A/4B**) |
-| "write the test plan / test cases" | `05-test-plan-designer` | `testing-agent` (requires `gate_3_backlog` approved; **STOP at Gate 4A/4B**) |
-| "build the app / UI / backend", "design a high-quality Google Cloud UI" | `06-coding-agent`, `google-cloud-ui-design` | `coding-agent` (requires `gate_4_design_and_tests` approved; **STOP at Gate 5**) |
-| "run the tests", "what failed, what changed, any guardrail issues" | `07-test-runner-and-healer` | `testing-agent` (+ `coding-agent`, `solution-architect` for fixes; requires `gate_5_build` approved; **STOP at Gate 6**) |
-| "containerize the app", "package for GDC / multi-cloud / on-prem" | `08-container-and-gdc-packager` | `platform-ops-agent` (requires `gate_6_eval` approved; **STOP at Gate 7**) |
-| "deploy to GDC fleet", "configure multi-cloud GitOps / monitoring / SLOs" | `09-gdc-fleet-deployer-and-observability` | `platform-ops-agent` (requires `gate_7_packaging` approved) |
+| Stage | Skill | Subagent(s) | Key Deliverables | Verification Script & Gate |
+| :-- | :-- | :-- | :-- | :-- |
+| **0 Setup** | `00-setup-and-connection` | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `domainPacks`, `activeWave`) | `00/scripts/setup_project_connection.py` → **`gate_0_setup`** |
+| **1 Discovery** | `01-discovery-and-grouping` | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (**As-Is only**), `specs/target_stack.json`, opt `test/legacy_parity_goldens.jsonl` | `01/scripts/scan_input_sources.py` (`dependency_dag.json`), `validate_discovery_blueprint.py` → **`gate_1_discovery`** |
+| **2 Spec** | `02-spec-architect-and-judge` | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `traceability_matrix.md`, `application_eval_scorecard.{md,json}` | `02/scripts/lint_spec_structure.py`, `validate_spec_scorecard.py` (`≥ 90`) → **`gate_2_spec`** |
+| **3 Backlog** | `03-story-and-sprint-planner` | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | `03/scripts/alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) → **`gate_3_backlog`** |
+| **4A Design** | `04-solution-architect` | `solution-architect`, `architecture-critic` | 7 `design/*_architecture.md` + `architecture_design.md` + `solution_design.md` + `architecture_eval_scorecard.{md,json}` (+ `data_migration_and_cutover.md` if legacy) | `04/scripts/extract_contracts.py` (`openapi.yaml`, `schema.sql`, 7 SVGs/PNGs), `validate_architecture_scorecard.py` → **`gate_4_design_and_tests`** |
+| **4B Tests** | `05-test-plan-designer` | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` (`TC-POS/NEG/EDGE/STATE/UI-LEAK/INTERACT/API/A11Y/PARITY-*`) | `05/scripts/derive_test_cases.py`, `validate_test_cases.py` → **`gate_4_design_and_tests`** |
+| **5 Build** | `06-coding-agent`, `google-cloud-ui-design` | `coding-agent` | Runnable dual-mode `src/{ui,backend,run.sh,README.md}` with `@dlc-guard`/`@dlc-rule` pragmas | `06/scripts/validate_build.py` (stories `To Do` → `In Progress`) → **`gate_5_build`** |
+| **6 Eval** | `07-test-runner-and-healer` | `testing-agent`, `coding-agent`, `solution-architect` | Self-healing fixes; `test/eval_report.md`, `remediation_and_guardrail_audit_report.md`, `backlog/defects.*` | `07/scripts/run_closed_loop_eval.py` (stories → `Done`; **Gate 4** guardrail pause) → **`gate_6_eval`** |
+| **7 GDC Pkg** | `08-container-and-gdc-packager` | `platform-ops-agent` | `deploy/containers/*`, `deploy/coexistence/*` (opt), `deploy/gdc/{base,overlays,policy-controller,service-mesh}/*` | `08/scripts/validate_gdc_packaging.py` → **`gate_7_packaging`** |
+| **8 Fleet Obs** | `09-gdc-fleet-deployer-and-observability` | `platform-ops-agent` | `deploy/gdc/config-sync/*`, `deploy/observability/*`, `deploy/deployment_and_runbook.md` | `09/scripts/run_gdc_fleet_deploy_and_verify.py` (`--live` for `kubectl`) → **`gate_8_deployment`** |
+| **9 Drift/ADR** | `10-drift-and-evolution` | `discovery-architect`, `solution-architect` | `specs/drift_report.{md,json}`, `specs/adr/ADR-NNNN-*.md`, brownfield spec/contract refresh | `10/scripts/check_spec_code_drift.py` (`ALIGNED` vs `DRIFT_DETECTED`) |
 
 ---
 
-## 2. Cross-stage invariants (apply at every stage)
+## 2. Ten Cross-Stage Invariants
 
-1. **Scenario awareness & Current-State vs. Future-State separation** (canonical: `docs/ARCHITECTURE.md` §1.3). Read
-   `specs/input_inventory.json#inputScenario` first. Stage 1 documents **only the Current State ("As-Is")**; Stage 4A owns
-   **all Future-State ("To-Be")** design, including the `design/solution_design.md §1.1` Legacy→Target 3NF entity mapping.
-   Legacy-only artefacts (Stage 1 `§2.1` legacy object inventory, `§1.1` mapping, `data_migration_and_cutover.md`, `REQ-ENH-*`)
-   exist **only** for `SCENARIO_LEGACY_APP`; for `SCENARIO_REQUIREMENTS_DOC` specify the documented scope exactly and never
-   inject unsolicited features. If `scenarioConfidence` is `LOW`, ask.
-2. **Workflow chain of custody** (`_shared/workflow_chain_of_custody.md`). The lifecycle state machine is
-   extracted from inputs at Stage 1 (or asked of the user — never invented), frozen in spec §3.3 as a
-   `stateDiagram-v2` **plus** a `| From | To | Trigger | Actor Role | Guard |` table, and every downstream
-   artefact derives from that table. Roles come from spec §3.5; business rules/formulas from spec §3.4.
-3. **Ask, don't assume.** Unclear workflow, roles, rules, stack or regulations → ask at the next gate. In
-   autonomous mode choose the most restrictive reading and record it as `ASSUMPTION-NN` in the spec.
-4. **Clean target.** Never carry legacy internals (table/form/report/query names, dead columns, fixed-width
-   record adapters, dual-run bridges) into target design or code. This does **not** forbid integrations a
-   requirements document legitimately demands; those are requirements and are specified as such.
-5. **Zero internal data leakage in UI** (`_shared/zero_leak.md`), the **UX guardrails**
-   (`_shared/ux_guardrails.md`), and the **Google Cloud UI Design System** (`_shared/google_cloud_ui_design.md`
-   & `skills/google-cloud-ui-design/SKILL.md`: Surface Mode `Operate`/`Read`/`Persuade`/`Express` + 6 layout
-   blueprints, `:root`/`.dark` `--g-*` Material 3 CSS tokens with `defaultTheme="system"`, ShadCN UI + Radix
-   primitives, Unified Surfaces with `divide-x`/`divide-y` + `<dl>` grids, `tabular-nums`, 4-state coverage, and
-   the 8 Anti-Slop bans) are defaults for every generated UI; user design references in
-   `resources/design_references/` or explicit Gate 1 instructions override them (record overrides in spec §4).
-6. **Contract-first test IDs.** `data-testid` values are declared in `test/test_cases.json` first; the coder
-   implements them. Accessibility baseline is WCAG 2.1 AA; add jurisdiction-specific standards only when the
-   user names them (`specs/target_stack.json#accessibilityStandard`).
-7. **Future-State technology stack is chosen by the human, `design/` documents are 100% Target-State (zero local-testing details in design), and Stage 5 builds the Target Stack dual-mode — never replaced by a throwaway app** (canonical: `docs/ARCHITECTURE.md` §4.2, §4.2.1, §4.2.2).
-   - Entering Stage 4A with `target_stack.json#decidedBy != "user"` (or any kind `"tbd"`): `solution-architect` **must ask**
-     for frontend, backend, database and `deployment.targetEnvironments` — never silently assume `static-html` + Python, and
-     never set `target_stack.json` to `static-html` + `python-stdlib-http` while recommending another stack in `design/`.
-   - **Stage 4A `design/*.md` is 100% Target-State ("To-Be"):** target runtimes, target managed database (`AlloyDB` / `Cloud SQL` /
-     `PostgreSQL`), `OIDC / IAP`, `Cloud KMS`, `Cloud Logging` / `Monitoring` / `OpenTelemetry`. Local-testing concerns
-     (`APP_ENV=local`, `AUTH_MODE=local-mock`, embedded SQLite fallback, `local_dev_runner`) never appear in `design/`
-     (`04/scripts/extract_contracts.py` fails Gate 4A if they do).
-   - Stage 5 builds `src/ui/` + `src/backend/` in that stack with `APP_ENV=local` (testable via `bash src/run.sh`,
-     `AUTH_MODE=local-mock`) and `APP_ENV=production` (containers/GDC, managed `DATABASE_URL`, `AUTH_MODE=oidc-iap`).
-   - `src/run.sh` may fall back to a local dev runner **only** when the native toolchain is absent, and must then write
-     `test/.build_logs/degraded_mode.json`; `validate_build.py` reports it and Gate 7 refuses to pass while it exists
-     unless the real container build is verified. `extract_contracts.py`, `validate_build.py` and
-     `validate_gdc_packaging.py` fail when a Python `http.server` + `static-html` substitute replaces the declared stack.
-8. **Context isolation.** `coding-agent` (Goldfish) reads only the approved upstream artefacts listed in
-   `06-coding-agent/SKILL.md` — never raw legacy sources.
-9. **End-to-end ALM story status progression (`To Do` → `In Progress` → `Done`).** Stories start in `To Do` at
-   Stage 3 (`alm_jira_ado_bridge.py --action sync-stories`), automatically transition to `In Progress` when
-   Stage 5 build validation passes (`validate_build.py` → `--action transition-stories --target-status "In Progress"`),
-   and automatically transition to `Done` in local backlog files and on live Atlassian Jira / Azure DevOps
-   boards once Stage 6 evaluation passes — a story moves to `Done` only when it has **≥ 1 directly linked passing test
-   case** (`storyRef`) and none failing; coverage is never inherited through shared `requirementRefs`
-   (`run_closed_loop_eval.py` → `--action sync-status-from-eval`).
-10. **Credentials are environment-only.** Jira / Azure DevOps / Git tokens are read from the process environment,
-   `<PROJECT_ROOT>/.env` and `~/.gemini/config/agentic-dlc.env` (chmod `600`) — never from CLI flags, prompts or
-   project files, and never echoed into artefacts.
+1. **Scenario & As-Is / To-Be Separation (`docs/ARCHITECTURE.md` §1.3):** Stage 1 documents **only Current State ("As-Is")** (and uses Map-Reduce per-module discovery when `largeRepoMapReduceRecommended == true`). Stage 4A owns **all Future State ("To-Be")** (`design/*.md` is 100% target-state — zero local mock flags).
+2. **Workflow Chain of Custody (`_shared/workflow_chain_of_custody.md`):** Lifecycle states/transitions are extracted in Stage 1, frozen in `specs/application_spec.md §3.3` (`stateDiagram-v2` + table), and drive stories, tests, UI, and backend guards.
+3. **Ask, Don't Assume & Strict Acronym Provenance:** Unresolved workflows/rules/stack go to the next gate (or `ASSUMPTION-NN` in `--autonomous` mode). Never guess expansions for `unverifiedAcronyms` in `specs/input_inventory.json`; tag `[UNVERIFIED_ACRONYM]` and ask at Gate 1.
+4. **Pure Target `src/` & Disposable Strangler Boundary ACL:** Never carry legacy table/form names or fixed-width adapters into `src/`. When phased strangler coexistence (`--wave GRP-ID`) is chosen in `target_stack.json#coexistenceStrategy`, isolate disposable CDC/routing adapters strictly under `deploy/coexistence/` with a retirement wave.
+5. **Zero UI Leakage, Google Cloud UI Design & `A2UI v0.9`:** Apply `_shared/zero_leak.md`, `_shared/ux_guardrails.md`, and `_shared/google_cloud_ui_design.md` (`Operate | Read | Persuade | Express`, `:root`/`.dark` `--g-*` M3 tokens, ShadCN/Radix, unified surfaces, `tabular-nums`, 4-state coverage, or `references/gemini-enterprise-a2ui.md` when `frontend.kind == "gemini-enterprise-a2ui"`).
+6. **Contract-First Test IDs, Differential Parity & Guardrail Pragmas:** Declare `data-testid` selectors in `test/test_cases.json` first, derive `TC-PARITY-*` from `test/legacy_parity_goldens.jsonl` when legacy I/O fixtures exist, use `commands.reset` for hermetic test isolation, and annotate `src/` guards/formulas with `@dlc-guard:<From>-><To>` and `@dlc-rule:BR-NN`.
+7. **Human-Confirmed Dual-Mode Target Stack:** Ask for the Future-State stack at Stage 4A if `"tbd"`. Build the real target stack in `src/{ui,backend}` supporting `APP_ENV=local` (`bash src/run.sh`) and `APP_ENV=production` (containers/GDC); never substitute a throwaway Python `http.server` app.
+8. **Goldfish Context Isolation:** `coding-agent` reads **only** approved upstream artefacts (`06-coding-agent/SKILL.md`) — never `resources/inputs/`.
+9. **End-to-End ALM Story Progression:** Stories progress `To Do` (Stage 3) → `In Progress` (Stage 5) → `Done` (Stage 6 when ≥ 1 directly linked test passes and 0 fail), with automated `Bug` creation/closure.
+10. **Environment-Only Credentials & Optional MCP Domain Packs (`_shared/mcp_domain_packs.md`):** Read secrets only from env / `.env` / `~/.gemini/config/agentic-dlc.env` (`chmod 600`); optional MCP packs (`gcp-database-migration`, `spanner`, `cloud-finops`, `apigee-integration`) are additive and never mandatory.
 
 ---
 
-## 3. Human gates (Machine-Enforced via `specs/gate_approvals.json` & `scripts/gate_tracker.py`)
-
-Every stage boundary is enforced in code (`dlc_common.require_gate_approved` / `dlc_common.mark_gate_awaiting_human`). Downstream scripts exit with `GateFailure` if the upstream gate is not `APPROVED_BY_USER`, and `gate_tracker.py --action approve` enforces a turn-boundary cooldown + verbatim `--user-response` so an agent can **never** self-approve a gate in the same turn.
-
-| Gate ID (`specs/gate_approvals.json`) | When | Default Interactive Behaviour (Mandatory STOP) | Pre-approved / `--autonomous` Behaviour |
-| :-- | :-- | :-- | :-- |
-| `gate_0_setup` (**Gate 0**) | Stage 0 (`00-setup-and-connection`) before Stage 1 | Connect to ADO/Jira, **list available ADO Projects (`list-ado-projects`) and ask which ADO Project (and repository) the user wants to work on** (or confirm local/Git input source), write `specs/project_setup.json`, **END TURN**, and wait for explicit user approval | Use the input source named in prompt or populated `<PROJECT_ROOT>/resources/inputs/` |
-| `gate_1_discovery` (**Gate 1**) | After Stage 1 (`validate_discovery_blueprint.py`) | Present As-Is discovery summary, **§6.1 Business Capability Groupings (`GRP-01..N`)**, and open workflow questions; ask which Capability Group(s) to take forward (`["GRP-01", ...]` vs. `["ALL"]`), regulations, PII/security, accessibility/design refs, ALM platform, GDC `deployment.targetEnvironments` (default `["on-prem-gdc","gcp","aws","azure"]`) and target stack if already known (else `pending-stage-4a`); write `specs/target_stack.json`; **END TURN** and wait for human approval | Apply `selectedCapabilityGroups: ["ALL"]`, enterprise defaults, most-restrictive workflow reading |
-| `gate_2_spec` (**Gate 2**) | After Stage 2 (`validate_spec_scorecard.py` ≥ 90) | `spec-judge` scores until `PASS` (≥ 90, zero blocking gaps); then present `specs/application_spec.md`, `traceability_matrix.md`, and `application_eval_scorecard.md` to the user, **END TURN**, and wait for human approval before starting Stage 3 | Judge loop still enforced; auto-advances only when `--autonomous` was explicitly requested |
-| `gate_3_backlog` (**Gate 3**) | After Stage 3 (`alm_jira_ado_bridge.py --action sync-stories`) | Stage stories & future sprint containers on Jira/ADO (`--action audit`, `sync-stories`), present `backlog/user_stories.md`, `backlog/sprint_plan.md`, and board link, **END TURN**, and wait for human approval; in next turn run `gate_tracker.py --action approve --gate gate_3_backlog` and `sync-sprints --approved` | `--action set-approval --set-approval PRE_APPROVED_BY_USER`, `sync-sprints --approved` |
-| `gate_4_design_and_tests` (**Gate 4A/4B**) | Stage 4A (`extract_contracts.py`) + Stage 4B (`validate_test_cases.py`) | First ask human for the **Future-State Tech Stack** (frontend, backend runtime/framework, database engine, `deployment.targetEnvironments` / connectivity mode) if `target_stack.json#decidedBy != "user"` or any kind is `"tbd"`, and record `decidedBy: "user"`; once all 7 perspective architecture docs, `solution_design.md`, and `test_cases.json` pass validation, present them to user, **END TURN**, and wait for human approval before Stage 5 Build | Record `decidedBy: "autonomous-default"` only when `--autonomous` was explicitly requested |
-| `gate_5_build` (**Gate 5**) | After Stage 5 (`validate_build.py`) | Present runnable target-stack build summary (`src/`), local run command, and story `In Progress` sync, **END TURN**, and wait for human approval before Stage 6 Closed-Loop Eval | Auto-advances only in `--autonomous` mode |
-| `gate_6_eval` (**Gate 6** + Guardrails) | After Stage 6 (`run_closed_loop_eval.py`) | If any self-healing hunk touches a role check, state guard, §3.4 formula, masking, or a11y attribute → pause for guardrail review (`--approve-guardrail-flags`); once `VERDICT: PASS`, present `test/eval_report.md` & audit report, **END TURN**, and wait for human approval before Stage 7 Packaging | Guardrail flags **still pause** even in `--autonomous` mode |
-| `gate_7_packaging` (**Gate 7**) | After Stage 7 (`validate_gdc_packaging.py` — manifest-level; refuses while `test/.build_logs/degraded_mode.json` exists unless the container build is verified) | Present rootless OCI containers & GDC KRM multi-cloud overlays (`deploy/`), **END TURN**, and wait for human approval before Stage 8 Fleet Deployment | Auto-advances only in `--autonomous` mode |
-| **Gate 8** (ledger id `gate_8_deployment` if present) | After Stage 8 (`run_gdc_fleet_deploy_and_verify.py`) | Present `deploy/deployment_eval_report.md` — by default `executionMode: manifest-validation` with waves `MANIFEST_VALIDATED` and a **local** smoke probe of `commands.healthcheck`; only `--live` runs `kubectl apply -k deploy/gdc/overlays/<env>`. Never describe the default run as a live fleet deployment | Same (`--live` is never implied by autonomous mode) |
-
-**Autonomous mode** is triggered **only** when the user explicitly states they pre-approve all steps/gates ("run end-to-end without stopping", "I pre-approve every step", `--autonomous`). Gates 0, 1, 3, 4A, 5 and 7 then use defaults (`decidedBy: "autonomous-default"`, `PRE_APPROVED_BY_USER`); Gate 2 (judge loop) and Gate 4 (guardrail approval) still apply. The gate ledger must exist first: `specs/gate_approvals.json` is created by Stage 0 or by `gate_tracker.py --action init` (also `--autonomous`), otherwise every stage script refuses to run. Even then, configuring a connection ("connect to ADO") is never treated as autonomous end-to-end execution.
-
----
-
-## 4. One-command pipeline (verify + derive)
+## 3. One-Command Pipeline & Plugin Verification
 
 ```bash
-python3 <PLUGIN>/scripts/run_agentic_dlc_pipeline.py --project-root "<PROJECT_ROOT>" [--autonomous] [--from-stage 1] [--to-stage 9] [--continue-on-failure]
+python3 <PLUGIN>/scripts/run_agentic_dlc_pipeline.py --project-root "<PROJECT_ROOT>" [--autonomous] [--from-stage 1] [--to-stage 10] [--refresh-from-stage N] [--wave GRP-01] [--continue-on-failure]
 ```
 
-Pipeline **steps are numbered 01..09 by skill** and map to lifecycle stages 1, 2, 3, 4A, 4B, 5, 6, 7, 8
-(`docs/ARCHITECTURE.md` §2.1; Stage 0 is run once by `00-setup-and-connection`, not by the pipeline). It runs the
-gate scripts in order (01 scan + discovery lint → 02 spec lint + scorecard → 03 backlog audit → 04 contract
-extraction → 05 test derivation + validation → 06 testid contract + build validation → 07 closed-loop eval →
-08 GDC packaging → 09 GDC fleet verification) and stops at the first step whose artefact is missing or failing,
-naming the skill/subagent that must author it — and after an unapproved Gate 4 guardrail flag (exit 3) unless
-`--continue-on-failure`. It never authors a spec, story, design, test step, UI or backend, but it is **not
-read-only**: it derives/refreshes `test/test_cases.json`, `src/contracts/openapi.yaml`, `src/db/schema.sql`,
-`design/diagrams/*` and, with `--autonomous`, records `PRE_APPROVED_BY_USER` backlog approval and pre-approves the
-gate ledger. `--autonomous` only relaxes the human-approval checks (Gate 3 pre-approval, Gate 4A autonomous
-default) — it does not bypass Gate 2 or Gate 4. Each gate script still enforces `require_gate_approved()` on
-`specs/gate_approvals.json`.
-
-Run `python3 <PLUGIN>/scripts/lint_domain_neutrality.py` after editing any plugin file: the plugin itself must
-contain no business-domain literals outside `examples/`.
+Runs steps `01..10` (`01` discovery → `02` spec judge → `03` backlog audit → `04` contracts + optional `04-arch-judge` → `05` tests → `06` build → `07` closed-loop eval → `08` GDC packaging → `09` GDC fleet → `10` spec-code drift). Use `--refresh-from-stage N` after an intentional upstream edit (`10-drift-and-evolution`) to re-hash/re-derive downstream contracts while preserving authored test steps. After editing any plugin file, run `python3 <PLUGIN>/scripts/lint_domain_neutrality.py` and `python3 <PLUGIN>/evals/run_skill_ablation.py --selftest`.

@@ -5,7 +5,7 @@ description: "Stage 0 (Gate 0) of the Agentic DLC v4. Project Setup, ALM/SCM Con
 
 # Stage 0 — Project Setup, Connection Verification & Project/Repository Selection (Gate 0)
 
-**Read before acting:** `_shared/project_root.md`, `docs/ARCHITECTURE.md` §4.0–§4.1. `<PLUGIN>` = installed plugin dir.
+**Read before acting:** `_shared/project_root.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`, `docs/ARCHITECTURE.md` §4.0–§4.1. `<PLUGIN>` = installed plugin dir.
 
 > **CRITICAL HARD-STOP RULE (GATE 0):**
 > Stage 0 is **strictly setup, connection verification, and project/input-source selection**.
@@ -48,15 +48,16 @@ python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection
 - **Jira Boards:** Run `--action list-jira-projects` to verify `JIRA_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` and ask the user which Jira project key to bind.
 - **Git Repository / Local Directory / `resources/inputs/`:** Ask the user to confirm the Git repository URL (`--input-kind git`), external local directory (`--input-kind local-dir`), or files in `<PROJECT_ROOT>/resources/inputs/` (`--input-kind resources-inputs`).
 
-### 3. Save `specs/project_setup.json` & Pause at Gate 0 for Human Approval
-Once the user has identified their project and input source, save the Stage 0 setup:
+### 3. Choose Ceremony Track, Optional MCP Domain Packs & Save `specs/project_setup.json`
+Confirm the governance ceremony track (`_shared/gate_matrix.md`: `quick` for internal tools/prototypes, `standard` default for enterprise apps, `regulated` for mission-critical/public-sector compliance where Stage 4A `architecture-critic` is mandatory) and any optional MCP domain packs (`_shared/mcp_domain_packs.md`, e.g., `gcp-database-migration,cloud-finops`), then save the Stage 0 setup:
 ```bash
 python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection.py \
   --project-root "<PROJECT_ROOT>" --action save-setup \
   --input-kind ado --ado-project "<SELECTED_ADO_PROJECT>" --repo-name "<SELECTED_REPO>" [--branch main] \
-  --alm-platform ado --persist-env
+  --alm-platform ado --ceremony-track standard [--domain-packs "gcp-database-migration,cloud-finops"] \
+  [--active-wave GRP-01] --persist-env
 ```
-Then present the confirmed Stage 0 configuration summary (`<PROJECT_ROOT>`, ADO Organization, selected ADO Project, selected Repository & Branch, ALM Board target) and ask:
+Then present the Executive Gate Decision Brief (`specs/gate_briefs/gate_0_setup.md`) and Stage 0 summary (`<PROJECT_ROOT>`, Ceremony Track, ADO/Jira Board target, Repository & Branch) and ask:
 > *"Stage 0 (Setup & Connection) is complete. Please confirm if you approve Gate 0 and want me to proceed to Stage 1 (Current-State Discovery)."*
 
 **END YOUR TURN IMMEDIATELY (call zero further tools).**

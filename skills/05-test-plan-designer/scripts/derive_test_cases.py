@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "04-solution-archit
 from extract_contracts import legacy_identifier_sets  # noqa: E402
 
 CATEGORY_PREFIX = {"Positive": "POS", "Negative": "NEG", "Edge": "EDGE", "State": "STATE", "Interact": "UI-INTERACT",
-                   "UiLeak": "UI-LEAK", "A11y": "A11Y", "Api": "API"}
+                   "UiLeak": "UI-LEAK", "A11y": "A11Y", "Api": "API", "Parity": "PARITY"}
 ENGINEERING_NOTE_PATTERNS = [r"\bTODO\b", r"\bFIXME\b", r"\bparity\b", r"\bTraceback\b", r"\bSELECT\s+.+\s+FROM\b",
                              r"\bNullPointer|\bundefined is not\b", r"/api/[a-z0-9_/{}-]+", r"\blorem ipsum\b"]
 UUID_PATTERN = r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b"
@@ -39,7 +39,7 @@ UUID_PATTERN = r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0
 API_SMOKE_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 DEFERRED_STEP_NOTE = ("Deferred: the parent story's capability group is not in specs/target_stack.json#selectedCapabilityGroups "
                       "— not executed in this increment; steps are authored when the group is scheduled.")
-SKELETON_STEP_NOTE = "Skeleton seed — the testing-agent replaces/extends this with concrete actions and at least one assertion."
+SKELETON_STEP_NOTE = "Skeleton seed — replace or extend this step with concrete actions and at least one assertion."
 
 
 def to_upper_snake(s: str) -> str:
@@ -94,6 +94,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
     ap.add_argument("--output", default="test/test_cases.json")
+    ap.add_argument("--group-state-tests", action="store_true",
+                    help="Group illegal (state, trigger) pairs per trigger and unauthorized (role, trigger) pairs per role into matrix TCs")
     ap.add_argument("--deterministic", action="store_true")
     args = ap.parse_args()
 
@@ -266,27 +268,62 @@ def main() -> int:
     # Synthesised state tests: illegal (state, trigger) pairs. Triggers that only originate from the pseudo-state
     # [*] create a record (they have no "current state") and are covered by the (role, trigger) tests below.
     creation_triggers = {t.trigger for t in sm.transitions if t.src == "[*]"} - {t.trigger for t in sm.transitions if t.src != "[*]"}
-    for state, trig in sm.illegal_pairs():
-        if trig in creation_triggers:
-            continue
-        owners = sorted({r for t in sm.transitions if t.trigger == trig for r in t.roles})
-        tcs.append(tc(counter, "State", f"Blocked: '{trig}' must not be possible while the record is '{state}'",
-                      f"With a record in state '{state}', the control for '{trig}' is hidden or disabled for every role "
-                      f"({', '.join(owners) or 'all roles'}); any attempt leaves the state '{state}' and shows a user-readable reason.",
-                      ui_runtime, f"illegal:{state}/{trig}", role=owners[0] if owners else None,
-                      derivation={"state": state, "trigger": trig, "ownerRoles": owners}))
-    # Synthesised state tests: (role, trigger) the role does not own
-    for r in role_names:
-        for trig in sm.triggers():
-            owners = {x.lower() for t in sm.transitions if t.trigger == trig for x in t.roles}
-            if r.lower() in owners:
-                continue
-            legal_from = sorted({t.src for t in sm.transitions if t.trigger == trig})
-            tcs.append(tc(counter, "State", f"Role '{r}' must not see or use the '{trig}' control",
-                          f"Signed in as '{r}' viewing a record in {', '.join(legal_from) or 'any state'}, no '{trig}' control is "
-                          f"rendered{' (external role — internal controls never appear on external views)' if r in external_roles else ''}; "
-                          f"a direct attempt is rejected with a user-readable message and no state change.",
-                          ui_runtime, f"role:{r}/{trig}", role=r, derivation={"role": r, "trigger": trig, "legalFrom": legal_from}))
+    illegal_pairs = [(st_name, tr_name) for st_name, tr_name in sm.illegal_pairs() if tr_name not in creation_triggers]
+    if args.group_state_tests:
+        by_trig: dict[str, list[str]] = {}
+        for st_name, tr_name in illegal_pairs:
+            by_trig.setdefault(tr_name, []).append(st_name)
+        for trig, states_list in by_trig.items():
+            owners = sorted({r for t in sm.transitions if t.trigger == trig for r in t.roles})
+            t_grp = tc(
+                counter, "State",
+                f"Blocked matrix: '{trig}' must not be possible in states {', '.join(states_list)}",
+                f"Across non-eligible states ({', '.join(states_list)}), '{trig}' is hidden or disabled for every role "
+                f"({', '.join(owners) or 'all roles'}) and any direct request leaves the state unchanged.",
+                ui_runtime, f"illegal-group:{trig}", role=owners[0] if owners else None,
+                derivation={"trigger": trig, "blockedStates": states_list, "ownerRoles": owners},
+            )
+            t_grp["matrixCases"] = [{"state": st_name, "trigger": trig} for st_name in states_list]
+            tcs.append(t_grp)
+        for r in role_names:
+            unauth_trigs: list[dict[str, Any]] = []
+            for trig in sm.triggers():
+                owners = {x.lower() for t in sm.transitions if t.trigger == trig for x in t.roles}
+                if r.lower() in owners:
+                    continue
+                legal_from = sorted({t.src for t in sm.transitions if t.trigger == trig})
+                unauth_trigs.append({"role": r, "trigger": trig, "legalFrom": legal_from})
+            if unauth_trigs:
+                tr_labels = ", ".join(x["trigger"] for x in unauth_trigs)
+                t_role = tc(
+                    counter, "State",
+                    f"Role matrix: '{r}' must not see or invoke unauthorized controls ({tr_labels})",
+                    f"Signed in as '{r}', unauthorized controls ({tr_labels}) are never rendered and direct attempts are rejected.",
+                    ui_runtime, f"role-group:{r}", role=r,
+                    derivation={"role": r, "unauthorizedTriggers": unauth_trigs},
+                )
+                t_role["matrixCases"] = unauth_trigs
+                tcs.append(t_role)
+    else:
+        for state, trig in illegal_pairs:
+            owners = sorted({r for t in sm.transitions if t.trigger == trig for r in t.roles})
+            tcs.append(tc(counter, "State", f"Blocked: '{trig}' must not be possible while the record is '{state}'",
+                          f"With a record in state '{state}', the control for '{trig}' is hidden or disabled for every role "
+                          f"({', '.join(owners) or 'all roles'}); any attempt leaves the state '{state}' and shows a user-readable reason.",
+                          ui_runtime, f"illegal:{state}/{trig}", role=owners[0] if owners else None,
+                          derivation={"state": state, "trigger": trig, "ownerRoles": owners}))
+        # Synthesised state tests: (role, trigger) the role does not own
+        for r in role_names:
+            for trig in sm.triggers():
+                owners = {x.lower() for t in sm.transitions if t.trigger == trig for x in t.roles}
+                if r.lower() in owners:
+                    continue
+                legal_from = sorted({t.src for t in sm.transitions if t.trigger == trig})
+                tcs.append(tc(counter, "State", f"Role '{r}' must not see or use the '{trig}' control",
+                              f"Signed in as '{r}' viewing a record in {', '.join(legal_from) or 'any state'}, no '{trig}' control is "
+                              f"rendered{' (external role — internal controls never appear on external views)' if r in external_roles else ''}; "
+                              f"a direct attempt is rejected with a user-readable message and no state change.",
+                              ui_runtime, f"role:{r}/{trig}", role=r, derivation={"role": r, "trigger": trig, "legalFrom": legal_from}))
 
     # Default Landing Persona Entry-to-Submit Journey (TC-POS-JOURNEY-01) without setRole override
     if ui_runtime == "browser":
@@ -361,6 +398,67 @@ def main() -> int:
     elif backend_kind != "none":
         dlc.warn("backend.kind != none but no OpenAPI operations in design/.contracts_index.json — no TC-API-* derived.")
 
+    # Differential Behavioral Parity Oracles (`TC-PARITY-*`) from `test/legacy_parity_goldens.jsonl`
+    parity_jsonl = root / "test" / "legacy_parity_goldens.jsonl"
+    if parity_jsonl.is_file():
+        for line_idx, raw_line in enumerate(dlc.read_text(parity_jsonl).splitlines(), 1):
+            s_line = raw_line.strip()
+            if not s_line or s_line.startswith("#"):
+                continue
+            try:
+                rec = json.loads(s_line)
+            except json.JSONDecodeError as exc:
+                raise dlc.GateFailure(f"Invalid JSON on line {line_idx} of {parity_jsonl}: {exc}") from exc
+            if not isinstance(rec, dict):
+                continue
+            op_name = str(rec.get("operation") or rec.get("path") or f"case-{line_idx}").strip()
+            div_ref = str(rec["intentionalDivergenceRef"]).strip() if rec.get("intentionalDivergenceRef") else None
+            legacy_out = rec.get("legacyExpectedOutput")
+            modern_out = rec.get("modernExpectedOutput") if div_ref and "modernExpectedOutput" in rec else legacy_out
+            p_path = str(rec.get("path") or "").strip()
+            p_method = str(rec.get("method") or "POST").upper()
+            p_runtime = "http" if (p_path.startswith("/") and backend_kind != "none") else ui_runtime
+            p_steps: list[dict[str, Any]] | None = None
+            if p_runtime == "http" and p_path:
+                st_obj: dict[str, Any] = {
+                    "action": "httpRequest",
+                    "method": p_method,
+                    "path": p_path,
+                    "expectStatus": rec.get("expectStatus", [200, 201]),
+                }
+                if rec.get("input") is not None:
+                    st_obj["json"] = rec["input"]
+                if isinstance(modern_out, dict) and rec.get("expectJsonPath"):
+                    st_obj["expectJsonPath"] = str(rec["expectJsonPath"])
+                    if "equals" in rec:
+                        st_obj["equals"] = rec["equals"]
+                elif modern_out is not None and not isinstance(modern_out, (dict, list)):
+                    st_obj["expectBodyContains"] = str(modern_out)
+                p_steps = [st_obj]
+            exp_desc = (
+                f"Documented modernization divergence ({div_ref}): modern output matches {modern_out!r} "
+                f"(legacy output was {legacy_out!r})."
+                if div_ref
+                else f"Strict behavioral parity: output matches legacy golden oracle {legacy_out!r} for input {rec.get('input')!r}."
+            )
+            t_par = tc(
+                counter, "Parity",
+                f"Behavioral parity oracle ({op_name})" + (f" [divergence {div_ref}]" if div_ref else ""),
+                exp_desc[:300],
+                p_runtime,
+                f"parity:{rec.get('id') or op_name}:{line_idx}",
+                reqs=[div_ref] if div_ref else [],
+                steps=p_steps,
+                derivation={"line": line_idx, "operation": op_name, "input": rec.get("input"),
+                            "legacyExpectedOutput": legacy_out, "modernExpectedOutput": modern_out},
+                tc_id=str(rec["id"]) if str(rec.get("id", "")).startswith("TC-PARITY-") else None,
+            )
+            if div_ref:
+                t_par["intentionalDivergenceRef"] = div_ref
+            if p_steps is not None:
+                t_par["needsSteps"] = bool(rec.get("needsSteps", False))
+            tcs.append(t_par)
+
     # ---------------------------------------------------------------- merge with existing
     out_path = dlc.project_path(root, args.output)
     retired: list[dict[str, str]] = []
@@ -383,7 +481,7 @@ def main() -> int:
                     t["role"] = prev["role"]
                 if prev.get("runtime") in ("browser", "http", "static"):
                     t["runtime"] = prev["runtime"]  # the testing-agent may move an AC test to the http/static runtime
-                for extra in ("settleMs", "failOnScriptError", "tokenClasses"):
+                for extra in ("settleMs", "failOnScriptError", "tokenClasses", "intentionalDivergenceRef", "matrixCases"):
                     if extra in prev:
                         t[extra] = prev[extra]
                 if prev.get("optional") and not prev.get("deferredByGroupSelection"):
@@ -422,7 +520,7 @@ def main() -> int:
     print(f"- Written: `{out_path.relative_to(root) if out_path.is_relative_to(root) else out_path}` — {len(tcs)} test cases "
           f"({preserved} with preserved authored steps, {len(retired)} retired).")
     print("\n| Category | Count |\n| :-- | :-: |")
-    for c in ["Positive", "Negative", "Edge", "State", "Interact", "UiLeak", "A11y", "Api"]:
+    for c in ["Positive", "Negative", "Edge", "State", "Interact", "UiLeak", "A11y", "Api", "Parity"]:
         if cats.get(c):
             print(f"| {c} | {cats[c]} |")
     print(f"\n- Forbidden UI tokens: {len(schema_ids)} schema identifiers ({len(ignored)} plain words ignored), "
