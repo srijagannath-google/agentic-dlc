@@ -153,6 +153,13 @@ def parse_dockerfile(path: Path) -> dict[str, Any]:
     # `USER root`, `USER 0`, `USER 0:0`, `USER 0:<anything>` and `USER root:<anything>` are all root.
     user_name = user_val.split(":", 1)[0].strip().lower()
     non_root = bool(user_val) and user_name not in ("root", "0")
+    exposed_ports: list[int] = []
+    for exp_line in re.findall(r"^\s*EXPOSE\s+([^\n#]+)", txt, re.IGNORECASE | re.MULTILINE):
+        for tok in exp_line.split():
+            m_port = re.match(r"^(\d+)(?:/(?:tcp|udp))?$", tok.strip(), re.IGNORECASE)
+            if m_port:
+                exposed_ports.append(int(m_port.group(1)))
+    privileged_ports = [pt for pt in exposed_ports if pt < 1024]
     return {
         "file": str(path),
         "sha256": dlc.sha256_file(path),
@@ -161,6 +168,8 @@ def parse_dockerfile(path: Path) -> dict[str, Any]:
         "unpinnedImages": unpinned,
         "user": user_val,
         "nonRoot": non_root,
+        "exposedPorts": exposed_ports,
+        "privilegedPorts": privileged_ports,
         "hasHealthcheck": has_healthcheck,
         "hasTraceabilityLabels": has_spec_label and has_group_label and has_gdc_label,
     }
@@ -180,6 +189,10 @@ def main() -> int:
         "--container-build-verified", action="store_true",
         help="Assert that every deploy/containers/Dockerfile.* was built successfully with the real toolchain "
              "(lifts the Stage 5 degraded-mode refusal; equivalent to deploy/.container_build_verified.json).",
+    )
+    ap.add_argument(
+        "--skip-docker-check", action="store_true",
+        help="Skip invoking BuildKit `docker build --check` even if `docker` is installed.",
     )
     args = ap.parse_args()
 
@@ -261,6 +274,9 @@ def main() -> int:
         # GCP SDKs are only acceptable when GCP is the sole declared target environment.
         allowed_vendors: set[str] = {"gcp"} if list(target_envs) == ["gcp"] else set()
         fails += scan_cloud_lockin(src_dir, root, allowed_vendors)
+        sc_fails, sc_warns = dlc.scan_stateless_container_hazards(src_dir, root)
+        fails += sc_fails
+        warns += sc_warns
 
     # 2. OCI Container files
     containers_dir = root / "deploy" / "containers"
@@ -290,8 +306,20 @@ def main() -> int:
             fails.append(f"{df_p.relative_to(root)} uses unpinned or ':latest' base image(s): {info['unpinnedImages']}")
         if not info["nonRoot"]:
             fails.append(f"{df_p.relative_to(root)} must declare a non-root USER (found {info['user'] or 'none'}; 'root', '0' and '0:<gid>' are rejected).")
+        elif info["privilegedPorts"]:
+            fails.append(
+                f"{df_p.relative_to(root)} runs as non-root USER {info['user']!r} but exposes privileged port(s) < 1024 "
+                f"({info['privilegedPorts']}) — bind an unprivileged port (>= 1024, e.g., 8080) via PORT / ASPNETCORE_HTTP_PORTS."
+            )
         if not info["hasHealthcheck"]:
             fails.append(f"{df_p.relative_to(root)} must declare a HEALTHCHECK instruction.")
+        if args.skip_docker_check:
+            info["dockerBuildCheck"] = {"status": "skipped", "detail": "--skip-docker-check"}
+        else:
+            chk_st, chk_msg = dlc.run_docker_build_check(df_p, root)
+            info["dockerBuildCheck"] = {"status": chk_st, "detail": chk_msg}
+            if chk_st == "fail":
+                fails.append(f"{df_p.relative_to(root)} failed BuildKit `docker build --check`: {chk_msg}")
         if not info["hasTraceabilityLabels"]:
             fails.append(
                 f"{df_p.relative_to(root)} missing required OCI traceability labels "

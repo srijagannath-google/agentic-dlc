@@ -688,6 +688,58 @@ def verify_target_stack_artifacts(root: Path, stack: dict[str, Any]) -> tuple[li
         else:
             checks.append(("dual-mode DB & env configuration", f"ok (APP_ENV + AUTH_MODE + database URL handled in {len(all_be_files)} backend file(s); target {db_kind} + local test mode)"))
 
+    # 4. Modernization Mode Contract (Clean-Room Goldfish vs. Governed In-Place Upgrade)
+    mod_mode = str(stack.get("modernizationMode") or "clean-room-rebuild").strip()
+    if mod_mode == "in-place-upgrade":
+        changelog_p = root / "src" / "MODERNIZATION_CHANGELOG.md"
+        if not changelog_p.is_file() or len(dlc.read_text(changelog_p).strip()) < 120:
+            failures.append(
+                "specs/target_stack.json sets modernizationMode='in-place-upgrade', but src/MODERNIZATION_CHANGELOG.md "
+                "is missing or < 120 chars. Stage 5 (coding-agent) must document every framework, ORM/driver, "
+                "configuration, and stateless-container change applied during the in-place upgrade."
+            )
+        else:
+            checks.append(("modernization mode", "in-place-upgrade (src/MODERNIZATION_CHANGELOG.md verified)"))
+    else:
+        checks.append(("modernization mode", "clean-room-rebuild (Goldfish context isolation)"))
+
+    # 5. Stateless Container Contract & Horizontal-Scaling Hazard Gate
+    if be_kind not in ("none", "tbd"):
+        port_exts = (".py", ".java", ".kt", ".ts", ".js", ".mjs", ".go", ".cs", ".yml", ".yaml", ".properties", ".json", ".sh")
+        port_files: list[Path] = []
+        for sr in (be_dir, root / "src" / "run.sh"):
+            if sr.is_file():
+                port_files.append(sr)
+            elif sr.is_dir():
+                port_files.extend(
+                    sorted(
+                        p for p in sr.rglob("*")
+                        if p.is_file()
+                        and p.suffix.lower() in port_exts
+                        and not any(pt in ("node_modules", "dist", "build", "target", "bin", "obj", ".venv", "venv", "__pycache__") for pt in p.parts)
+                    )
+                )
+        comment_rx2 = re.compile(r"^\s*(#|//|\*|/\*|<!--|--|;)")
+        non_comment = "\n".join(
+            ln for p in port_files for ln in dlc.read_text(p).splitlines() if ln.strip() and not comment_rx2.match(ln)
+        )
+        port_ok = bool(re.search(r"\b(?:PORT|SERVER_PORT|ASPNETCORE_HTTP_PORTS|ASPNETCORE_URLS)\b|server\.port", non_comment))
+        sc_fails, sc_warns = dlc.scan_stateless_container_hazards(root / "src", root)
+        if not port_ok and port_files:
+            sc_fails.append(
+                "Stateless Container Contract: backend does not read PORT (or SERVER_PORT / ASPNETCORE_HTTP_PORTS / ASPNETCORE_URLS) "
+                "from environment/configuration — required for Cloud Run / Kubernetes dynamic port binding."
+            )
+        failures.extend(sc_fails)
+        for w in sc_warns:
+            dlc.warn(w)
+        if sc_fails:
+            checks.append(("stateless container contract", f"FAIL — {len(sc_fails)} violation(s)"))
+        elif sc_warns:
+            checks.append(("stateless container contract", f"WARN — {len(sc_warns)} horizontal-scaling warning(s) (see stderr)"))
+        else:
+            checks.append(("stateless container contract", "ok (configurable PORT binding + 0 sticky-session/OS blockers)"))
+
     return checks, failures
 
 

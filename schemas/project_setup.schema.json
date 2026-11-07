@@ -43,10 +43,10 @@
     },
     "domainPacks": {
       "type": "array",
-      "description": "Optional specialized MCP domain packs enabled for legacy/enterprise estates (e.g., mainframe AST, database migration, warehouse SQL translation, distributed batch migration, or 3P agent codebase auditing).",
+      "description": "Optional specialized MCP domain packs enabled for legacy/enterprise estates (e.g., Migration Center codmod .NET/Java/cloud-SDK assessment, mainframe AST, database migration, warehouse SQL translation, distributed batch migration, or 3P agent codebase auditing).",
       "items": {
         "type": "string",
-        "enum": ["mainframe-mat", "cloud-dms", "bqms", "hadoop-oozie-flink", "agentic-audit"]
+        "enum": ["codmod-assessment", "mainframe-mat", "cloud-dms", "bqms", "hadoop-oozie-flink", "agentic-audit"]
       }
     },
     "activeWave": {

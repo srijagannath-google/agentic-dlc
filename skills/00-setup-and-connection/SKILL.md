@@ -49,12 +49,12 @@ python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection
 - **Git Repository / Local Directory / `resources/inputs/`:** Ask the user to confirm the Git repository URL (`--input-kind git`), external local directory (`--input-kind local-dir`), or files in `<PROJECT_ROOT>/resources/inputs/` (`--input-kind resources-inputs`).
 
 ### 3. Choose Ceremony Track, Optional MCP Domain Packs & Save `specs/project_setup.json`
-Confirm the governance ceremony track (`_shared/gate_matrix.md`: `quick` for internal tools/prototypes, `standard` default for enterprise apps, `regulated` for mission-critical/public-sector compliance where Stage 4A `architecture-critic` is mandatory) and any optional MCP domain packs (`_shared/mcp_domain_packs.md`, e.g., `gcp-database-migration,cloud-finops`), then save the Stage 0 setup:
+Confirm the governance ceremony track (`_shared/gate_matrix.md`: `quick` for internal tools/prototypes, `standard` default for enterprise apps, `regulated` for mission-critical/public-sector compliance where Stage 4A `architecture-critic` is mandatory) and any optional MCP domain packs (`_shared/mcp_domain_packs.md`: `codmod-assessment` for `.NET`/Java/multi-cloud SDK assessment via Migration Center `codmod` CLI or `codmod-server` MCP, `cloud-dms`, `mainframe-mat`, `bqms`, `hadoop-oozie-flink`, `agentic-audit`), then save the Stage 0 setup:
 ```bash
 python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection.py \
   --project-root "<PROJECT_ROOT>" --action save-setup \
   --input-kind ado --ado-project "<SELECTED_ADO_PROJECT>" --repo-name "<SELECTED_REPO>" [--branch main] \
-  --alm-platform ado --ceremony-track standard [--domain-packs "gcp-database-migration,cloud-finops"] \
+  --alm-platform ado --ceremony-track standard [--domain-packs "codmod-assessment,cloud-dms"] \
   [--active-wave GRP-01] --persist-env
 ```
 Then present the Executive Gate Decision Brief (`specs/gate_briefs/gate_0_setup.md`) and Stage 0 summary (`<PROJECT_ROOT>`, Ceremony Track, ADO/Jira Board target, Repository & Branch) and ask:

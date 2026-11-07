@@ -1620,3 +1620,170 @@ def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = No
                         f"project JSON deliverables must never reference internal scripts, _shared/ paths, or subagent slugs."
                     )
     return findings
+
+
+# --------------------------------------------------------------------------------------
+# Stateless Container Contract & BuildKit `docker build --check` Helpers (Stages 5 & 8)
+# --------------------------------------------------------------------------------------
+VALID_DOMAIN_PACKS = (
+    "codmod-assessment",
+    "mainframe-mat",
+    "cloud-dms",
+    "bqms",
+    "hadoop-oozie-flink",
+    "agentic-audit",
+)
+
+_STATELESS_EXCLUDED_DIRS = {
+    "node_modules", "dist", "build", "target", "bin", "obj", ".git", "__pycache__", ".venv", "venv", "migrations", "Migrations",
+}
+_STATELESS_SCAN_EXTS = {".cs", ".vb", ".java", ".kt", ".py", ".ts", ".js", ".mjs", ".go", ".config", ".xml"}
+_TEST_FILE_RE = re.compile(r"(?:^test_|_test\.|tests?\.(?:cs|java|kt|py|ts|js|go)$|\.spec\.(?:ts|js)$)", re.IGNORECASE)
+_COMMENT_LINE_RE = re.compile(r"^\s*(?:#|//|\*|/\*|<!--|--|;)")
+
+
+def scan_stateless_container_hazards(src_dir: Path, root: Path) -> tuple[list[str], list[str]]:
+    """Scan `src/backend/` for Windows-only OS/IIS blockers and sticky in-memory session / mutable static state
+    hazards that break rootless Linux containers or horizontal multi-replica scaling (HPA / Cloud Run / GDC).
+
+    Returns `(failures, warnings)`. Individual false-positive lines may opt out explicitly via `@dlc-stateless-safe`.
+    """
+    be_dir = src_dir / "backend"
+    if not be_dir.is_dir():
+        return [], []
+
+    candidate_files: list[Path] = []
+    full_blob_parts: list[str] = []
+    for p in sorted(be_dir.rglob("*")):
+        if not p.is_file() or p.suffix.lower() not in _STATELESS_SCAN_EXTS:
+            continue
+        rel_parts = p.relative_to(be_dir).parts[:-1]
+        if any(part in _STATELESS_EXCLUDED_DIRS for part in rel_parts):
+            continue
+        if _TEST_FILE_RE.search(p.name):
+            continue
+        try:
+            txt = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        candidate_files.append(p)
+        full_blob_parts.append(txt)
+
+    full_blob = "\n".join(full_blob_parts)
+    has_distributed_dotnet_cache = bool(
+        re.search(r"\bAdd(?:StackExchangeRedisCache|DistributedSqlServerCache|DistributedPostgresCache|DistributedMemoryCache)\b", full_blob)
+        and re.search(r"\b(?:Redis|Postgres|SqlServer|Npgsql)\b", full_blob)
+    )
+    has_spring_session = bool(re.search(r"@Enable(?:Redis|Jdbc|Hazelcast)HttpSession|spring\.session\.store-type\s*=\s*(?!none)", full_blob))
+
+    hard_rules: list[tuple[str, re.Pattern[str], bool]] = [
+        (
+            "Windows IIS System.Web pipeline coupling (incompatible with Linux .NET containers)",
+            re.compile(r"(?:^\s*using\s+System\.Web\s*;|\bSystem\.Web\.(?:HttpContext|IHttpModule|IHttpHandler|UI\.Page)\b)"),
+            True,
+        ),
+        (
+            "Windows Registry API dependency (incompatible with Linux containers)",
+            re.compile(r"\bMicrosoft\.Win32\.Registry\b"),
+            True,
+        ),
+        (
+            "Native Win32 P/Invoke [DllImport] coupling in backend service",
+            re.compile(r"\[\s*DllImport\s*\("),
+            True,
+        ),
+        (
+            "Legacy IIS InProc sessionState or Windows authentication mode in XML config",
+            re.compile(r"(?:<sessionState\b[^>]*\bmode\s*=\s*[\"']InProc[\"']|<authentication\b[^>]*\bmode\s*=\s*[\"']Windows[\"'])", re.IGNORECASE),
+            True,
+        ),
+        (
+            "Sticky in-memory HttpContext.Session without distributed backing store (breaks multi-replica horizontal scaling)",
+            re.compile(r"\bHttpContext(?:\.Current)?\.Session\b"),
+            not has_distributed_dotnet_cache,
+        ),
+        (
+            "Sticky servlet HttpSession without distributed Spring Session store (breaks multi-replica horizontal scaling)",
+            re.compile(r"\brequest\.getSession\s*\(\s*(?:true)?\s*\)"),
+            not has_spring_session,
+        ),
+    ]
+
+    warn_rules: list[tuple[str, re.Pattern[str]]] = [
+        (
+            "Mutable static collection in backend service (verify it is not storing per-request/session state across horizontal replicas, or mark lookup constants readonly/final/@dlc-stateless-safe)",
+            re.compile(r"\bstatic\s+(?!readonly\b|final\b)(?:ConcurrentDictionary|Dictionary|List|HashSet|HashMap|ArrayList|ConcurrentHashMap)\s*<"),
+        ),
+        (
+            "Express session() configured without an external store (defaults to non-scalable in-memory MemoryStore)",
+            re.compile(r"\bsession\s*\(\s*\{(?![^}]*\bstore\s*:)[^}]*\bsecret\s*:"),
+        ),
+    ]
+
+    failures: list[str] = []
+    warnings: list[str] = []
+    for p in candidate_files:
+        rel = p.relative_to(root).as_posix()
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        for lineno, raw_line in enumerate(lines, 1):
+            if not raw_line.strip() or _COMMENT_LINE_RE.match(raw_line) or "@dlc-stateless-safe" in raw_line:
+                continue
+            for label, rx, active in hard_rules:
+                if active and rx.search(raw_line):
+                    failures.append(f"Stateless Container Contract violation in {rel}:{lineno} — {label}: `{raw_line.strip()[:120]}`")
+                    break
+            for label, rx in warn_rules:
+                if rx.search(raw_line):
+                    warnings.append(f"Horizontal-scaling state warning in {rel}:{lineno} — {label}: `{raw_line.strip()[:120]}`")
+                    break
+    return failures, warnings
+
+
+def run_docker_build_check(dockerfile: Path, context_dir: Path, timeout_s: int = 20) -> tuple[str, str]:
+    """Run BuildKit `docker build --check` against `dockerfile` when Docker >= 24 / BuildKit >= 0.15 is reachable.
+
+    Tri-state return: `('ok' | 'fail' | 'skipped', detail)` — daemonless or older Docker environments skip cleanly
+    with an explicit reason rather than failing air-gapped CI sandboxes.
+    """
+    if os.environ.get("DLC_SKIP_DOCKER_CHECK") == "1":
+        return "skipped", "DLC_SKIP_DOCKER_CHECK=1"
+    docker_bin = shutil.which("docker")
+    if not docker_bin:
+        return "skipped", "docker CLI not on PATH"
+    env = dict(os.environ)
+    env["DOCKER_BUILDKIT"] = "1"
+    try:
+        cp = subprocess.run(
+            [docker_bin, "build", "--check", "-f", str(dockerfile), str(context_dir)],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout_s,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return "skipped", f"docker build --check timed out after {timeout_s}s"
+    except OSError as exc:
+        return "skipped", f"docker invocation failed ({exc})"
+
+    combined = ((cp.stdout or "") + "\n" + (cp.stderr or "")).strip()
+    if cp.returncode == 0:
+        return "ok", "BuildKit `docker build --check` passed (0 lint violations)"
+
+    low = combined.lower()
+    env_skip_markers = (
+        "unknown flag: --check",
+        "cannot connect to the docker daemon",
+        "is the docker daemon running",
+        "permission denied while trying to connect",
+        "error during connect",
+        "dial unix",
+        "buildx",
+        "not supported",
+    )
+    if any(tok in low for tok in env_skip_markers):
+        first_line = next((ln.strip() for ln in combined.splitlines() if ln.strip()), "daemon/buildkit unavailable")
+        return "skipped", first_line[:180]
+
+    tail_lines = " | ".join(ln.strip() for ln in combined.splitlines()[-5:] if ln.strip())[:320]
+    return "fail", tail_lines or f"docker build --check exited with code {cp.returncode}"

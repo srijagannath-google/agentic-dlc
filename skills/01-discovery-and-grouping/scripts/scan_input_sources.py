@@ -50,8 +50,20 @@ DATA_EXPORT_EXT = {".csv", ".xlsx", ".xls"}
 SOURCE_EXT = {
     ".vb", ".bas", ".cls", ".frm", ".cs", ".cshtml", ".vbhtml", ".razor", ".java", ".cbl", ".cob", ".cpy",
     ".jcl", ".py", ".js", ".jsx", ".ts", ".tsx", ".php", ".rb", ".go", ".pl", ".asp", ".aspx", ".ascx",
-    ".master", ".jsp", ".vbs", ".c", ".cpp", ".h", ".kt", ".swift", ".rs", ".scala",
+    ".master", ".asax", ".ashx", ".asmx", ".svc", ".sln", ".slnx", ".csproj", ".vbproj", ".fsproj",
+    ".props", ".targets", ".xaml", ".gradle", ".kts", ".jsp", ".vbs", ".c", ".cpp", ".h", ".kt", ".swift",
+    ".rs", ".scala",
 }
+PROJECT_CONFIG_NAMES = {
+    "web.config", "app.config", "packages.config", "nuget.config", "global.json", "bundleconfig.json",
+    "applicationhost.config", "pom.xml", "web.xml", "struts.xml", "jboss-web.xml", "application.properties",
+    "application.yml", "application.yaml",
+}
+APPSETTINGS_RE = re.compile(r"^appsettings(?:\.[a-z0-9_.-]+)?\.json$", re.IGNORECASE)
+GENERIC_SOURCE_STEM_STOPWORDS = frozenset({
+    "program", "startup", "appsettings", "packages", "web", "app", "global", "pom", "build", "index",
+    "main", "server", "config", "nuget", "bundleconfig", "directory.build", "directory.packages", "application",
+})
 DOC_EXT = {".md", ".docx", ".pdf", ".txt", ".rtf", ".html", ".htm"}
 NARRATIVE_DOC_EXT = {".md", ".docx", ".pdf"}  # may be promoted to requirements_doc when the only/largest document
 GENERATED_REFERENCE_NAMES = {"reference_ui_manifest.json"}  # written by capture_design_reference.py, never user input
@@ -462,8 +474,10 @@ def categorise(path: Path, bucket: str, text: str) -> tuple[str, str]:
         return "legacy_query", "SQL file (no DDL detected)"
     if stem.startswith(QUERY_PREFIXES):
         return "legacy_query", "query name prefix"
+    if name in PROJECT_CONFIG_NAMES or APPSETTINGS_RE.match(name):
+        return "legacy_source", f"project/runtime configuration manifest ({path.name})"
     if ext in SOURCE_EXT:
-        return "legacy_source", f"source-code extension {ext}"
+        return "legacy_source", f"source-code or project manifest extension {ext}"
     if POLICY_KEYWORDS.search(name):
         return "policy", "policy/compliance keyword in file name"
     if ext in DOC_EXT or ext == "":
@@ -608,6 +622,12 @@ def build_dependency_dag(
             tid = f"table:{tname}"
             nodes.setdefault(tid, {"id": tid, "name": tname, "kind": "table", "sourcePath": rel})
             known_symbols[tname.lower()] = tid
+        for m in re.finditer(r"\bDbSet<\s*([A-Za-z_][A-Za-z0-9_]*)\s*>\s+([A-Za-z_][A-Za-z0-9_]*)", text):
+            ename, prop_name = m.group(1), m.group(2)
+            tid = f"table:{prop_name}"
+            nodes.setdefault(tid, {"id": tid, "name": prop_name, "kind": "table", "sourcePath": rel})
+            known_symbols.setdefault(prop_name.lower(), tid)
+            known_symbols.setdefault(ename.lower(), tid)
 
     edges_set: set[tuple[str, str, str]] = set()
     ref_patterns: list[tuple[re.Pattern[str], str]] = [
@@ -616,6 +636,7 @@ def build_dependency_dag(
         (re.compile(r"\b(?:OpenForm|OpenReport|OpenQuery)\s*[(\s]*\"([A-Za-z_][\w$]*)\"", re.IGNORECASE), "ui-navigation"),
         (re.compile(r"\b(?:CALL|COPY)\s+['\"]?([A-Za-z0-9_-]{3,})['\"]?", re.IGNORECASE), "module-call"),
         (re.compile(r"^\s*(?:import|from|using)\s+([A-Za-z_][A-Za-z0-9_.]*)", re.MULTILINE), "module-import"),
+        (re.compile(r"<ProjectReference\s+[^>]*Include=\"([^\"]+)\"", re.IGNORECASE), "project-reference"),
     ]
 
     for f in files:
@@ -627,7 +648,11 @@ def build_dependency_dag(
         text = texts_by_rel.get(rel, "")
         for rx, rel_kind in ref_patterns:
             for m in rx.finditer(text):
-                raw_sym = m.group(1).split(".")[-1].strip()
+                captured = m.group(1).strip()
+                if rel_kind == "project-reference":
+                    raw_sym = Path(captured.replace("\\", "/")).stem
+                else:
+                    raw_sym = captured.split(".")[-1].strip()
                 dst_id = known_symbols.get(raw_sym.lower())
                 if dst_id and dst_id != src_id:
                     edges_set.add((src_id, dst_id, rel_kind))
@@ -681,6 +706,143 @@ def build_dependency_dag(
         "tiers": tiers,
     }
     return dag_doc, summary, len(top_modules)
+
+
+def extract_runtime_readiness_signals(
+    files: list[dict[str, Any]],
+    texts_by_rel: dict[str, str],
+    scenario: str,
+) -> dict[str, Any]:
+    """Deterministically inspect project manifests (.csproj, packages.config, web.config, pom.xml) and source files
+    for brownfield framework versions, Windows-to-Linux OS blockers, ORM/database drivers, proprietary cloud SDKs,
+    and horizontal-scaling session hazards (complementing Google Cloud Migration Center `codmod` MCP assessments)."""
+    frameworks: set[str] = set()
+    packages: set[str] = set()
+    os_blockers: list[dict[str, str]] = []
+    seen_blockers: set[tuple[str, str]] = set()
+    db_coupling: set[str] = set()
+    cloud_sdks: set[str] = set()
+    scaling_hazards: list[dict[str, str]] = []
+    seen_hazards: set[tuple[str, str]] = set()
+
+    has_modernizable_oop_manifest = False
+    has_obsolete_non_oop_legacy = False
+
+    blocker_patterns: list[tuple[str, str, re.Pattern[str]]] = [
+        ("System.Drawing (Windows GDI+ native dependency)", "windows-gdi", re.compile(r"\bSystem\.Drawing\b")),
+        ("System.Web / IIS pipeline (using System.Web / IHttpModule / IHttpHandler / HttpContext.Current)", "iis-system-web", re.compile(r"(?:^\s*using\s+System\.Web\s*;|\bHttpContext\.Current\b|\b(?:System\.Web\.(?:HttpContext|UI|Mvc|HttpRuntime)|IHttpModule|IHttpHandler)\b)", re.MULTILINE)),
+        ("Windows Communication Foundation (System.ServiceModel / WCF)", "wcf", re.compile(r"\bSystem\.ServiceModel\b")),
+        ("Windows Registry API (Microsoft.Win32.Registry)", "windows-registry", re.compile(r"\bMicrosoft\.Win32\.Registry\b")),
+        ("Native Win32 P/Invoke ([DllImport])", "win32-pinvoke", re.compile(r"\[\s*DllImport\s*\(")),
+        ("Active Directory / Integrated Windows Authentication", "windows-auth-ad", re.compile(r"(?:\bSystem\.DirectoryServices\b|<authentication\s+[^>]*mode\s*=\s*[\"']Windows[\"'])", re.IGNORECASE)),
+        ("COM+ / System.EnterpriseServices", "windows-com-plus", re.compile(r"\bSystem\.EnterpriseServices\b")),
+    ]
+    hazard_patterns: list[tuple[str, re.Pattern[str]]] = [
+        ("In-memory ASP.NET Session state (HttpContext.Session / mode='InProc')", re.compile(r"(?:\bHttpContext(?:\.Current)?\.Session\b|<sessionState\b[^>]*\bmode\s*=\s*[\"']InProc[\"'])", re.IGNORECASE)),
+        ("Process-wide HttpApplicationState (Application[...])", re.compile(r"\bHttpContext\.Current\.Application\s*\[")),
+        ("Servlet HttpSession in-memory state (request.getSession)", re.compile(r"\brequest\.getSession\s*\(")),
+        ("Mutable static collection in application code", re.compile(r"\bstatic\s+(?!readonly\b|final\b)(?:ConcurrentDictionary|Dictionary|List|HashSet|HashMap|ArrayList)\s*<")),
+    ]
+
+    for f in files:
+        rel = f["relativePath"]
+        ext = f["extension"]
+        name_low = f["name"].lower()
+        text = texts_by_rel.get(rel, "")
+
+        if ext in (".accdb", ".mdb", ".dbf", ".frm", ".cbl", ".cob", ".cpy", ".jcl", ".asp", ".aspx", ".vbs"):
+            has_obsolete_non_oop_legacy = True
+        if ext in (".csproj", ".fsproj") or name_low in ("pom.xml", "build.gradle", "build.gradle.kts"):
+            has_modernizable_oop_manifest = True
+
+        if ext in (".csproj", ".vbproj", ".fsproj", ".props"):
+            for m in re.finditer(r"<TargetFrameworks?>\s*([^<\s]+)\s*</TargetFrameworks?>", text, re.IGNORECASE):
+                for tfm in m.group(1).split(";"):
+                    if tfm.strip():
+                        frameworks.add(f".NET ({tfm.strip()})")
+            for m in re.finditer(r"<TargetFrameworkVersion>\s*([^<\s]+)\s*</TargetFrameworkVersion>", text, re.IGNORECASE):
+                frameworks.add(f".NET Framework ({m.group(1).strip()})")
+                has_obsolete_non_oop_legacy = has_obsolete_non_oop_legacy or name_low.endswith(".vbproj")
+            for m in re.finditer(r"<PackageReference\s+[^>]*Include=\"([^\"]+)\"(?:[^>]*Version=\"([^\"]+)\")?", text, re.IGNORECASE):
+                pkg = f"{m.group(1)}@{m.group(2)}" if m.group(2) else m.group(1)
+                packages.add(pkg)
+        elif name_low == "packages.config":
+            for m in re.finditer(r"<package\s+[^>]*id=\"([^\"]+)\"(?:[^>]*version=\"([^\"]+)\")?", text, re.IGNORECASE):
+                pkg = f"{m.group(1)}@{m.group(2)}" if m.group(2) else m.group(1)
+                packages.add(pkg)
+        elif name_low == "pom.xml":
+            for m in re.finditer(r"<(?:java\.version|maven\.compiler\.(?:source|target))>\s*([^<\s]+)\s*</", text):
+                frameworks.add(f"Java ({m.group(1).strip()})")
+            if "spring-boot" in text:
+                frameworks.add("Spring Boot")
+            if "struts2" in text or "org.apache.struts" in text:
+                frameworks.add("Apache Struts")
+        elif ext == ".asax":
+            os_blockers.append({"signal": "Global.asax legacy ASP.NET HTTP pipeline", "category": "iis-system-web", "file": rel})
+        elif ext == ".svc":
+            os_blockers.append({"signal": "WCF .svc endpoint definition", "category": "wcf", "file": rel})
+
+        if not text:
+            continue
+
+        if LEGACY_TEXT_MARKERS.search(text[:4000]):
+            has_obsolete_non_oop_legacy = True
+
+        for sig, cat, rx in blocker_patterns:
+            if (sig, rel) not in seen_blockers and rx.search(text):
+                seen_blockers.add((sig, rel))
+                os_blockers.append({"signal": sig, "category": cat, "file": rel})
+
+        for sig, rx in hazard_patterns:
+            if (sig, rel) not in seen_hazards and rx.search(text):
+                seen_hazards.add((sig, rel))
+                scaling_hazards.append({"signal": sig, "file": rel})
+
+        if re.search(r"\bUseSqlServer\b|Microsoft\.EntityFrameworkCore\.SqlServer", text):
+            db_coupling.add("EF Core SQL Server (UseSqlServer)")
+        if re.search(r"\bSystem\.Data\.Entity\b|<entityFramework\b", text):
+            db_coupling.add("Legacy Entity Framework 6 (System.Data.Entity)")
+        if re.search(r"\b(?:System|Microsoft)\.Data\.SqlClient\b", text):
+            db_coupling.add("ADO.NET SqlClient (SQL Server)")
+        if re.search(r"\bNpgsql\b|\bUseNpgsql\b", text):
+            db_coupling.add("Npgsql (PostgreSQL)")
+        if re.search(r"\bOracle\.ManagedDataAccess\b|\bSystem\.Data\.OracleClient\b", text):
+            db_coupling.add("Oracle Data Provider (.NET)")
+        if re.search(r"jdbc:sqlserver:|com\.microsoft\.sqlserver\.jdbc", text):
+            db_coupling.add("JDBC SQL Server")
+        if re.search(r"jdbc:oracle:|oracle\.jdbc", text):
+            db_coupling.add("JDBC Oracle")
+
+        if re.search(r"\b(?:Azure\.|Microsoft\.WindowsAzure\.|com\.azure\.|@azure/|from\s+azure\b)", text):
+            cloud_sdks.add("Microsoft Azure SDK")
+        if re.search(r"\b(?:AWSSDK\.|Amazon\.|software\.amazon\.awssdk|com\.amazonaws|boto3\b|@aws-sdk/)", text):
+            cloud_sdks.add("Amazon Web Services (AWS) SDK")
+        if re.search(r"\b(?:Google\.Cloud\.|com\.google\.cloud|google\.cloud\b|@google-cloud/)", text):
+            cloud_sdks.add("Google Cloud SDK")
+
+    if scenario == "SCENARIO_LEGACY_APP" and has_modernizable_oop_manifest and not has_obsolete_non_oop_legacy:
+        rec_mode = "in-place-upgrade"
+        rec_reason = (
+            "Structured OOP build manifest(s) (.csproj / pom.xml / build.gradle) detected without obsolete desktop/mainframe/WebForms "
+            "containers — candidate for human-approved 'in-place-upgrade' (framework/ORM/container modernization preserving existing "
+            "code structure) or 'clean-room-rebuild' (confirm at Gate 1 / Stage 4A)."
+        )
+    else:
+        rec_mode = "clean-room-rebuild"
+        rec_reason = (
+            "Clean-room Goldfish specification-driven rebuild recommended (greenfield requirements document or legacy desktop/form/mainframe/script estate)."
+        )
+
+    return {
+        "detectedFrameworks": sorted(frameworks),
+        "nugetOrMavenPackages": sorted(packages)[:60],
+        "osAndPlatformBlockers": os_blockers[:50],
+        "databaseAndOrmCoupling": sorted(db_coupling),
+        "cloudSdkCoupling": sorted(cloud_sdks),
+        "statelessScalingHazards": scaling_hazards[:50],
+        "recommendedModernizationMode": rec_mode,
+        "recommendationReason": rec_reason,
+    }
 
 
 def _sha256_and_size(path: Path, chunk: int = 1 << 20) -> tuple[str, int]:
@@ -797,7 +959,7 @@ def scan(
             files.append(entry)
             for n in legacy_object_names(f, cat, text):
                 legacy_names.setdefault(n, None)
-            if cat in LEGACY_CATEGORIES and len(f.stem) >= 3:
+            if cat in LEGACY_CATEGORIES and len(f.stem) >= 3 and f.stem.lower() not in GENERIC_SOURCE_STEM_STOPWORDS:
                 legacy_stems.setdefault(f.stem, None)
             if cat == "design_reference" and bucket != "shared_services":
                 user_design_refs.append({"relativePath": rel, "designType": design_type(f)})
@@ -857,6 +1019,7 @@ def scan(
     else:
         dag_summary["dagFile"] = None
     unverified_acronyms = extract_unverified_acronyms(texts_by_rel)
+    runtime_signals = extract_runtime_readiness_signals(files, texts_by_rel, scenario)
     large_repo_mr = bool(top_module_count > 15 or len(files) > 60)
 
     result: dict[str, Any] = {
@@ -882,6 +1045,7 @@ def scan(
         "topLevelModuleCount": top_module_count,
         "largeRepoMapReduceRecommended": large_repo_mr,
         "unverifiedAcronyms": unverified_acronyms,
+        "runtimeReadinessSignals": runtime_signals,
         "inputFingerprintSha256": dlc.sha256_bytes(hasher_input),
         "totalFilesScanned": len(files),
         "files": files,

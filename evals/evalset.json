@@ -213,6 +213,43 @@
       ],
       "syntheticBaselineOutput": "In Flexbox, `justify-items` is ignored; use `justify-content: center` on the flex container (`justify-items` applies to CSS Grid).",
       "syntheticTreatmentOutput": "`justify-items` applies to CSS Grid layouts and has no effect on flex containers. Use `justify-content: center` (main axis) and `align-items: center` (cross axis) in Flexbox."
+    },
+    {
+      "id": "EVAL-13-BROWNFIELD-CODMOD-READINESS",
+      "kind": "skill_trap",
+      "targetSkill": "01-discovery-and-grouping",
+      "counterfactualPairId": null,
+      "prompt": "Stage 1 discovery: `scan_input_sources.py` inspected an ASP.NET 5.0 / `.csproj` repository (`UseSqlServer`, `System.Web`, `mode=\"InProc\"` session state in `web.config`) and `codmod-assessment` (`MICROSOFT_MODERNIZATION`) is enabled in `specs/project_setup.json`. How should `discovery-architect` use `runtimeReadinessSignals` and `codmod` during Stage 1, and what should be presented at Gate 1?",
+      "mustMatchRegex": [
+        "runtimeReadinessSignals",
+        "codmod|assess_dotnet_modernization|MICROSOFT_MODERNIZATION",
+        "in-place-upgrade",
+        "clean-room-rebuild"
+      ],
+      "mustNotMatchRegex": [
+        "CREATE\\s+TABLE.*AlloyDB|target\\s+3NF\\s+DDL\\s+in\\s+specs/discovery"
+      ],
+      "syntheticBaselineOutput": "Write the target PostgreSQL CREATE TABLE AlloyDB target 3NF DDL in specs/discovery_architecture_and_inventory.md and immediately start refactoring the C# files.",
+      "syntheticTreatmentOutput": "Inspect `specs/input_inventory.json#runtimeReadinessSignals` and invoke `codmod-server` (`assess_dotnet_modernization` / `MICROSOFT_MODERNIZATION` and `create_data_layer_report`) to document `System.Web`, `UseSqlServer`, and `InProc` session blockers strictly as Current-State ('As-Is') pain points in `specs/discovery_architecture_and_inventory.md §5` (never placing Future-State DDL in Stage 1), then surface `modernizationMode` (`clean-room-rebuild` vs. `in-place-upgrade`) at Gate 1."
+    },
+    {
+      "id": "EVAL-14-STATELESS-CONTAINER-INPLACE-UPGRADE",
+      "kind": "skill_trap",
+      "targetSkill": "06-coding-agent",
+      "counterfactualPairId": null,
+      "prompt": "Stage 5 build: the human approved `modernizationMode: \"in-place-upgrade\"` for a `.NET` service migrating to Linux containers (`USER 65532:65532`) that previously bound port 80 and stored cart state in `HttpContext.Session` (`InProc`). What must `coding-agent` change in `src/` to pass `validate_build.py` and Stage 8 `validate_gdc_packaging.py`?",
+      "mustMatchRegex": [
+        "MODERNIZATION_CHANGELOG\\.md",
+        "ASPNETCORE_HTTP_PORTS|PORT",
+        "8080|1024",
+        "HttpContext\\.Session|InProc"
+      ],
+      "mustNotMatchRegex": [
+        "EXPOSE\\s+80\\b",
+        "keep\\s+HttpContext\\.Session\\s+InProc"
+      ],
+      "syntheticBaselineOutput": "Keep HttpContext.Session InProc for convenience and use EXPOSE 80 in the Dockerfile.",
+      "syntheticTreatmentOutput": "Seed `src/` read-only from `resources/inputs/<repo>/`, eliminate `HttpContext.Session` (`InProc`) sticky state in favor of stateless externalized persistence, bind to non-privileged port `>= 1024` (`PORT=8080` / `ASPNETCORE_HTTP_PORTS=8080` for rootless `USER 65532:65532` and `docker build --check`), and write `src/MODERNIZATION_CHANGELOG.md` (`>= 120` chars) documenting the upgraded target framework, ORM, and remediated blockers."
     }
   ]
 }

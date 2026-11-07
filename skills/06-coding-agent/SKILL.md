@@ -16,10 +16,10 @@ invoked **in a fresh context** with only the inputs below.
 2. `backlog/user_stories.json` + `backlog/sprint_plan.md` — build the `Sprint 1..N` scope (which reflects the human-selected `selectedCapabilityGroups`: either the selected `GRP-*` group(s) + `SHARED` technical stories, or **all** capability groups when `selectedCapabilityGroups` is `["ALL"]`)
 3. `design/architecture_design.md`, `design/solution_design.md`, `src/contracts/openapi.yaml`, `src/db/schema.sql`
 4. `test/test_cases.json` (+ `test/test_plan.md`) — the `data-testid` selectors and behaviours to satisfy
-5. `specs/target_stack.json` (including `selectedCapabilityGroups`); `resources/design_references/`, `resources/shared_services/` if present
+5. `specs/target_stack.json` (including `selectedCapabilityGroups` and `modernizationMode`); `resources/design_references/`, `resources/shared_services/` if present
 
-`resources/inputs/` is off-limits: legacy sources and requirements documents never enter the coder's context.
-Gaps are reported upstream, not reconstructed.
+- **Default Clean-Room Goldfish Mode (`target_stack.json#modernizationMode == "clean-room-rebuild"` or omitted):** `resources/inputs/` is strictly off-limits — legacy sources and requirements documents never enter the coder's context. Gaps are reported upstream, not reconstructed.
+- **Explicit Brownfield In-Place Upgrade Mode (`target_stack.json#modernizationMode == "in-place-upgrade"`):** Allowed **only** when the human explicitly chose `"modernizationMode": "in-place-upgrade"` for a structured OOP brownfield repository (e.g., `.NET` 5/Framework → `.NET` 8/10 LTS, Spring/Java 8 → Java 21). Seed `src/` read-only from `resources/inputs/<repo>/` (never mutating `resources/inputs/`), upgrade target framework/SDKs/ORM providers (`UseNpgsql` / PostgreSQL / AlloyDB, `Microsoft.Extensions.Configuration` env vars) and routes in-place to match `src/contracts/openapi.yaml` and `src/db/schema.sql`, eliminate every Windows-only / `InProc` session blocker (`specs/input_inventory.json#runtimeReadinessSignals`), wire `@dlc-guard`/`@dlc-rule` pragmas and `data-testid` selectors, and author `src/MODERNIZATION_CHANGELOG.md` (`>= 120` chars documenting upgraded target frameworks, packages, ORM/data layer, 12-Factor config, and remediated blockers; enforced by `06/scripts/validate_build.py`).
 
 ## Outputs
 | Path | Content |
@@ -29,6 +29,7 @@ Gaps are reported upstream, not reconstructed.
 | `src/db/schema.sql` (+ migrations) | from 4A; add migrations only, never rewrite the extracted file silently |
 | `src/run.sh` \| `Makefile` \| `docker-compose.yml` | the commands in `target_stack.json#commands`, verbatim |
 | `src/README.md` | how to install, run, test; which role/test accounts exist; where the DB lives |
+| `src/MODERNIZATION_CHANGELOG.md` (`in-place-upgrade` only) | target framework/SDK upgrades, ORM/DB migration, 12-Factor env bindings, and remediated OS/session blockers |
 
 ## Procedure
 
@@ -70,7 +71,7 @@ Gaps are reported upstream, not reconstructed.
    - **Target Cloud / GDC Deployment Mode (`APP_ENV=production`, via `deploy/containers/Dockerfile.*` & `deploy/gdc/`):**
      - Connects to the target managed database (`AlloyDB for PostgreSQL` / `Cloud SQL` / `PostgreSQL` / `MySQL` / `SQL Server`) via `DATABASE_URL` with connection pooling (`PgBouncer` / HikariCP / SQLAlchemy pool).
      - Enforces `AUTH_MODE=oidc-iap` (validating Google Cloud IAP / OIDC JWT bearer tokens and disabling the demo role-switcher override).
-     - Emits structured JSON logs (`severity`, `httpRequest`, `trace`, `actorRole`, `capabilityGroup`) to stdout and exports telemetry to `OTEL_EXPORTER_OTLP_ENDPOINT`.
+     - **Stateless Container Contract (`06/scripts/validate_build.py` Check #5):** Binds to configurable `0.0.0.0:$PORT` (`PORT`, `SERVER_PORT`, `ASPNETCORE_HTTP_PORTS`, or `ASPNETCORE_URLS` on non-privileged port `>= 1024`, default `8080`), emits structured JSON logs (`severity`, `httpRequest`, `trace`, `actorRole`, `capabilityGroup`) to stdout, exports telemetry to `OTEL_EXPORTER_OTLP_ENDPOINT`, and contains **zero horizontal-scaling or Linux container blockers** (no `HttpContext.Session` / `mode="InProc"` sticky sessions, no mutable in-memory static request dictionaries without `@dlc-stateless-safe`, and no Windows-only `System.Web`, `Microsoft.Win32.Registry`, `[DllImport]`, WCF `ServiceHost`, or `DirectoryEntry` APIs).
    - `src/README.md` + `src/run.sh` + `src/docker-compose.yml` must document both **Local Testing (`APP_ENV=local`, `bash src/run.sh`)** and **Target Cloud Deployment (`APP_ENV=production`, `docker compose up --build` / GDC Fleet)**.
 
 ### 3. Implement the workflow once, enforce it twice (with mutual tab exclusivity & default-persona reachability)

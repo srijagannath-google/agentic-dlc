@@ -56,8 +56,8 @@ description: "Stage 4A of the Agentic DLC v4 (parallel with 05-test-plan-designe
 
 ## Procedure
 
-### 0. Confirm Future-State ("To-Be") Technology Stack (`specs/target_stack.json`)
-- If `decidedBy != "user"` or any of `frontend.kind`, `backend.kind`, or `database.kind` is `"tbd"` in interactive mode, pause and ask the human what Future-State frontend, backend, database, and deployment stack to use. Record `"decidedBy": "user"` in `specs/target_stack.json`. Never downgrade `specs/target_stack.json` to `static-html` + `python-stdlib-http` for local testing.
+### 0. Confirm Future-State ("To-Be") Technology Stack & Modernization Mode (`specs/target_stack.json`)
+- If `decidedBy != "user"` or any of `frontend.kind`, `backend.kind`, or `database.kind` is `"tbd"` in interactive mode, pause and ask the human what Future-State frontend, backend, database, deployment stack, and (for structured OOP brownfield repos where `specs/input_inventory.json#runtimeReadinessSignals.recommendedModernizationMode == "in-place-upgrade"`) `modernizationMode` (`"clean-room-rebuild"` default vs. `"in-place-upgrade"`) to use. Record `"decidedBy": "user"` and `"modernizationMode"` in `specs/target_stack.json`. Never downgrade `specs/target_stack.json` to `static-html` + `python-stdlib-http` for local testing.
 
 ### 1. Author the 7 Perspective Artifacts + `design/architecture_design.md` Index
 Using the templates in `skills/04-solution-architect/resources/*_template.md`:
@@ -71,7 +71,7 @@ Using the templates in `skills/04-solution-architect/resources/*_template.md`:
 8. **`design/architecture_design.md`** (`resources/architecture_design_template.md`): Executive Multi-Perspective Architecture Portfolio Index linking all 7 artifacts and embedding a visual gallery of all 7 rendered SVGs.
 
 ### 2. Author `design/solution_design.md` (and `design/data_migration_and_cutover.md` for Legacy Apps)
-Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§1.1` Legacy→Target 3NF Entity Mapping (`SCENARIO_LEGACY_APP` only), `§1.2` ```` ```sql ddl ````, `§2` ```` ```yaml openapi ````, `§3` ViewModel/DTO Boundary (including `A2UI v0.9` catalog bindings when `frontend.kind == "gemini-enterprise-a2ui"`), `§4` Workflow & Authorization Enforcement, `§5` Frontend Tokens, `§6` Cross-Cutting Concerns, and `§7` Target-State Build & Packaging Specification. Include the **FinOps & Multi-Cloud TCO Sizing Matrix** in `design/infrastructure_architecture.md §3` (and when `coexistenceStrategy.mode != "big-bang"`, document the disposable Strangler Boundary ACL isolated under `deploy/coexistence/` with its retirement wave in `design/data_migration_and_cutover.md` while keeping `src/` 100% pure).
+Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§1.1` Legacy→Target 3NF Entity Mapping (`SCENARIO_LEGACY_APP` only), `§1.2` ```` ```sql ddl ````, `§2` ```` ```yaml openapi ````, `§3` ViewModel/DTO Boundary (including `A2UI v0.9` catalog bindings when `frontend.kind == "gemini-enterprise-a2ui"`), `§4` Workflow & Authorization Enforcement, `§5` Frontend Tokens, `§6` Cross-Cutting Concerns (explicitly enforcing the **Stateless Container Contract**: `0.0.0.0:$PORT` / `ASPNETCORE_HTTP_PORTS`, zero `InProc` sticky session state, zero Windows-only OS/IIS/WCF/Registry APIs, and framework/ORM target upgrade plan when `modernizationMode == "in-place-upgrade"`), and `§7` Target-State Build & Packaging Specification. Include the **FinOps & Multi-Cloud TCO Sizing Matrix** in `design/infrastructure_architecture.md §3` (and when `coexistenceStrategy.mode != "big-bang"`, document the disposable Strangler Boundary ACL isolated under `deploy/coexistence/` with its retirement wave in `design/data_migration_and_cutover.md` while keeping `src/` 100% pure).
 
 ### 3. Validate All Perspectives, Render All 7 Diagrams, Extract Contracts & Run Adversarial `architecture-critic`
 ```bash

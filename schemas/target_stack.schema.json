@@ -94,6 +94,12 @@
       "enum": ["clean-cutover", "boundary-acl-cdc", "strangler-gateway"],
       "description": "Cutover vs. incremental Strangler wave coexistence strategy. When selectedCapabilityGroups != ['ALL'], 'boundary-acl-cdc' or 'strangler-gateway' isolates temporary translation/CDC adapters strictly under deploy/coexistence/ so src/ stays 100% legacy-free."
     },
+    "modernizationMode": {
+      "type": "string",
+      "enum": ["clean-room-rebuild", "in-place-upgrade"],
+      "default": "clean-room-rebuild",
+      "description": "Stage 5 implementation strategy: 'clean-room-rebuild' (default Goldfish context isolation; builds fresh src/ strictly from approved Spec, Contracts, and Test Cases without reading resources/inputs/) vs. 'in-place-upgrade' (human-approved brownfield framework/ORM/runtime upgrade for structured .NET/Java/Node/Go/Python repos; seeds src/ from resources/inputs/<repo>/, upgrades framework/ORM/config in place to satisfy Stage 4A contracts, writes src/MODERNIZATION_CHANGELOG.md, and passes full Stage 6/7 parity and drift gates)."
+    },
     "aiSurface": {
       "type": "object",
       "description": "Optional Gemini Enterprise / Agent-to-UI (A2UI v0.9) declarative interactive surface configuration.",

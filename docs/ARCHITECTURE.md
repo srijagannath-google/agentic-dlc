@@ -46,7 +46,7 @@ agentic-dlc/
 ├── _shared/                             # referenced by every skill & agent (never pasted)
 │   ├── project_root.md                  # PROJECT_ROOT resolution rule (short)
 │   ├── gate_matrix.md                   # Adaptive ceremony tracks (quick/standard/regulated) & gate decision briefs
-│   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (DB migration, Spanner, FinOps, Apigee)
+│   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (codmod-assessment, DB migration, Spanner, FinOps, Apigee)
 │   ├── ux_guardrails.md                 # the generic UX guardrails (single canonical copy)
 │   ├── google_cloud_ui_design.md        # Material 3 (--g-*) tokens, ShadCN/Radix & A2UI v0.9 standards
 │   ├── well_architected_and_diagram_standards.md # 7-perspective Well-Architected + FinOps TCO standards
@@ -56,8 +56,8 @@ agentic-dlc/
 ├── schemas/                             # JSON schemas / canonical shapes for every machine artefact
 │   ├── project_setup.schema.json        # Stage 0 connection, ceremonyTrack, domainPacks, activeWave
 │   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger + decisionBriefPath
-│   ├── input_inventory.schema.json      # Stage 1 inventory + dependencyDagSummary + unverifiedAcronyms
-│   ├── target_stack.schema.json         # Stack + commands.reset + coexistenceStrategy + aiSurface (A2UI v0.9)
+│   ├── input_inventory.schema.json      # Stage 1 inventory + runtimeReadinessSignals + dependencyDagSummary + unverifiedAcronyms
+│   ├── target_stack.schema.json         # Stack + modernizationMode + commands.reset + coexistenceStrategy + aiSurface (A2UI v0.9)
 │   ├── spec_rubric.json                 # Stage 2 100-pt rubric the LLM spec-judge scores against
 │   ├── spec_scorecard.schema.json
 │   ├── architecture_rubric.json         # Stage 4A 100-pt rubric the LLM architecture-critic scores against
@@ -198,12 +198,13 @@ Before running `01/scripts/scan_input_sources.py`, `discovery-architect` confirm
     "uiEntry": "src/ui/index.html | http://127.0.0.1:8080/",  // where Stage 6 loads the UI from
     "test":    "…"             // optional project-native unit tests
   },
-  "decidedBy": "user | pending-stage-4a | autonomous-default"
+  "decidedBy": "user | pending-stage-4a | autonomous-default",
+  "modernizationMode": "clean-room-rebuild | in-place-upgrade"
 }
 ```
 - **Never silently assume `static-html` + Python in Interactive Mode:** During Stage 1 (Current-State Discovery) and Stages 2–3 (Functional Spec & User Stories), if the user has not yet chosen a Future-State technology stack, `specs/target_stack.json` sets `frontend.kind = "tbd"`, `backend.kind = "tbd"`, `database.kind = "tbd"`, and `decidedBy = "pending-stage-4a"`.
 - **Mandatory Stage 4A Future-State Tech Stack Intake & Pure Target-State Design (`design/`):** When entering **Stage 4A (`04-solution-architect`)** from the Spec / Sprint Plan, if `decidedBy != "user"` or any stack component is `"tbd"`, `solution-architect` **MUST ask the human what Future-State frontend, backend, database, and deployment technology stack to use**, and update `specs/target_stack.json` with `decidedBy = "user"` before authoring `design/solution_design.md`. Both `design/architecture_design.md` and `design/solution_design.md` must describe **only the Target State ("To-Be")** (target runtime, target managed database e.g. `AlloyDB` / `Cloud SQL` / `PostgreSQL`, `OIDC / IAP` authentication, `Cloud KMS`, `Cloud Logging` / `Monitoring` / `OpenTelemetry`). **Local testing details (`APP_ENV=local`, `AUTH_MODE=local-mock`, `STORAGE_BACKEND=local-fs`, `local_dev_runner`) must never go into `design/architecture_design.md` or `design/solution_design.md`** (`04/scripts/extract_contracts.py` fails Gate 4A if local-testing mock flags appear in the design or if `specs/target_stack.json` is downgraded to `static-html` + `python-stdlib-http` when another stack is designed).
-- **Target-Stack Implementation in Stage 5 (`06-coding-agent`) & Stage 8 (`09-container-and-gdc-packager`):** Stage 5 **never** ignores `specs/target_stack.json` to build a throwaway Python `http.server` app just for local testing. Instead, `coding-agent` authors the complete `src/ui/` and `src/backend/` codebase and manifests (`package.json`, `pom.xml`/`build.gradle`, `requirements.txt`, `go.mod`, `.csproj`) in the confirmed Target Stack with 12-Factor environment configuration in `src/` so the **same target-stack codebase** runs locally for testing (`bash src/run.sh`) during Stages 5–6, passes Stage 7 drift alignment, and deploys to the target cloud/GDC environment (`deploy/containers/Dockerfile.*`, `DATABASE_URL`, `OIDC / IAP`) in Stages 8–9. `06/scripts/validate_build.py` and `09/scripts/validate_gdc_packaging.py` verify the target-stack artifacts and container base images and fail the gate if a Python substitute was used.
+- **Target-Stack Implementation, `modernizationMode` & Stateless Container Contract (`06-coding-agent` & `09-container-and-gdc-packager`):** Stage 5 **never** ignores `specs/target_stack.json` to build a throwaway Python `http.server` app just for local testing. By default (`modernizationMode == "clean-room-rebuild"`), `coding-agent` operates in strict Goldfish isolation (`resources/inputs/` off-limits); when the human explicitly approves `"modernizationMode": "in-place-upgrade"` for a structured OOP brownfield repository, `coding-agent` seeds `src/` read-only from `resources/inputs/<repo>/`, upgrades frameworks/ORM/config in-place to match `src/contracts/openapi.yaml` and `src/db/schema.sql`, and writes `src/MODERNIZATION_CHANGELOG.md`. Both `06/scripts/validate_build.py` and `09/scripts/validate_gdc_packaging.py` enforce the **Stateless Container Contract** (configurable non-privileged `$PORT >= 1024`, zero `InProc` sticky session or Windows-only OS/IIS/WCF/Registry blockers via `dlc_common.scan_stateless_container_hazards`) plus BuildKit static lint (`docker build --check` via `dlc_common.run_docker_build_check`).
 
 ### 4.3 `specs/application_spec.md` required structure (LLM) — linted by `02/scripts/lint_spec_structure.py`
 - `# <Project Name>` and a header block with `Input Scenario`, `Domain Slug`.

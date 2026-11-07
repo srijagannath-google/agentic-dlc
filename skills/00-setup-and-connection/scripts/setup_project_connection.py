@@ -25,6 +25,7 @@ import argparse
 import base64
 import json
 import os
+import shutil
 import sys
 import urllib.error
 import urllib.parse
@@ -170,8 +171,7 @@ def main() -> int:
     ap.add_argument("--ceremony-track", default="standard", choices=["quick", "standard", "regulated"],
                     help="Adaptive ceremony track: quick (prototype/internal tool), standard (default), or regulated (full compliance + mandatory Red-Team scorecard)")
     ap.add_argument("--domain-packs", nargs="*", default=[],
-                    choices=["mainframe-mat", "cloud-dms", "bqms", "hadoop-oozie-flink", "agentic-audit"],
-                    help="Optional pluggable MCP modernization domain packs to activate")
+                    help=f"Optional pluggable MCP modernization domain packs to activate (comma or space separated from: {', '.join(dlc.VALID_DOMAIN_PACKS)})")
     ap.add_argument("--active-wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01)")
     ap.add_argument("--persist-env", action="store_true", help="Persist non-secret org/project settings into <PROJECT_ROOT>/.env")
     ap.add_argument("--notes", default="")
@@ -223,6 +223,10 @@ def main() -> int:
             },
             "git": {
                 "GIT_TOKEN_present": bool(os.environ.get("GIT_TOKEN") or os.environ.get("GITHUB_TOKEN")),
+            },
+            "modernizationTools": {
+                "codmod_cli_present": bool(shutil.which("codmod")),
+                "supportedDomainPacks": list(dlc.VALID_DOMAIN_PACKS),
             },
         }
         print(json.dumps(status, indent=2))
@@ -347,12 +351,24 @@ def main() -> int:
             if env_updates:
                 upsert_env_vars(root / ".env", env_updates)
 
+        raw_packs: list[str] = []
+        for tok in (args.domain_packs or []):
+            for sub in str(tok).split(","):
+                s = sub.strip()
+                if s:
+                    raw_packs.append(s)
+        invalid_packs = [p for p in raw_packs if p not in dlc.VALID_DOMAIN_PACKS]
+        if invalid_packs:
+            raise dlc.GateFailure(
+                f"Unsupported --domain-packs value(s): {invalid_packs}. Allowed: {list(dlc.VALID_DOMAIN_PACKS)}"
+            )
+
         setup_payload = {
             "schemaVersion": dlc.SCHEMA_VERSION,
             "updatedAtUtc": dlc.utc_now_iso(False),
             "setupStatus": "AWAITING_HUMAN_REVIEW",
             "ceremonyTrack": args.ceremony_track,
-            "domainPacks": list(dict.fromkeys(args.domain_packs or [])),
+            "domainPacks": list(dict.fromkeys(raw_packs)),
             "activeWave": args.active_wave,
             "inputSource": {
                 "kind": args.input_kind,

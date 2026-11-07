@@ -93,6 +93,48 @@
       "description": "All-caps domain acronyms detected in inputs that lack an explicit inline expansion; Gate 1 must ask rather than guess expansions.",
       "items": { "type": "string" }
     },
+    "runtimeReadinessSignals": {
+      "type": "object",
+      "description": "Deterministic brownfield runtime, OS-portability, ORM/database, cloud-SDK, and horizontal-scaling readiness signals extracted from project manifests (.sln, .csproj, web.config, pom.xml) and source code.",
+      "required": [
+        "detectedFrameworks", "osAndPlatformBlockers", "databaseAndOrmCoupling",
+        "cloudSdkCoupling", "statelessScalingHazards", "recommendedModernizationMode"
+      ],
+      "properties": {
+        "detectedFrameworks": { "type": "array", "items": { "type": "string" } },
+        "nugetOrMavenPackages": { "type": "array", "items": { "type": "string" } },
+        "osAndPlatformBlockers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signal", "category", "file"],
+            "properties": {
+              "signal": { "type": "string" },
+              "category": { "type": "string" },
+              "file": { "type": "string" }
+            }
+          }
+        },
+        "databaseAndOrmCoupling": { "type": "array", "items": { "type": "string" } },
+        "cloudSdkCoupling": { "type": "array", "items": { "type": "string" } },
+        "statelessScalingHazards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signal", "file"],
+            "properties": {
+              "signal": { "type": "string" },
+              "file": { "type": "string" }
+            }
+          }
+        },
+        "recommendedModernizationMode": {
+          "type": "string",
+          "enum": ["clean-room-rebuild", "in-place-upgrade"]
+        },
+        "recommendationReason": { "type": "string" }
+      }
+    },
     "inputFingerprintSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "files": {
       "type": "array",

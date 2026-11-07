@@ -4,8 +4,9 @@
 
 1. **Zero Cloud-Vendor SDK Lock-In in Application Code (`src/`):**
    - Application source code (`src/ui/`, `src/backend/`, `src/db/`) must never import provider-proprietary cloud SDKs (`boto3`, `botocore`, `azure.identity`, `azure.storage`, or direct cloud-specific control-plane SDKs). All backing services (database, object storage, identity, telemetry) are consumed via open protocols (SQL, HTTP/REST, OIDC JWT headers, OpenTelemetry OTLP) and 12-Factor environment variables.
-2. **Rootless, Hardened, Traceable OCI Containers (`deploy/containers/`):**
-   - Every `Dockerfile.*` runs as a non-root user (`USER 65532:65532` or non-zero UID), supports read-only root filesystems (`readOnlyRootFilesystem: true`), defines a `/health` `HEALTHCHECK`, pins base image versions (never `:latest`), and embeds OCI labels (`io.agentic.dlc.spec-sha256`, `io.agentic.dlc.capability-groups`).
+2. **Rootless, Hardened, Stateless OCI Containers (`deploy/containers/`):**
+   - Every `Dockerfile.*` runs as a non-root user (`USER 65532:65532` or non-zero UID), exposes only unprivileged ports (`>= 1024`, never `EXPOSE 80` / `443` under non-root UIDs), supports read-only root filesystems (`readOnlyRootFilesystem: true`), defines a `/health` `HEALTHCHECK`, pins base image versions (never `:latest`), embeds OCI labels (`io.agentic.dlc.spec-sha256`, `io.agentic.dlc.capability-groups`), and passes BuildKit `docker build --check` linting when Docker is available.
+   - **Stateless Container Contract:** Application processes bind `0.0.0.0` reading `$PORT` (or `ASPNETCORE_HTTP_PORTS` / `SERVER_PORT`) dynamically, emit structured JSON logs to `stdout`, and contain zero `InProc` sticky sessions, Windows-only OS/IIS/Registry/PInvoke dependencies, or unguarded mutable static request state that breaks horizontal multi-replica scaling.
 3. **Single KRM Base + Provider Overlays (`deploy/gdc/base/` & `deploy/gdc/overlays/`):**
    - Workload manifests (`Deployment`, `Service`, `HorizontalPodAutoscaler`, `PodDisruptionBudget`, `NetworkPolicy`, `ServiceAccount`, schema migration `Job`) are authored **once** in `deploy/gdc/base/`.
    - Cloud and on-prem specifics (`StorageClass`, ingress/Gateway class, node topology spread, and GDC `ClusterSelector` labels) live exclusively in Kustomize overlays under `deploy/gdc/overlays/{on-prem-gdc,gcp,aws,azure}/`.
