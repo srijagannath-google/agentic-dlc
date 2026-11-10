@@ -234,6 +234,10 @@ def main() -> int:
         else:
             fails.extend(dlc.verify_delta_preservation(dlc.read_text(base_p), spec))
 
+    clar_errs, clar_warns, clar_meta = dlc.validate_clarification_ledger_for_spec(root, spec)
+    fails.extend(clar_errs)
+    warns.extend(clar_warns)
+
     br_vectors = {
         b["id"]: b["parsedExamples"]
         for b in brs
@@ -260,6 +264,7 @@ def main() -> int:
         "sddGovernance": {
             **conc_meta,
             **app_meta,
+            "clarificationLedger": clar_meta,
         },
     }
     dlc.write_json(root / "specs" / ".spec_index.json", index)

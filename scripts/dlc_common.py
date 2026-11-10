@@ -1312,6 +1312,35 @@ def generate_gate_decision_brief(
     else:
         lines.append("- None recorded (strict parity or greenfield specification).")
 
+    clar_path = root / "specs" / "clarification_decisions.json"
+    if clar_path.is_file():
+        try:
+            clar = read_json(clar_path)
+            if isinstance(clar, dict):
+                c_status = clar.get("clarificationStatus", "UNKNOWN")
+                decs = clar.get("decisions") or []
+                disps = clar.get("capabilityDispositions") or []
+                open_f = clar.get("openFrontier") or []
+                lines.extend([
+                    "",
+                    "## 3b. Clarification & Modernization Ambition Decisions",
+                    f"- **Clarification Status:** `{c_status}` (Decisions: `{len(decs)}`, Open Frontier: `{len(open_f)}`)",
+                ])
+                for disp in disps[:6]:
+                    if isinstance(disp, dict):
+                        lines.append(
+                            f"- **Disposition `{disp.get('targetId', '')}` → `{disp.get('disposition', '')}`:** "
+                            f"{_sanitize_brief_line(str(disp.get('rationale', '')))[:180]}"
+                        )
+                for d in decs[:6]:
+                    if isinstance(d, dict):
+                        lines.append(
+                            f"- **`{d.get('id', '')}` (`{d.get('category', '')}`):** "
+                            f"{_sanitize_brief_line(str(d.get('resolvedAnswer', '')))[:180]}"
+                        )
+        except Exception:
+            pass
+
     if arch_section:
         lines.extend(["", "## 4. Architecture Red-Team Review Highlights", *arch_section])
 
@@ -2112,3 +2141,216 @@ def verify_delta_preservation(baseline_spec_md: str, candidate_spec_md: str) -> 
             if s not in cand_lines:
                 errors.append(f"Delta preservation violation: historic phase approval modified or dropped: `{s[:120]}`")
     return errors
+
+
+# --------------------------------------------------------------------------------------
+# Conditional Decision-Tree Clarification & Modernization Grilling (`clarification-griller`)
+# --------------------------------------------------------------------------------------
+_NONE_WORKFLOW_Q_RE = re.compile(
+    r"^(?:none|n/?a|no\s+open\s+(?:workflow\s+)?questions?|all\s+workflow\s+transitions?\s+(?:are\s+)?(?:settled|evidenced|resolved))[\s.—-]*$",
+    re.IGNORECASE,
+)
+
+
+def parse_open_workflow_questions(md: str) -> list[str]:
+    """Extract non-empty open workflow questions from `§3.1 Open Workflow Questions` in Stage 1 blueprint."""
+    sec = md_section(md, r"open workflow questions")
+    if not sec:
+        return []
+    questions: list[str] = []
+    for raw in sec.splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#") or (s.startswith("|") and re.search(r"^[\|\s:-]+$", s)):
+            continue
+        if s.startswith("|") and s.endswith("|"):
+            cells = [strip_md(c).strip() for c in s.strip("|").split("|")]
+            if not cells or cells[0].lower() in {"#", "id", "question", "question id", "item"}:
+                continue
+            joined = " — ".join(c for c in cells if c)
+            if joined and not _NONE_WORKFLOW_Q_RE.match(joined):
+                questions.append(joined)
+            continue
+        cleaned = re.sub(r"^(?:[-*+]|\d+[.)])\s+", "", s).strip()
+        cleaned_plain = strip_md(cleaned).strip()
+        if not cleaned_plain or _NONE_WORKFLOW_Q_RE.match(cleaned_plain):
+            continue
+        if "?" in cleaned_plain or "UNVERIFIED_ACRONYM" in cleaned or len(questions) > 0 or s.startswith(("-", "*", "1.")):
+            questions.append(cleaned_plain)
+    return questions
+
+
+def active_spec_lifecycle_mode(root: Path) -> str:
+    """Return configured `specLifecycleMode` from `specs/project_setup.json` (default `'standard'`)."""
+    sp = root / "specs" / "project_setup.json"
+    if sp.is_file():
+        try:
+            data = read_json(sp)
+            if isinstance(data, dict) and data.get("specLifecycleMode") in SPEC_LIFECYCLE_MODES:
+                return str(data["specLifecycleMode"])
+        except Exception:
+            pass
+    return "standard"
+
+
+def assess_clarification_triggers(root: Path, stage: str = "gate1") -> dict[str, Any]:
+    """Deterministically evaluate whether Conditional Grilling (`clarification-griller`) is needed.
+
+    - Auto-bypasses (`needsClarification=False`) in `--autonomous` / golden runs, or once
+      `specs/clarification_decisions.json` has `openFrontier == []` and a terminal status.
+    - At `gate1`:
+        * `SCENARIO_LEGACY_APP` in `standard`/`delta` mode ALWAYS triggers at least Round 1 for
+          Modernization Ambition & Capability Disposition (`retire` vs `parity` vs `reimagine-enhance`)
+          unless already recorded in `specs/clarification_decisions.json`.
+        * `SCENARIO_REQUIREMENTS_DOC` (BRD/PRD) and `retro-spec` mode trigger ONLY when concrete gaps
+          exist (`openWorkflowQuestions`, `unverifiedAcronyms`, or `scenarioConfidence == 'LOW'`).
+    - At `stage4a`:
+        * Triggers ONLY when `specs/target_stack.json` has `decidedBy != 'user'` or any `"tbd"` stack kind.
+    """
+    spec_mode = active_spec_lifecycle_mode(root)
+    clar_path = root / "specs" / "clarification_decisions.json"
+    if is_autonomous_or_golden(root):
+        return {
+            "stage": stage,
+            "specLifecycleMode": spec_mode,
+            "needsClarification": False,
+            "bypassReason": "autonomous_or_golden_mode",
+            "triggerReasons": [],
+            "openWorkflowQuestions": [],
+            "unverifiedAcronyms": [],
+        }
+
+    if clar_path.is_file():
+        clar = read_json(clar_path)
+        if isinstance(clar, dict):
+            c_status = str(clar.get("clarificationStatus") or "")
+            open_f = clar.get("openFrontier") or []
+            if open_f:
+                return {
+                    "stage": stage,
+                    "specLifecycleMode": spec_mode,
+                    "needsClarification": True,
+                    "bypassReason": None,
+                    "triggerReasons": [f"OPEN_FRONTIER_PENDING:{len(open_f)}"],
+                    "openWorkflowQuestions": [],
+                    "unverifiedAcronyms": [],
+                }
+            if stage == "gate1" and c_status in ("RESOLVED_BY_HUMAN", "ACCEPTED_RECOMMENDATIONS", "CLEAR_AUTO_BYPASSED", "AUTONOMOUS_ASSUMPTIONS"):
+                return {
+                    "stage": stage,
+                    "specLifecycleMode": spec_mode,
+                    "needsClarification": False,
+                    "bypassReason": f"already_settled:{c_status}",
+                    "triggerReasons": [],
+                    "openWorkflowQuestions": [],
+                    "unverifiedAcronyms": [],
+                }
+
+    reasons: list[str] = []
+    open_qs: list[str] = []
+    unverified_acrs: list[str] = []
+
+    if stage == "gate1":
+        inv_path = root / "specs" / "input_inventory.json"
+        inv = read_json(inv_path) if inv_path.is_file() else {}
+        scenario = inv.get("inputScenario", "SCENARIO_REQUIREMENTS_DOC") if isinstance(inv, dict) else "SCENARIO_REQUIREMENTS_DOC"
+        conf = str(inv.get("scenarioConfidence") or "HIGH").upper() if isinstance(inv, dict) else "HIGH"
+        unverified_acrs = list(inv.get("unverifiedAcronyms") or []) if isinstance(inv, dict) else []
+
+        doc_path = root / "specs" / "discovery_architecture_and_inventory.md"
+        if doc_path.is_file():
+            md = read_text(doc_path)
+            open_qs = parse_open_workflow_questions(md)
+
+        if conf == "LOW":
+            reasons.append("LOW_SCENARIO_CONFIDENCE")
+        if scenario == "SCENARIO_LEGACY_APP" and spec_mode in ("standard", "delta"):
+            reasons.append("LEGACY_MODERNIZATION_AMBITION_UNSETTLED")
+        if open_qs:
+            reasons.append(f"OPEN_WORKFLOW_QUESTIONS:{len(open_qs)}")
+        if unverified_acrs:
+            reasons.append(f"UNVERIFIED_ACRONYMS:{len(unverified_acrs)}")
+
+    elif stage == "stage4a":
+        ts_path = root / "specs" / "target_stack.json"
+        if not ts_path.is_file():
+            reasons.append("TARGET_STACK_MISSING")
+        else:
+            ts = read_json(ts_path)
+            if isinstance(ts, dict):
+                decided = str(ts.get("decidedBy") or "")
+                fe = str((ts.get("frontend") or {}).get("kind") or "tbd")
+                be = str((ts.get("backend") or {}).get("kind") or "tbd")
+                db = str((ts.get("database") or {}).get("kind") or "tbd")
+                if decided != "user" or "tbd" in (fe, be, db):
+                    reasons.append(f"TARGET_STACK_TBD(decidedBy={decided},fe={fe},be={be},db={db})")
+
+    return {
+        "stage": stage,
+        "specLifecycleMode": spec_mode,
+        "needsClarification": len(reasons) > 0,
+        "bypassReason": None if reasons else "inputs_complete_zero_ambiguity",
+        "triggerReasons": reasons,
+        "openWorkflowQuestions": open_qs,
+        "unverifiedAcronyms": unverified_acrs,
+    }
+
+
+def validate_clarification_ledger_for_spec(
+    root: Path,
+    spec_md: str,
+) -> tuple[list[str], list[str], dict[str, Any]]:
+    """Validate `specs/clarification_decisions.json` (when present) before Stage 2 spec lint passes.
+
+    Enforces:
+      - Schema conformance against `schemas/clarification_decisions.schema.json`.
+      - `SD-GRILL-01`: No unresolved `openFrontier` or `IN_PROGRESS` status when finalizing `application_spec.md`.
+      - `SD-GRILL-02`: Capabilities explicitly marked `disposition == 'retire'` must not appear as active
+        `REQ-FUNC-*` / `REQ-ENH-*` requirement definitions in Pillar 1.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    clar_path = root / "specs" / "clarification_decisions.json"
+    if not clar_path.is_file():
+        return errors, warnings, {"present": False, "decisionIds": [], "retiredTargets": []}
+
+    clar = read_json(clar_path)
+    schema_errs = validate_against_schema(clar, load_schema("clarification_decisions.schema.json"))
+    if schema_errs:
+        errors.append(
+            "specs/clarification_decisions.json violates schemas/clarification_decisions.schema.json: "
+            + "; ".join(schema_errs[:5])
+        )
+        return errors, warnings, {"present": True, "decisionIds": [], "retiredTargets": []}
+
+    c_status = str(clar.get("clarificationStatus") or "")
+    open_f = clar.get("openFrontier") or []
+    if c_status == "IN_PROGRESS" or open_f:
+        errors.append(
+            f"SD-GRILL-01: specs/clarification_decisions.json still has unresolved clarification frontier "
+            f"(status={c_status!r}, openFrontier={len(open_f)}). Finish the clarification round or run "
+            "`clarification_interview.py --action accept-recommendations` before finalizing specs/application_spec.md."
+        )
+
+    retired_targets = [
+        str(d.get("targetId")).strip()
+        for d in (clar.get("capabilityDispositions") or [])
+        if isinstance(d, dict) and d.get("disposition") == "retire" and d.get("targetId")
+    ]
+    if retired_targets:
+        p1_sec = md_section(spec_md, r"pillar\s*1\b") or ""
+        for r_id in retired_targets:
+            for line in p1_sec.splitlines():
+                if re.search(r"\bREQ-(?:FUNC|ENH)-\d+\b", line) and re.search(rf"\b{re.escape(r_id)}\b", line, re.IGNORECASE):
+                    if not re.search(r"\b(?:retired?|deprecated?|excluded|out[- ]of[- ]scope)\b", line, re.IGNORECASE):
+                        errors.append(
+                            f"SD-GRILL-02: Capability `{r_id}` was marked `disposition: 'retire'` in "
+                            f"specs/clarification_decisions.json, but appears as an active Pillar 1 requirement: `{line.strip()[:110]}`"
+                        )
+
+    decision_ids = [str(d.get("id")) for d in (clar.get("decisions") or []) if isinstance(d, dict) and d.get("id")]
+    return errors, warnings, {
+        "present": True,
+        "clarificationStatus": c_status,
+        "decisionIds": decision_ids,
+        "retiredTargets": retired_targets,
+    }

@@ -288,6 +288,42 @@
       ],
       "syntheticBaselineOutput": "Copy all formulas into Jira, edit Jira only without updating application_spec when a reviewer changes a rule, and create a separate story just for unit tests in the final sprint.",
       "syntheticTreatmentOutput": "Use thin-pointer chained slices in `backlog/user_stories.json`: bind `specPointer` (`specs/application_spec.md` + `specSha256`), chain contract-first prerequisites via `dependsOnStories`, enforce 3D `scopeBounds` (`maxProdFiles <= 3`, non-empty co-located `unitTestTargets` in the same slice — never a separate unit-test-only story), and include a 4-part `verificationPlan` (no bare `'N/A'`). If a reviewer requests changing a `BR-NN` formula (`Tier 1B`), HALT before mutating `src/`, emit a `Spec Deviation Detected` challenge, and upon human confirmation atomically update `specs/application_spec.md` + contracts + code + tests."
+    },
+    {
+      "id": "EVAL-17-CONDITIONAL-GRILL-ME-MODERNIZATION",
+      "kind": "skill_trap",
+      "targetSkill": "clarification-griller",
+      "counterfactualPairId": "EVAL-18-CONDITIONAL-GRILL-ME-ZERO-NOISE-BYPASS",
+      "prompt": "Gate 1 Intake (Legacy Modernization + Open Workflow Gap): Stage 1 finished scanning a legacy enterprise codebase (`SCENARIO_LEGACY_APP`, `specLifecycleMode: \"standard\"`) with 3 capability groups (`GRP-01..03`) and an unresolved `Status = 9` rejection path in `§3.1 Open Workflow Questions`. The user has not stated which legacy modules to retire vs. re-imagine (`REQ-ENH-*`). Should we immediately write `specs/application_spec.md` as a 1:1 lift-and-shift, dump 15 questions at once, or run Conditional Grilling?",
+      "mustMatchRegex": [
+        "clarification_interview\\.py|clarification_decisions\\.json",
+        "retire.*parity.*reimagine-enhance|capabilityDispositions",
+        "Recommended|accept\\s+recommendations",
+        "DECISION-01|DECISION-"
+      ],
+      "mustNotMatchRegex": [
+        "immediately\\s+write\\s+application_spec.*1:1\\s+lift-and-shift",
+        "dump\\s+15\\s+questions\\s+at\\s+once"
+      ],
+      "syntheticBaselineOutput": "Immediately write application_spec.md as a 1:1 lift-and-shift or dump 15 questions at once without recommended answers.",
+      "syntheticTreatmentOutput": "Run `clarification_interview.py --action detect --stage gate1`: because `needsClarification` is true (`LEGACY_MODERNIZATION_AMBITION_UNSETTLED` + `OPEN_WORKFLOW_QUESTIONS`), run a bounded Frontier Round (`2..4` independent root questions) with evidence citations, `Recommended` answers, and an `accept recommendations` fast-exit to resolve `capabilityDispositions` (`retire` vs `parity` vs `reimagine-enhance` for `REQ-ENH-*`), modernization approach, and the `Status = 9` transition, persisting `DECISION-01..NN` into `specs/clarification_decisions.json` before Stage 2."
+    },
+    {
+      "id": "EVAL-18-CONDITIONAL-GRILL-ME-ZERO-NOISE-BYPASS",
+      "kind": "skill_trap",
+      "targetSkill": "clarification-griller",
+      "counterfactualPairId": "EVAL-17-CONDITIONAL-GRILL-ME-MODERNIZATION",
+      "prompt": "Gate 1 Intake (Complete Greenfield BRD): Stage 1 scanned a greenfield requirements document (`SCENARIO_REQUIREMENTS_DOC`, `scenarioConfidence: \"HIGH\"`) where `§3.1 Open Workflow Questions` is `'None'`, `unverifiedAcronyms` is `[]`, and all roles and formulas are explicitly defined. Should `clarification-griller` still grill the user across multiple interview rounds?",
+      "mustMatchRegex": [
+        "needsClarification.*false|CLEAR_AUTO_BYPASSED",
+        "bypass|skip.*grill|zero\\s+questions"
+      ],
+      "mustNotMatchRegex": [
+        "force\\s+3\\s+rounds\\s+of\\s+grilling\\s+anyway",
+        "invent\\s+artificial\\s+ambiguities"
+      ],
+      "syntheticBaselineOutput": "Force 3 rounds of grilling anyway and invent artificial ambiguities before allowing Gate 1 to complete.",
+      "syntheticTreatmentOutput": "No. `clarification_interview.py --action detect --stage gate1 --auto-bypass-if-clear` reports `needsClarification: false` and records `CLEAR_AUTO_BYPASSED` in `specs/clarification_decisions.json`, so Conditional Grilling auto-bypasses with zero questions and proceeds directly to the standard Gate 1 summary."
     }
   ]
 }

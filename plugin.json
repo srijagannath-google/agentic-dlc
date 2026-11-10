@@ -1,8 +1,8 @@
 {
   "name": "agentic-dlc",
-  "version": "4.5.0",
-  "displayName": "Enterprise Agentic DLC Harness — Living Spec-Driven Development (v4.5.0)",
-  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.5.0) combining Living Spec-Driven Development (--mode standard|delta|retro-spec, thin-pointer chained ALM slices, executable BR-NN decision vectors, multi-phase human approvals with bot exclusion & regulated 2-person review, 3-Tier Spec Deviation Halt, and Git-Native Docs-as-Code PR review) with brownfield .NET/Java runtime readiness (codmod-assessment MCP, clean-room-rebuild vs in-place-upgrade, Stateless Container Contract & docker build --check), adaptive ceremony tracks (quick/standard/regulated), adversarial spec & architecture critics, Gemini Enterprise A2UI v0.9 surfaces, and multi-cloud GDC Fleet GitOps packaging.",
+  "version": "4.6.0",
+  "displayName": "Enterprise Agentic DLC Harness — Living SDD & Conditional Grill-Me Intake (v4.6.0)",
+  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.6.0) combining Living Spec-Driven Development (--mode standard|delta|retro-spec, thin-pointer chained ALM slices, executable BR-NN decision vectors, multi-phase human approvals with bot exclusion & regulated 2-person review, 3-Tier Spec Deviation Halt, and Git-Native Docs-as-Code PR review), Conditional Decision-Tree Grilling (clarification-griller: frontier-round interview with Recommended Answers ONLY when clarification or Legacy-to-Modernized capability disposition is needed, auto-bypassing on complete inputs), brownfield .NET/Java runtime readiness (codmod-assessment MCP, clean-room-rebuild vs in-place-upgrade, Stateless Container Contract & docker build --check), adversarial spec & architecture critics, A2UI v0.9 surfaces, and multi-cloud GDC Fleet GitOps packaging.",
   "author": "Enterprise Agentic Architecture Team",
   "rules": [
     "rules/AGENTS.md"
@@ -19,6 +19,7 @@
     "skills/08-drift-and-evolution",
     "skills/09-container-and-gdc-packager",
     "skills/10-gdc-fleet-deployer-and-observability",
+    "skills/clarification-griller",
     "skills/google-cloud-ui-design"
   ],
   "agents": [

@@ -5,8 +5,8 @@ description: "Stage 1 of the Agentic DLC v4. Confirms the input source location 
 
 # Stage 1 — Current-State ("As-Is") Discovery, Capability Grouping & Gate 1 Intake
 
-**Read before acting:** `_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`,
-`docs/ARCHITECTURE.md` §4.1–§4.2. Subagent: `discovery-architect`. `<PLUGIN>` = installed plugin dir.
+**Read before acting:** `_shared/project_root.md`, `_shared/workflow_chain_of_custody.md`, `_shared/conditional_grilling.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`,
+`docs/ARCHITECTURE.md` §4.1–§4.2. Subagent: `discovery-architect`. Companion skill: `clarification-griller`. `<PLUGIN>` = installed plugin dir.
 
 > **Strict Current-State ("As-Is") Boundary:** `specs/discovery_architecture_and_inventory.md` documents **only the Current State ("As-Is")** of the legacy application or input problem domain. **Never** combine Future-State ("To-Be") 3NF ERDs, target SQL DDL, future-state component/flow diagrams, or Legacy-to-Target entity mappings into Stage 1 — all future-state architecture, target 3NF schemas, and legacy-to-target mappings belong exclusively in Stage 4A (`design/solution_design.md` and `design/data_migration_and_cutover.md`).
 
@@ -93,8 +93,12 @@ python3 <PLUGIN>/skills/01-discovery-and-grouping/scripts/validate_discovery_blu
 ```
 Fix the blueprint until it passes (required sections, current-state ERD & legacy inventory, both state representations, tables parse, no future-state 3NF/DDL/Legacy-to-Target mapping mixed into Stage 1, no stack names in the title, no filename dumps in §1).
 
-### 4. Gate 1 — context intake & capability group selection (interactive) / defaults (autonomous)
-Present the current-state discovery summary, the **§6.1 Business Capability Groupings (`GRP-01..N`)**, and the open workflow questions first; then confirm:
+### 4. Gate 1 — Conditional Decision-Tree Grilling (`clarification-griller`) & Context Intake
+Run `clarification_interview.py --project-root "<PROJECT_ROOT>" --action detect --stage gate1 --auto-bypass-if-clear` (`skills/clarification-griller/SKILL.md`, `_shared/conditional_grilling.md`):
+- **When `needsClarification == false` (Zero-Noise Bypass — e.g., complete BRD/PRD with zero open workflow/acronym gaps, or `retro-spec` with settled code evidence):** Do **not** grill the user; present the discovery summary, `§6.1` capability groupings, and concise Gate 1 confirmation directly.
+- **When `needsClarification == true` (Legacy Modernization in `standard`/`delta` mode OR BRD/Codebase with concrete gaps):** Run **Conditional Decision-Tree Grilling** in bounded **Frontier Rounds** (`2–4` independent root questions per round, each citing the exact file/section gap and providing an evidence-backed `➡️ Recommended` answer; use the native `ask_question` UI selector when available, and remind the user they can reply **`accept recommendations`** to fast-exit). Defer dependent child questions to Round 2 *only if* Round 1 answers open new sub-branches, and persist every settled answer (`DECISION-01..NN` + `capabilityDispositions`: `retire` | `parity` | `reimagine-enhance`) into `specs/clarification_decisions.json` via `clarification_interview.py --action record-round`!
+
+Present the current-state discovery summary, the **§6.1 Business Capability Groupings (`GRP-01..N`)**, and (when triggered) the active Frontier Round covering:
 1. **Business Capability Grouping & Selected Group(s) to take forward:**
    - Confirm whether capabilities should be grouped by **Business Functionality (`functional`)** or by **Business Unit / Department (`business-unit`)**.
    - Ask which **Capability Group(s)** the user wants to take forward for implementation:

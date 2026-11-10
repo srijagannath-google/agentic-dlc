@@ -11,7 +11,7 @@ Subagents: `discovery-architect` (author), `spec-judge` (judge) — kept separat
 
 ## Inputs
 `specs/discovery_architecture_and_inventory.md`, `specs/input_inventory.json`, `specs/target_stack.json`,
-Gate 1 answers / `ASSUMPTION-NN` list, `resources/policies_and_statutes/` (if any), `resources/design_references/` (if any).
+`specs/clarification_decisions.json` (resolved `DECISION-NN` & `capabilityDispositions`, if present), Gate 1 answers / `ASSUMPTION-NN` list, `resources/policies_and_statutes/` (if any), `resources/design_references/` (if any).
 
 ## Outputs
 | File | Author | Checked by |
@@ -44,8 +44,7 @@ Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITE
 - `## 5 Pillar 5 — Architecture` (`REQ-ARCH-NN`): clean architectural quality attributes (layered separation of concerns, contract-first OpenAPI 3.1 APIs, normalised 3NF relational domain model, ViewModel/DTO boundary with zero internal data leakage, `data-testid` contract, and OpenTelemetry observability — no legacy carry-over). If `specs/target_stack.json#decidedBy == "pending-stage-4a"`, keep Pillar 5 technology-agnostic so the human can select the concrete Future-State frontend, backend, and database technology when entering Stage 4A (`04-solution-architect`).
 - Every REQ id unique; every REQ in `specs/traceability_matrix.md` (REQ → capability → story → test category).
 
-**Derivation, not invention:** states/roles/rules come from the discovery blueprint and Gate 1 answers. If a
-gap remains, ask (interactive) or record `ASSUMPTION-NN` with the most restrictive reading (autonomous).
+**Derivation, not invention:** states/roles/rules and Legacy `REQ-ENH-*` capabilities come from the discovery blueprint, `specs/clarification_decisions.json` (`DECISION-NN` and `capabilityDispositions`: honor `retire` exclusions strictly per `SD-GRILL-02`, keep `parity` capabilities faithful, and author `REQ-ENH-*` from approved `reimagine-enhance` decisions), and Gate 1 answers. Never start Stage 2 while `clarification_decisions.json` has `openFrontier` items (`SD-GRILL-01`). If a gap remains, ask via `clarification-griller` (interactive) or record `ASSUMPTION-NN` with the most restrictive reading (autonomous).
 
 **Scenario differences**
 | | `SCENARIO_LEGACY_APP` | `SCENARIO_REQUIREMENTS_DOC` |

@@ -1,6 +1,6 @@
-# Agentic DLC Router & Gates (`agentic-dlc` v4.5)
+# Agentic DLC Router & Gates (`agentic-dlc` v4.6)
 
-You operate inside the **Agentic Development Lifecycle (DLC) harness v4.5** — "Think Big, Start Small, Move Fast":
+You operate inside the **Agentic Development Lifecycle (DLC) harness v4.6** — "Think Big, Start Small, Move Fast":
 the **Elephant** (deep-context discovery/spec author), the **Judge** (adversarial spec/architecture critic and
 closed-loop test runner), and the **Goldfish** (clean-context coder). Both **legacy modernisation**
 (`SCENARIO_LEGACY_APP`) and **greenfield requirements** (`SCENARIO_REQUIREMENTS_DOC`) are equal first-class paths.
@@ -25,7 +25,7 @@ references only when executing that stage).
 ```text
 <PROJECT_ROOT>/
 ├── resources/{inputs,design_references,policies_and_statutes,shared_services}/   # user-provided only (read-only)
-├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · input_inventory.json · dependency_dag.json
+├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · clarification_decisions.json · input_inventory.json · dependency_dag.json
 │              discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md
 │              application_eval_scorecard.{md,json}
 ├── backlog/   user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv
@@ -50,8 +50,8 @@ references only when executing that stage).
 
 | Stage | Skill | Subagent(s) | Key Deliverables | Verification Script & Gate |
 | :-- | :-- | :-- | :-- | :-- |
-| **0 Setup** | `00-setup-and-connection` | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `specLifecycleMode`, `reviewPlane`, `domainPacks`, `activeWave`) | `00/scripts/setup_project_connection.py` → **`gate_0_setup`** |
-| **1 Discovery** | `01-discovery-and-grouping` | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (**As-Is only**), `specs/target_stack.json`, opt `test/legacy_parity_goldens.jsonl` | `01/scripts/scan_input_sources.py` (`dependency_dag.json`), `validate_discovery_blueprint.py` → **`gate_1_discovery`** |
+| **0 Setup** | `00-setup-and-connection` | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `specLifecycleMode`, `reviewPlane`, `domainPacks`, `activeWave`; disambiguates `"reverse engineer"` → `retro-spec` vs `standard`) | `00/scripts/setup_project_connection.py` → **`gate_0_setup`** |
+| **1 Discovery** | `01-discovery-and-grouping`, `clarification-griller` | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (**As-Is only**), `specs/clarification_decisions.json` (conditional `grill-me` frontier rounds), `specs/target_stack.json`, opt `test/legacy_parity_goldens.jsonl` | `01/scripts/scan_input_sources.py`, `validate_discovery_blueprint.py`, `clarification_interview.py` → **`gate_1_discovery`** |
 | **2 Spec** | `02-spec-architect-and-judge` | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `traceability_matrix.md`, `application_eval_scorecard.{md,json}` | `02/scripts/lint_spec_structure.py`, `validate_spec_scorecard.py` (`≥ 90`) → **`gate_2_spec`** |
 | **3 Backlog** | `03-story-and-sprint-planner` | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | `03/scripts/alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) → **`gate_3_backlog`** |
 | **4A Design** | `04-solution-architect` | `solution-architect`, `architecture-critic` | 7 `design/*_architecture.md` + `architecture_design.md` + `solution_design.md` + `architecture_eval_scorecard.{md,json}` (+ `data_migration_and_cutover.md` if legacy) | `04/scripts/extract_contracts.py` (`openapi.yaml`, `schema.sql`, 7 SVGs/PNGs), `validate_architecture_scorecard.py` → **`gate_4_design_and_tests`** |
@@ -68,7 +68,7 @@ references only when executing that stage).
 
 1. **Scenario & As-Is / To-Be Separation (`docs/ARCHITECTURE.md` §1.3):** Stage 1 documents **only Current State ("As-Is")** (and uses Map-Reduce per-module discovery when `largeRepoMapReduceRecommended == true`). Stage 4A owns **all Future State ("To-Be")** (`design/*.md` is 100% target-state — zero local mock flags).
 2. **Workflow Chain of Custody (`_shared/workflow_chain_of_custody.md`):** Lifecycle states/transitions are extracted in Stage 1, frozen in `specs/application_spec.md §3.3` (`stateDiagram-v2` + table), and drive stories, tests, UI, and backend guards.
-3. **Ask, Don't Assume & Strict Acronym Provenance:** Unresolved workflows/rules/stack go to the next gate (or `ASSUMPTION-NN` in `--autonomous` mode). Never guess expansions for `unverifiedAcronyms` in `specs/input_inventory.json`; tag `[UNVERIFIED_ACRONYM]` and ask at Gate 1.
+3. **Conditional `grill-me` Decision-Tree Intake & Strict Acronym Provenance (`_shared/conditional_grilling.md`, `skills/clarification-griller`):** Run `clarification_interview.py --action detect` at Gate 1 and Stage 4A entry: auto-bypass (`CLEAR_AUTO_BYPASSED`) when BRD/code inputs settle all states, roles, and formulas; otherwise interview in bounded Frontier Rounds (`2–4` independent root questions with evidence citations, `➡️ Recommended` answers, and `accept recommendations` fast-exit) to resolve Legacy capability dispositions (`retire` vs. `parity` vs. `reimagine-enhance` `REQ-ENH-*`), open `§3.1` workflow gaps, and `[UNVERIFIED_ACRONYM]` tokens into `specs/clarification_decisions.json` (`DECISION-NN`; `ASSUMPTION-NN` in `--autonomous` mode).
 4. **Pure Target `src/` & Disposable Strangler Boundary ACL:** Never carry legacy table/form names or fixed-width adapters into `src/`. When phased strangler coexistence (`--wave GRP-ID`) is chosen in `target_stack.json#coexistenceStrategy`, isolate disposable CDC/routing adapters strictly under `deploy/coexistence/` with a retirement wave.
 5. **Zero UI Leakage, Google Cloud UI Design & `A2UI v0.9`:** Apply `_shared/zero_leak.md`, `_shared/ux_guardrails.md`, and `_shared/google_cloud_ui_design.md` (`Operate | Read | Persuade | Express`, `:root`/`.dark` `--g-*` M3 tokens, ShadCN/Radix, unified surfaces, `tabular-nums`, 4-state coverage, or `references/gemini-enterprise-a2ui.md` when `frontend.kind == "gemini-enterprise-a2ui"`).
 6. **Contract-First Test IDs, Differential Parity & Guardrail Pragmas:** Declare `data-testid` selectors in `test/test_cases.json` first, derive `TC-PARITY-*` from `test/legacy_parity_goldens.jsonl` when legacy I/O fixtures exist, use `commands.reset` for hermetic test isolation, and annotate `src/` guards/formulas with `@dlc-guard:<From>-><To>` and `@dlc-rule:BR-NN`.

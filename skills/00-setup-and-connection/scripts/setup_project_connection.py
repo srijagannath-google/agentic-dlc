@@ -413,7 +413,8 @@ def main() -> int:
             "gate_0_setup",
             summary=(
                 f"Stage 0 setup saved (inputSource={args.input_kind}, adoProject={ado_proj or 'N/A'}, "
-                f"repo={args.repo_name or repo_url or args.local_path or 'resources/inputs'}, alm={alm}). "
+                f"repo={args.repo_name or repo_url or args.local_path or 'resources/inputs'}, alm={alm}, "
+                f"ceremonyTrack={args.ceremony_track}, specLifecycleMode={args.spec_mode}). "
                 f"Ask the user for Gate 0 confirmation before running Stage 1!"
             ),
             force_reset=True,

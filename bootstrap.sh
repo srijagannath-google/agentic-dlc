@@ -129,6 +129,7 @@ rm -rf "${GEMINI_CONFIG}/skills/00-setup-and-connection" \
        "${GEMINI_CONFIG}/skills/08-container-and-gdc-packager" \
        "${GEMINI_CONFIG}/skills/09-gdc-fleet-deployer-and-observability" \
        "${GEMINI_CONFIG}/skills/10-drift-and-evolution" \
+       "${GEMINI_CONFIG}/skills/clarification-griller" \
        "${GEMINI_CONFIG}/skills/google-cloud-ui-design"
 
 # 3. Install plugin into ~/.gemini/config/plugins/agentic-dlc

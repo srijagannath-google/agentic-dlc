@@ -56,8 +56,8 @@ description: "Stage 4A of the Agentic DLC v4 (parallel with 05-test-plan-designe
 
 ## Procedure
 
-### 0. Confirm Future-State ("To-Be") Technology Stack & Modernization Mode (`specs/target_stack.json`)
-- If `decidedBy != "user"` or any of `frontend.kind`, `backend.kind`, or `database.kind` is `"tbd"` in interactive mode, pause and ask the human what Future-State frontend, backend, database, deployment stack, and (for structured OOP brownfield repos where `specs/input_inventory.json#runtimeReadinessSignals.recommendedModernizationMode == "in-place-upgrade"`) `modernizationMode` (`"clean-room-rebuild"` default vs. `"in-place-upgrade"`) to use. Record `"decidedBy": "user"` and `"modernizationMode"` in `specs/target_stack.json`. Never downgrade `specs/target_stack.json` to `static-html` + `python-stdlib-http` for local testing.
+### 0. Conditional Technical Grilling (`clarification-griller --stage stage4a`) & Target Stack Confirmation
+- Run `clarification_interview.py --project-root "<PROJECT_ROOT>" --action detect --stage stage4a` (`_shared/conditional_grilling.md`). If `needsClarification == false` (`decidedBy == "user"` and stack settled), skip grilling completely. If `needsClarification == true` (`decidedBy != "user"` or any of `frontend.kind`, `backend.kind`, or `database.kind` is `"tbd"` in interactive mode), present a concise Frontier Round (`❓ Q1..Qn` with `➡️ Recommended` answers grounded in `specs/input_inventory.json#runtimeReadinessSignals` and `specs/clarification_decisions.json`), record `"decidedBy": "user"` and `"modernizationMode"` in `specs/target_stack.json`, and persist `DECISION-NN` via `clarification_interview.py --action record-round`. Never downgrade `specs/target_stack.json` to `static-html` + `python-stdlib-http` for local testing.
 
 ### 1. Author the 7 Perspective Artifacts + `design/architecture_design.md` Index
 Using the templates in `skills/04-solution-architect/resources/*_template.md`:

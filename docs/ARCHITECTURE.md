@@ -1,4 +1,4 @@
-# agentic-dlc v4.5 — Architecture & Artefact Contracts
+# agentic-dlc v4.6 — Architecture & Artefact Contracts
 
 This document is the **single source of truth** for how v4 differs from v3 and for the file/JSON
 contracts that every skill, agent and script must honour. Anyone (human or agent) editing this
@@ -46,6 +46,7 @@ agentic-dlc/
 ├── _shared/                             # referenced by every skill & agent (never pasted)
 │   ├── project_root.md                  # PROJECT_ROOT resolution rule (short)
 │   ├── gate_matrix.md                   # Adaptive ceremony tracks (quick/standard/regulated) & gate decision briefs
+│   ├── conditional_grilling.md          # Conditional grill-me decision-tree frontier rounds & capability dispositions
 │   ├── sdd_governance_and_alm.md        # Living SDD lifecycle (standard/delta/retro-spec), thin-pointer ALM & Git PR review
 │   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (codmod-assessment, DB migration, Spanner, FinOps, Apigee)
 │   ├── ux_guardrails.md                 # the generic UX guardrails (single canonical copy)
@@ -57,6 +58,7 @@ agentic-dlc/
 ├── schemas/                             # JSON schemas / canonical shapes for every machine artefact (schemaVersion: "4.0")
 │   ├── project_setup.schema.json        # Stage 0 connection, ceremonyTrack, specLifecycleMode, reviewPlane, domainPacks, activeWave
 │   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger + approvers (bot-excluded) + decisionBriefPath
+│   ├── clarification_decisions.schema.json # Conditional grill-me decision ledger (DECISION-NN + capabilityDispositions)
 │   ├── input_inventory.schema.json      # Stage 1 inventory + runtimeReadinessSignals + dependencyDagSummary + unverifiedAcronyms
 │   ├── target_stack.schema.json         # Stack + modernizationMode + commands.reset + coexistenceStrategy + aiSurface (A2UI v0.9)
 │   ├── spec_rubric.json                 # Stage 2 100-pt rubric the LLM spec-judge scores against
