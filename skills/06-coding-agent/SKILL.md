@@ -125,6 +125,10 @@ Runs `install` → `build` → `start` → polls `healthcheck` → optional `tes
 **Scenario differences:** none in this stage by design — the coder sees only derived artefacts. (Legacy
 projects simply have no legacy names anywhere in `src/`; `TC-UI-LEAK-*` checks that.)
 
+- **Incremental Small-Slice Execution, Unit-Test Co-Location & 3-Tier Spec Deviation Protocol (`_shared/sdd_governance_and_alm.md`):**
+  - Implement stories in `dependsOnStories` topological order (contracts/schema → backend domain/rule services → UI views), co-locating unit tests (`commands.test` / `scopeBounds.unitTestTargets`) alongside implementation in every slice rather than deferring unit tests to Stage 6.
+  - **3-Tier Spec Deviation Gate:** If implementing a slice or addressing review feedback reveals that an endpoint, table, `§3.3` transition, or `§3.4` `BR-NN` rule must diverge from `specs/application_spec.md` or `src/contracts/openapi.yaml`, **HALT BEFORE MUTATING `src/`**, surface a `⚠️ Spec Deviation Detected` challenge naming the conflicting Spec section, wait for human confirmation, and atomically update `specs/application_spec.md` + `design/solution_design.md` + `src/` + tests (`--refresh-from-stage`).
+
 ## Do not
 - Start Stage 5 before `gate_4_design_and_tests` is `APPROVED_BY_USER`, or auto-start Stage 6 before `gate_5_build` is `APPROVED_BY_USER`.
 - Read raw inputs; reproduce legacy screens, naming or fixed-width/dual-run adapters.

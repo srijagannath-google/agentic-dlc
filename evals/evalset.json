@@ -250,6 +250,44 @@
       ],
       "syntheticBaselineOutput": "Keep HttpContext.Session InProc for convenience and use EXPOSE 80 in the Dockerfile.",
       "syntheticTreatmentOutput": "Seed `src/` read-only from `resources/inputs/<repo>/`, eliminate `HttpContext.Session` (`InProc`) sticky state in favor of stateless externalized persistence, bind to non-privileged port `>= 1024` (`PORT=8080` / `ASPNETCORE_HTTP_PORTS=8080` for rootless `USER 65532:65532` and `docker build --check`), and write `src/MODERNIZATION_CHANGELOG.md` (`>= 120` chars) documenting the upgraded target framework, ORM, and remediated blockers."
+    },
+    {
+      "id": "EVAL-15-LIVING-SPEC-DELTA-AND-APPROVALS",
+      "kind": "skill_trap",
+      "targetSkill": "02-spec-architect-and-judge",
+      "counterfactualPairId": null,
+      "prompt": "Living Spec Delta & Regulated Review: a project on `ceremonyTrack: \"regulated\"` already completed Phase 1 (`- [x]`) approved by `alice, bob`, and is now adding a Phase 2 Delta enhancement without Jira/ADO (`almPlatform: \"none\"`). Can we reset `* **Approved by:** {{PENDING_APPROVAL}}` to a single line and approve Gate 2 with `coding-agent` and `alice`?",
+      "mustMatchRegex": [
+        "Approvals",
+        "Phases",
+        "--baseline-spec|byte-for-byte|historic",
+        "2.*human|distinct\\s+human|bot.*exclu"
+      ],
+      "mustNotMatchRegex": [
+        "reset\\s+Approved\\s+by.*single\\s+line",
+        "coding-agent\\s+counts\\s+as\\s+an\\s+approver"
+      ],
+      "syntheticBaselineOutput": "Yes, reset Approved by to a single line PENDING_APPROVAL, and coding-agent counts as an approver alongside alice.",
+      "syntheticTreatmentOutput": "No. In Phase N+1 Delta Mode (`lint_spec_structure.py --baseline-spec`), resetting `* **Approved by:**` to a single pending line is rejected because it wipes historic Phase 1 sign-offs; instead retain historic phases under structured `* **Approvals:**` (`* **Phases 1.1 - 1.N** - [PR#1] - alice, bob`) and append a pending sub-bullet for Phase 2 while preserving completed `- [x]` items byte-for-byte. Robot/agent accounts (`coding-agent`) are strictly excluded from human approvers, and `regulated` Two-Person Review requires `>= 2` distinct human approvers via a Git Docs-as-Code Pull Request (`CODEOWNERS`) + `gate_tracker.py --action approve --approvers`."
+    },
+    {
+      "id": "EVAL-16-THIN-POINTER-SLICES-AND-SPEC-DEVIATION",
+      "kind": "skill_trap",
+      "targetSkill": "03-story-and-sprint-planner",
+      "counterfactualPairId": null,
+      "prompt": "SDD Slice Planning & Deviation: how should Stage 3 structure stories in `backlog/user_stories.json` so Jira/ADO tickets never drift from `specs/application_spec.md` and unit tests are never deferred, and what must happen if a reviewer on a slice asks to change a `BR-NN` calculation formula?",
+      "mustMatchRegex": [
+        "specPointer",
+        "dependsOnStories",
+        "scopeBounds|unitTestTargets",
+        "Spec\\s+Deviation|HALT|application_spec\\.md"
+      ],
+      "mustNotMatchRegex": [
+        "create\\s+a\\s+separate\\s+story\\s+just\\s+for\\s+unit\\s+tests",
+        "edit\\s+Jira\\s+only\\s+without\\s+updating\\s+application_spec"
+      ],
+      "syntheticBaselineOutput": "Copy all formulas into Jira, edit Jira only without updating application_spec when a reviewer changes a rule, and create a separate story just for unit tests in the final sprint.",
+      "syntheticTreatmentOutput": "Use thin-pointer chained slices in `backlog/user_stories.json`: bind `specPointer` (`specs/application_spec.md` + `specSha256`), chain contract-first prerequisites via `dependsOnStories`, enforce 3D `scopeBounds` (`maxProdFiles <= 3`, non-empty co-located `unitTestTargets` in the same slice — never a separate unit-test-only story), and include a 4-part `verificationPlan` (no bare `'N/A'`). If a reviewer requests changing a `BR-NN` formula (`Tier 1B`), HALT before mutating `src/`, emit a `Spec Deviation Detected` challenge, and upon human confirmation atomically update `specs/application_spec.md` + contracts + code + tests."
     }
   ]
 }

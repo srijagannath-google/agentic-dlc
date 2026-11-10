@@ -35,7 +35,20 @@
           "approvedAtUtc": { "type": ["string", "null"] },
           "userResponse": { "type": ["string", "null"] },
           "summary": { "type": ["string", "null"] },
-          "decisionBriefPath": { "type": ["string", "null"] }
+          "decisionBriefPath": { "type": ["string", "null"] },
+          "approvers": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Sanitized human approver usernames/identities (bot and agent accounts strictly excluded; >= 2 distinct humans required on 'regulated' Two-Person Review gates when specified)."
+          },
+          "originalAuthor": { "type": ["string", "null"] },
+          "pairCollaborators": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Human collaborators or reviewers who provided substantive architectural or implementation steering (never mutually exclusive with approvers)."
+          },
+          "manuallyVerifiedBy": { "type": ["string", "null"] },
+          "artifactSha256": { "type": ["string", "null"] }
         }
       }
     }

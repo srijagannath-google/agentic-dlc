@@ -7,7 +7,7 @@ description: "Stage 7 (Gate 7 Pre-Deployment Release Alignment & Day-2 Evolution
 
 During Stage 5 (Build) and Stage 6 (Closed-Loop Evaluation & Self-Healing), `src/` undergoes iterative fixes. **Before a single container image or GDC manifest is packaged (Stage 8) or deployed (Stage 9)**, Stage 7 verifies that `src/` remains 100% aligned with `specs/application_spec.md`, `src/contracts/openapi.yaml`, `src/db/schema.sql`, and `test/test_cases.json`. In Day-2 operations, this same stage governs brownfield hotfixes, requirement changes, and subsequent Strangler capability waves (`GRP-02..N`).
 
-Read first: `docs/ARCHITECTURE.md`, `_shared/workflow_chain_of_custody.md`, `_shared/gate_matrix.md`.
+Read first: `docs/ARCHITECTURE.md`, `_shared/sdd_governance_and_alm.md`, `_shared/workflow_chain_of_custody.md`, `_shared/gate_matrix.md`.
 
 ## When to Invoke
 
@@ -36,7 +36,7 @@ When `test/drift_report.json` reports `DRIFT_DETECTED`:
 - **Unintended Code Regression:** Have `coding-agent` restore conformance to `specs/application_spec.md`, `src/contracts/openapi.yaml`, and `src/db/schema.sql`.
 - **Intentional Day-2 Evolution / Requirement Change:**
   1. Author an **Architecture Decision Record** in `design/adrs/ADR-NNN-<slug>.md` using `resources/adr_template.md` (zero internal harness script/skill names in deliverables).
-  2. Update `specs/application_spec.md` (if business rules, states, or roles changed) and re-validate Gate 2 (`spec-judge` + `validate_spec_scorecard.py`).
+  2. Update `specs/application_spec.md` in **Living Spec Phase `N+1` Delta Mode** (if business rules, states, or roles changed), preserving prior completed items and historic `* **Approvals:**` sub-bullets (`lint_spec_structure.py --baseline-spec <prior_spec>`), and re-validate Gate 2 (`spec-judge` + `validate_spec_scorecard.py`). Compact completed stories via `alm_jira_ado_bridge.py --action compact-completed` to prevent context bloat across waves.
   3. Update `design/solution_design.md` (if API paths or 3NF tables changed) and refresh downstream contracts, test skeletons (preserving authored steps), and evaluations in one command:
      ```bash
      python3 <PLUGIN>/scripts/run_agentic_dlc_pipeline.py \

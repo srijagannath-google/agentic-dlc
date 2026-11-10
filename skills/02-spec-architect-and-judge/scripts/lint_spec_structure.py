@@ -76,6 +76,9 @@ def view_from_role_tab(rv: dict) -> bool:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     dlc.add_project_root_arg(ap)
+    ap.add_argument("--check-codebase", action="store_true", help="Verify cited repository/source file paths exist under project root (SD-REF-01)")
+    ap.add_argument("--strict-approvals", action="store_true", help="Require resolved human approvals in spec header (excludes bots; enforces >=2 humans on regulated track)")
+    ap.add_argument("--baseline-spec", default=None, help="Optional prior living-spec file to verify byte-for-byte delta preservation of completed items and historic approvals")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
@@ -210,6 +213,33 @@ def main() -> int:
     # Zero internal harness workings leak check
     fails.extend(dlc.scan_deliverable_internal_leaks(root, ["specs/application_spec.md", "specs/traceability_matrix.md"]))
 
+    # SDD Conciseness Budget (SD-NARR-01), Referential Codebase Check (SD-REF-01), Phased Approvals & Delta Preservation
+    track = dlc.active_ceremony_track(root)
+    conc_errs, conc_warns, conc_meta = dlc.audit_spec_conciseness_and_refs(
+        spec, root, check_codebase=args.check_codebase
+    )
+    fails.extend(conc_errs)
+    warns.extend(conc_warns)
+
+    app_errs, app_warns, app_meta = dlc.validate_spec_approvals_header(
+        spec, ceremony_track=track, strict=args.strict_approvals
+    )
+    fails.extend(app_errs)
+    warns.extend(app_warns)
+
+    if args.baseline_spec:
+        base_p = Path(args.baseline_spec).expanduser()
+        if not base_p.is_file():
+            fails.append(f"--baseline-spec file does not exist: {base_p}")
+        else:
+            fails.extend(dlc.verify_delta_preservation(dlc.read_text(base_p), spec))
+
+    br_vectors = {
+        b["id"]: b["parsedExamples"]
+        for b in brs
+        if b.get("id") and b.get("parsedExamples")
+    }
+
     # Index for downstream scripts
     uses_codes = any(UPPER_CODE_RE.match(s) for s in sm.states)
     index = {
@@ -218,6 +248,7 @@ def main() -> int:
         "inputScenario": scenario,
         "reqIds": all_ids,
         "brIds": br_ids,
+        "brVectors": br_vectors,
         "states": sm.states,
         "initialStates": sm.initial,
         "terminalStates": sm.terminal,
@@ -226,6 +257,10 @@ def main() -> int:
         "roles": roles,
         "views": views,
         "usesEnumCodes": uses_codes,
+        "sddGovernance": {
+            **conc_meta,
+            **app_meta,
+        },
     }
     dlc.write_json(root / "specs" / ".spec_index.json", index)
 

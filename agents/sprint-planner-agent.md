@@ -5,7 +5,7 @@ description: "Unified backlog & sprint-planning subagent for Stage 3. Invoke ONL
 
 # User Story & Sprint Planner (`sprint-planner-agent`)
 
-Read first: `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`,
+Read first: `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`,
 `_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`, and
 `skills/03-story-and-sprint-planner/SKILL.md` with its two templates.
 
@@ -34,7 +34,7 @@ Read first: `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`,
    - `EDGE / BOUNDARY` at the exact thresholds in §3.4 (value, value−1 unit, value+1 unit), empty/max
      payloads, duplicate submission, concurrent edit.
    Each story records `capabilityGroup` (`GRP-01..N` from discovery §6.1, or `SHARED` for cross-cutting `US-TECH-*` enablers), `capabilityGroupName`, `requirementRefs`, `businessRuleRefs`, `roles`, `workflowTransitions`
-   (`FROM->TO` strings copied from §3.3) and, for legacy projects, `legacyArtifactsReplaced`.
+   (`FROM->TO` strings copied from §3.3), `dependsOnStories` (contract-first blocker DAG: schema/API contract slice → backend service slice → UI slice), `scopeBounds` (`maxProdFiles <= 3`, `maxImplLoc <= 400`, co-located `unitTestTargets`, zero compound `"and"` titles), `verificationPlan` (4-part runnable check or `"N/A — <specific rationale>"`, never bare `"N/A"`), optional PMO `storyPoints` (`1..8`), and, for legacy projects, `legacyArtifactsReplaced`. Keep `specs/application_spec.md` as the single source of truth via `specPointer` rather than duplicating drifting prose formulas.
 4. **Group by Capability Group (`GRP-01..N`), enforce shared/prerequisite ordering, and align sprints to `specs/target_stack.json#selectedCapabilityGroups`:**
    - **Shared Foundation & Prerequisite Groups (`isSharedFoundation` / `dependsOnGroups`):** always schedule `SHARED` technical foundation stories (`US-TECH-*`), any `isSharedFoundation: true` group (typically `GRP-01`), and any prerequisite group (`dependsOnGroups`) of a selected group into **`Sprint 1`** so prerequisites are built first before dependent groups in `Sprint 2..N`.
    - **When specific Capability Group(s) are selected (e.g. `["GRP-02"]` which depends on `GRP-01`):** automatically include `GRP-01` and `SHARED` in `Sprint 1`, schedule `GRP-02` in `Sprint 2`, and place stories belonging to unselected capability groups (e.g. `GRP-03`) into `Product Backlog` (`status: "To Do"`).

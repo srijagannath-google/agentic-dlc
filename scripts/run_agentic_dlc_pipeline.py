@@ -172,6 +172,8 @@ def main() -> int:
     ap.add_argument("--refresh-from-stage", type=int, default=None, choices=range(1, 11),
                     help="Re-run contract extraction, test-case derivation (preserving authored steps), and downstream hash checks starting at stage N")
     ap.add_argument("--wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01) to pin selectedCapabilityGroups for phased delivery")
+    ap.add_argument("--mode", default=None, choices=list(dlc.SPEC_LIFECYCLE_MODES),
+                    help="SDD lifecycle mode: standard (default), delta (Phase N+1 living-spec append), or retro-spec (stops cleanly after Stage 2 with Zero Backlog Ticket Creation Guarantee)")
     ap.add_argument("--autonomous", action="store_true", help="Explicitly run in autonomous mode (sets DLC_AUTONOMOUS=1, records autonomous gate ledger defaults, and pre-approves Gate 3)")
     ap.add_argument("--platform", default=None, choices=["jira", "ado", "both", "none"], help="ALM platform for the Stage 3 bridge (default: target_stack.json#almPlatform)")
     ap.add_argument("--browser", default="auto", choices=["auto", "playwright", "chrome", "none"])
@@ -190,6 +192,7 @@ def main() -> int:
     if dlc.is_installer_dir(root) or root == PLUGIN_ROOT:
         raise dlc.GateFailure(f"{root} is the plugin directory, not a project root (see _shared/project_root.md).")
 
+    ps_p = root / "specs" / "project_setup.json"
     if args.wave:
         ts_p = root / "specs" / "target_stack.json"
         if ts_p.is_file():
@@ -197,12 +200,28 @@ def main() -> int:
             if isinstance(ts_obj, dict):
                 ts_obj["selectedCapabilityGroups"] = [args.wave]
                 dlc.write_json(ts_p, ts_obj)
-        ps_p = root / "specs" / "project_setup.json"
         if ps_p.is_file():
             ps_obj = dlc.read_json(ps_p)
             if isinstance(ps_obj, dict):
                 ps_obj["activeWave"] = args.wave
                 dlc.write_json(ps_p, ps_obj)
+
+    effective_mode = args.mode
+    if ps_p.is_file():
+        ps_obj = dlc.read_json(ps_p)
+        if isinstance(ps_obj, dict):
+            if effective_mode is None:
+                effective_mode = str(ps_obj.get("specLifecycleMode") or "standard")
+            elif ps_obj.get("specLifecycleMode") != effective_mode:
+                ps_obj["specLifecycleMode"] = effective_mode
+                dlc.write_json(ps_p, ps_obj)
+    effective_mode = effective_mode or "standard"
+    if effective_mode == "retro-spec" and args.to_stage > 2:
+        dlc.info(
+            "specLifecycleMode='retro-spec' active — enforcing Zero Backlog / Zero Child Ticket Creation Guarantee "
+            "(capping pipeline at Stage 2 after living specification & scorecard verification)."
+        )
+        args.to_stage = 2
     child_env = dict(os.environ)
     if args.autonomous:
         os.environ["DLC_AUTONOMOUS"] = "1"

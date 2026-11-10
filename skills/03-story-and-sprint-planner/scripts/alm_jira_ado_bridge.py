@@ -692,6 +692,19 @@ def enrich_story_traceability(root: Path, stories: list[dict[str, Any]],
                 if prev_dep.get(carry):
                     tr_obj["gdcDeployment"][carry] = prev_dep[carry]
         s["traceability"] = tr_obj
+        spec_file = root / "specs" / "application_spec.md"
+        if spec_file.is_file():
+            s["specPointer"] = {
+                "specPath": "specs/application_spec.md",
+                "specSha256": dlc.sha256_file(spec_file),
+                "sectionAnchors": sorted(dict.fromkeys(s_reqs + s_brs)),
+            }
+        if story_status(s) == "Done" and not s.get("compactedContext"):
+            req_summary = ", ".join(s_reqs[:4]) or "approved specification"
+            s["compactedContext"] = (
+                f"Completed `{sid}` ({s.get('title', '').strip()}) satisfying {req_summary}; "
+                f"verified by {len(tc_summaries)} linked test case(s)."
+            )
     return project_wide
 
 
@@ -1193,7 +1206,8 @@ def persist_stories_metadata(root: Path, stories: list[dict[str, Any]], determin
                 continue
             src = by_id.get(orig.get("id"), {})
             for k in ("sprint", "capabilityGroup", "capabilityGroupName", "status", "statusReason",
-                      "statusUpdatedAtUtc", "jiraKey", "adoWorkItemId", "traceability"):
+                      "statusUpdatedAtUtc", "jiraKey", "adoWorkItemId", "traceability",
+                      "dependsOnStories", "specPointer", "scopeBounds", "verificationPlan", "compactedContext"):
                 if k in src:
                     orig[k] = src[k]
         dlc.write_json(stories_path, data)
@@ -1289,10 +1303,37 @@ def audit_backlog(root: Path, stories: list[dict[str, Any]], allow_partial_cover
             covered_brs.setdefault(b, []).append(sid)
 
         sp = story_points(s)
+        sb = s.get("scopeBounds") if isinstance(s.get("scopeBounds"), dict) else None
         if sp is None:
-            failures.append(f"{sid}: storyPoints missing or non-numeric (must be 1..{MAX_STORY_POINTS}).")
+            if sb is not None:
+                sp = 3
+            else:
+                failures.append(f"{sid}: storyPoints missing or non-numeric (provide 1..{MAX_STORY_POINTS} or SDD 'scopeBounds').")
         elif sp > MAX_STORY_POINTS:
             failures.append(f"{sid}: {sp:g} SP exceeds the {MAX_STORY_POINTS} SP maximum — split the story.")
+
+        # SDD 3D Small-Slice Bounds & Co-Located Unit Test check (when scopeBounds or verificationPlan is declared)
+        if sb is not None:
+            mpf = sb.get("maxProdFiles")
+            if isinstance(mpf, int) and mpf > 3:
+                warnings.append(f"{sid}: scopeBounds.maxProdFiles={mpf} exceeds recommended 3-file small-slice target.")
+            ut = sb.get("unitTestTargets")
+            if isinstance(ut, list) and len(ut) == 0:
+                failures.append(f"{sid}: scopeBounds.unitTestTargets cannot be empty — unit tests must be co-located in the same slice.")
+            if re.search(r"\band\b.*\band\b", str(s.get("title") or ""), re.IGNORECASE):
+                warnings.append(f"{sid}: compound 'and' title detected — prefer one coherent deliverable per slice.")
+
+        vp = s.get("verificationPlan") if isinstance(s.get("verificationPlan"), dict) else None
+        if vp is not None:
+            surf = str(vp.get("surface") or "").strip()
+            nr_rat = str(vp.get("nonRunnableRationale") or "").strip()
+            exec_cmd = str(vp.get("executionCommand") or "").strip()
+            if surf == "non-runnable-contract":
+                if not nr_rat or nr_rat.upper() == "N/A" or ("—" not in nr_rat and "-" not in nr_rat and len(nr_rat) < 12):
+                    failures.append(f"{sid}: verificationPlan for non-runnable-contract must state 'N/A — <specific rationale>' (bare 'N/A' forbidden).")
+            else:
+                if exec_cmd.upper() == "N/A" or not exec_cmd:
+                    failures.append(f"{sid}: runnable verificationPlan (surface='{surf or 'ui'}') requires a non-empty executionCommand (bare 'N/A' forbidden).")
 
         acs = story_acs(s)
         if len(acs) < MIN_ACS_PER_STORY:
@@ -1330,6 +1371,42 @@ def audit_backlog(root: Path, stories: list[dict[str, Any]], allow_partial_cover
 
     if not sprints_seen:
         failures.append("No story is assigned to a 'Sprint N' — at least one Release 1 sprint is required.")
+
+    # Validate explicit story-level blocker DAG (`dependsOnStories`)
+    all_story_ids = {str(s.get("id") or "").strip() for s in stories if s.get("id")}
+    story_deps_map: dict[str, list[str]] = {}
+    for s in stories:
+        sid = str(s.get("id") or "").strip()
+        deps = [str(d).strip() for d in (s.get("dependsOnStories") or []) if str(d).strip()]
+        if not sid or not deps:
+            continue
+        story_deps_map[sid] = deps
+        for dep in deps:
+            if dep == sid:
+                failures.append(f"{sid}: dependsOnStories cannot reference itself.")
+            elif dep not in all_story_ids:
+                failures.append(f"{sid}: dependsOnStories references unknown story '{dep}'.")
+    # Cycle check over story_deps_map
+    visiting: set[str] = set()
+    visited_ok: set[str] = set()
+
+    def _has_dep_cycle(node: str) -> bool:
+        if node in visiting:
+            return True
+        if node in visited_ok:
+            return False
+        visiting.add(node)
+        for nxt in story_deps_map.get(node, []):
+            if nxt in all_story_ids and _has_dep_cycle(nxt):
+                return True
+        visiting.remove(node)
+        visited_ok.add(node)
+        return False
+
+    for sid_node in sorted(story_deps_map):
+        if _has_dep_cycle(sid_node):
+            failures.append(f"{sid_node}: cycle detected in dependsOnStories blocker graph.")
+            break
 
     # Verify prerequisite group ordering (dependsOnGroups & isSharedFoundation)
     group_defs = dlc.capability_group_definitions(root)
@@ -1609,7 +1686,7 @@ def traceability_bullet_lines(story: dict[str, Any]) -> list[str]:
         for t in (tr.get("testCases") or []) if isinstance(t, dict) and t.get("id")
     ) or "Pending Stage 4B test derivation"
     bugs = ", ".join(tr.get("defectRefs") or []) or "None (0 defects)"
-    return [
+    out_lines = [
         f"Capability Group: {cg_label}",
         f"Legacy / Input Source Artifacts: {legacy}",
         f"Requirements & Business Rules: {reqs} | Rules: {brs} | Workflow Transitions: {trans}",
@@ -1618,6 +1695,28 @@ def traceability_bullet_lines(story: dict[str, Any]) -> list[str]:
         f"Shift-Left Test Cases & Stage 6 Status: {tcs}",
         f"Linked Stage 6 Defects (Bugs): {bugs}",
     ]
+    sp_ptr = story.get("specPointer")
+    if isinstance(sp_ptr, dict) and sp_ptr.get("specPath"):
+        sha_short = str(sp_ptr.get("specSha256") or "")[:12] or "n/a"
+        anchors = ", ".join(sp_ptr.get("sectionAnchors") or []) or "n/a"
+        out_lines.insert(1, f"Authoritative Spec Pointer (Single Source of Truth): {sp_ptr['specPath']} (sha256: {sha_short}, anchors: {anchors})")
+    deps = [str(d) for d in (story.get("dependsOnStories") or []) if str(d).strip()]
+    if deps:
+        out_lines.append(f"Predecessor / Blocker Slices: {', '.join(deps)}")
+    sb = story.get("scopeBounds")
+    if isinstance(sb, dict):
+        ut = ", ".join(sb.get("unitTestTargets") or []) or "co-located"
+        out_lines.append(f"3D Slice Bounds: <= {sb.get('maxProdFiles', 3)} prod files, <= {sb.get('maxImplLoc', 400)} LOC | Unit Tests: {ut}")
+    vp = story.get("verificationPlan")
+    if isinstance(vp, dict):
+        if vp.get("surface") == "non-runnable-contract":
+            out_lines.append(f"Verification Contract: {vp.get('nonRunnableRationale') or 'N/A — contract slice'}")
+        elif vp.get("executionCommand"):
+            out_lines.append(
+                f"4-Part Verification: cmd=`{vp.get('executionCommand')}` | target={vp.get('targetUrlOrSurface') or 'local'} "
+                f"| expected={vp.get('stepsAndExpectedOutcome') or 'pass'}"
+            )
+    return out_lines
 
 
 # ======================================================================================
@@ -2839,7 +2938,8 @@ def build_parser() -> argparse.ArgumentParser:
                     "(or not connected for test-connection), 2 live sync had errors (see the state file's liveSyncErrors).")
     p.add_argument("--action", default="sync-stories",
                    choices=["test-connection", "audit", "sync-stories", "sync-sprints", "set-approval", "export-csv",
-                            "transition-stories", "sync-status-from-eval", "sync-deployment-status", "select-groups"])
+                            "transition-stories", "sync-status-from-eval", "sync-deployment-status", "select-groups",
+                            "compact-completed"])
     p.add_argument("--platform", default=None, choices=["jira", "ado", "azure-devops", "both", "none"],
                    help="Default: specs/target_stack.json#almPlatform, else none.")
     dlc.add_project_root_arg(p)
@@ -3477,6 +3577,28 @@ def main() -> int:
         ctx.finalize_local_artifacts(write_csv=True, update_md=False)
         print(f"[dlc] Jira CSV export -> {ctx.out_dir / 'jira_import.csv'}" + ("" if ctx.audit["passed"] else "  (audit FAILED — fix before syncing)"))
         return 0 if ctx.audit["passed"] else 1
+
+    if args.action == "compact-completed":
+        ctx.enrich()
+        compacted_ids: list[str] = []
+        for s in ctx.stories:
+            if story_status(s) == "Done":
+                compacted_ids.append(str(s["id"]))
+        stories_md = root / "backlog" / "user_stories.md"
+        if stories_md.is_file() and compacted_ids:
+            md_txt = dlc.read_text(stories_md)
+            orig_md = md_txt
+            for s in ctx.stories:
+                sid = str(s.get("id") or "")
+                c_ctx = str(s.get("compactedContext") or "").strip()
+                if sid in compacted_ids and c_ctx and f"**Compacted Context ({sid}):**" not in md_txt:
+                    hdr_re = re.compile(rf"(^###?\s+[^\n]*\b{re.escape(sid)}\b[^\n]*\n)", re.MULTILINE)
+                    md_txt = hdr_re.sub(rf"\1- **Compacted Context ({sid}):** {c_ctx}\n", md_txt, count=1)
+            if md_txt != orig_md:
+                dlc.write_text(stories_md, md_txt)
+        ctx.finalize_local_artifacts(write_csv=False, update_md=True)
+        print(json.dumps({"action": "compact-completed", "compactedCount": len(compacted_ids), "compactedStoryIds": compacted_ids}, indent=2))
+        return 0
 
     if args.action == "sync-deployment-status":
         return action_sync_deployment_status(ctx)

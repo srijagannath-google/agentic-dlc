@@ -398,6 +398,26 @@ def main() -> int:
     elif backend_kind != "none":
         dlc.warn("backend.kind != none but no OpenAPI operations in design/.contracts_index.json — no TC-API-* derived.")
 
+    # Structured Business-Rule Decision Vectors (`TC-EDGE-BR-*`) from `specs/application_spec.md` §3.4 `Examples` column
+    for br in dlc.parse_business_rules(spec):
+        rid = str(br.get("id") or "").strip()
+        vectors = br.get("parsedExamples") or []
+        for v_idx, vec in enumerate(vectors, 1):
+            inp_str = vec.get("input", "")
+            exp_str = vec.get("expected", "")
+            t_br = tc(
+                counter,
+                "Edge",
+                f"{rid} decision vector #{v_idx}: given ({inp_str}) => expected ({exp_str})"[:200],
+                f"Evaluating business rule {rid} ({br.get('rule', '').strip()}) on ({inp_str}) produces ({exp_str})."[:300],
+                ui_runtime,
+                f"br-vector:{rid}#{v_idx}",
+                reqs=[rid],
+                derivation={"ruleId": rid, "formula": br.get("rule", ""), "input": inp_str, "expected": exp_str},
+                tc_id=f"TC-EDGE-{rid}-{v_idx:02d}",
+            )
+            tcs.append(t_br)
+
     # Differential Behavioral Parity Oracles (`TC-PARITY-*`) from `test/legacy_parity_goldens.jsonl`
     parity_jsonl = root / "test" / "legacy_parity_goldens.jsonl"
     if parity_jsonl.is_file():

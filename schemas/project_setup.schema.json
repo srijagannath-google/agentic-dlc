@@ -53,6 +53,17 @@
       "type": ["string", "null"],
       "description": "Optional active Strangler Capability Group wave ID (e.g. 'GRP-01') for incremental wave execution."
     },
+    "specLifecycleMode": {
+      "type": "string",
+      "enum": ["standard", "delta", "retro-spec"],
+      "default": "standard",
+      "description": "SDD lifecycle mode: 'standard' (greenfield or full/wave modernization), 'delta' (Phase N+1 living-spec append preserving completed phases and historic approvals), or 'retro-spec' (reverse-engineer an existing production system into a verified COMPLETED living spec with zero backlog ticket creation)."
+    },
+    "reviewPlane": {
+      "type": "string",
+      "enum": ["alm-and-git", "git-pr-docs-as-code", "interactive-briefs"],
+      "description": "Human review & approval plane: 'alm-and-git' (Jira/ADO thin-pointer chained stories + Git PR/briefs), 'git-pr-docs-as-code' (Git PRs + CODEOWNERS + inline Phased Approvals ledger when almPlatform=='none'), or 'interactive-briefs' (local Gate Decision Briefs + gate_approvals.json)."
+    },
     "notes": { "type": "string" }
   }
 }

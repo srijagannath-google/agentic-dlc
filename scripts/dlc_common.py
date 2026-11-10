@@ -636,19 +636,50 @@ def parse_roles(spec_md: str) -> list[dict[str, str]]:
     return out
 
 
-def parse_business_rules(spec_md: str) -> list[dict[str, str]]:
-    """Parse spec §3.4 `| Rule ID | Formula / Rule | Inputs | Source |`."""
+def parse_br_examples(raw_examples: str) -> list[dict[str, str]]:
+    """Parse optional structured decision-table / example vectors from a Spec §3.4 cell.
+
+    Supports semicolon- or pipe-delimited pairs such as:
+      `amount=100 -> fee=105; amount=0 -> REJECT`
+      `days=3, balance=5 => APPROVED`
+    Returns a list of `{"input": "...", "expected": "...", "raw": "..."}` dicts.
+    """
+    cleaned = strip_md(raw_examples or "").strip()
+    if not cleaned or cleaned.lower() in ("—", "-", "n/a", "none"):
+        return []
+    vectors: list[dict[str, str]] = []
+    for chunk in re.split(r"[;\n]+", cleaned):
+        part = chunk.strip()
+        if not part:
+            continue
+        m = re.match(r"^(.+?)\s*(?:->|=>|→)\s*(.+)$", part)
+        if m:
+            inp, exp = m.group(1).strip(), m.group(2).strip()
+            if inp and exp:
+                vectors.append({"input": inp, "expected": exp, "raw": part})
+    return vectors
+
+
+def parse_business_rules(spec_md: str) -> list[dict[str, Any]]:
+    """Parse spec §3.4 `| Rule ID | Formula / Rule | Inputs | Source | [Examples] |`."""
     rows = find_table(spec_md, ["rule id", "formula"], section_regex=RULES_SECTION_RE)
-    out = []
+    out: list[dict[str, Any]] = []
     for r in rows:
         rid = strip_md(r.get("rule id", ""))
         if rid:
-            out.append({
+            ex_raw = next((v for k, v in r.items() if "example" in k or "vector" in k or "decision" in k), "")
+            entry: dict[str, Any] = {
                 "id": rid,
                 "rule": next((v for k, v in r.items() if "formula" in k or "rule" == k), ""),
                 "inputs": next((v for k, v in r.items() if "input" in k), ""),
                 "source": next((v for k, v in r.items() if "source" in k), ""),
-            })
+            }
+            if ex_raw.strip():
+                entry["examples"] = ex_raw.strip()
+                parsed_ex = parse_br_examples(ex_raw)
+                if parsed_ex:
+                    entry["parsedExamples"] = parsed_ex
+            out.append(entry)
     return out
 
 
@@ -857,7 +888,8 @@ def ac_category(tag: str) -> str:
 
 
 ALM_RUNTIME_STORY_KEYS = {
-    "status", "statusReason", "statusUpdatedAtUtc", "jiraKey", "adoWorkItemId", "lastSyncedAtUtc", "traceability",
+    "status", "statusReason", "statusUpdatedAtUtc", "jiraKey", "adoWorkItemId", "lastSyncedAtUtc",
+    "traceability", "specPointer", "compactedContext",
 }
 
 
@@ -1302,7 +1334,48 @@ def generate_gate_decision_brief(
         except Exception:
             pass
 
+    spec_sha_short = "—"
+    spec_score_str = "—"
+    if spec_path.is_file():
+        spec_sha_short = sha256_file(spec_path)[:12]
+    sc_path = root / "specs" / "application_eval_scorecard.json"
+    if sc_path.is_file():
+        try:
+            sc_obj = read_json(sc_path)
+            if isinstance(sc_obj, dict) and sc_obj.get("totalScore") is not None:
+                spec_score_str = f"{sc_obj.get('totalScore')}/100 ({sc_obj.get('verdict', 'PASS')})"
+        except Exception:
+            pass
+
+    start_cmd_str = "bash src/run.sh"
+    health_url_str = "http://127.0.0.1:8080/health"
+    alm_mode_str = "none"
+    if ts_path.is_file():
+        try:
+            ts_obj = read_json(ts_path)
+            if isinstance(ts_obj, dict):
+                cmds_obj = ts_obj.get("commands") or {}
+                if cmds_obj.get("start"):
+                    start_cmd_str = _sanitize_brief_line(str(cmds_obj["start"]))
+                if cmds_obj.get("healthcheck"):
+                    health_url_str = _sanitize_brief_line(str(cmds_obj["healthcheck"]))
+                alm_mode_str = str(ts_obj.get("almPlatform") or "none")
+        except Exception:
+            pass
+
     lines.extend([
+        "",
+        "## Structured Review & Verification Summary (5 Questions)",
+        f"1. **Goal:** Validate and approve `{gate_id}` ({_sanitize_brief_line(label)}) for capability scope {wave_line}.",
+        f"2. **Big Picture:** Governs contract-first progression under `{track}` ceremony track with coexistence mode {coex_line}.",
+        f"3. **Spec Plan Adherence:** Spec SHA-256 prefix `{spec_sha_short}` | Spec Judge Score: `{spec_score_str}`.",
+        "4. **Verifier Focus (4-Part Runnable Check):**",
+        "   - **Workspace / Branch:** Project root working tree (`specs/`, `design/`, `src/`, `test/`)",
+        f"   - **Execution / Start Command:** `{start_cmd_str}`",
+        f"   - **Target Health / UI Surface:** `{health_url_str}`",
+        "   - **Expected Outcome:** Zero blocking validation errors, zero internal token leakage, and 100% linked contract alignment.",
+        f"5. **Reviewer Focus:** Inspect open assumptions ({len(assumptions)}), guardrail hunks ({len(guardrail_section)}), and "
+        + ("sync thin-pointer chained stories on the ALM board." if alm_mode_str in ("ado", "jira") else "record human review sign-off via Pull Request + `* **Approvals:**` ledger."),
         "",
         "## Decision Options",
         "1. **Approve Gate:** Confirm scope, assumptions, and validated deliverables to advance to the next stage.",
@@ -1787,3 +1860,255 @@ def run_docker_build_check(dockerfile: Path, context_dir: Path, timeout_s: int =
 
     tail_lines = " | ".join(ln.strip() for ln in combined.splitlines()[-5:] if ln.strip())[:320]
     return "fail", tail_lines or f"docker build --check exited with code {cp.returncode}"
+
+
+# --------------------------------------------------------------------------------------
+# Spec-Driven Development (SDD) Living Lifecycle, Approvals, Conciseness & Delta Guards
+# --------------------------------------------------------------------------------------
+SPEC_LIFECYCLE_MODES = ("standard", "delta", "retro-spec")
+
+EXCLUDED_BOT_APPROVER_RE = re.compile(
+    r"^(?:groupagent-\S+|agent-\S+|startblock|robot|bot|ci-bot|github-actions(?:\[bot\])?|"
+    r"dependabot(?:\[bot\])?|copilot|claude|gemini|chatgpt|"
+    r"discovery-architect|spec-judge|sprint-planner-agent|solution-architect|"
+    r"architecture-critic|testing-agent|coding-agent|platform-ops-agent)$",
+    re.IGNORECASE,
+)
+
+_SPEC_STATUS_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Status:\*\*[ \t]*(.+)$", re.IGNORECASE | re.MULTILINE)
+_APPROVED_BY_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Approved by:\*\*[ \t]*(.*)$", re.IGNORECASE)
+_APPROVALS_HDR_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Approvals:\*\*[ \t]*(.*)$", re.IGNORECASE)
+_PHASE_APPROVAL_SUB_RE = re.compile(
+    r"^\*\*Phases?[ \t]+([^\*]+?)\*\*[ \t]+-[ \t]+(.+?)(?:[ \t]+-[ \t]+(.+))?$",
+    re.IGNORECASE,
+)
+
+
+def sanitize_human_identities(raw_items: Iterable[str]) -> tuple[list[str], list[str]]:
+    """Split raw reviewer/approver strings into `(valid_humans, rejected_bots)`.
+
+    Strips leading `@` and trailing `@domain` email suffixes while rejecting robot/agent/bot accounts.
+    """
+    humans: list[str] = []
+    bots: list[str] = []
+    for item in raw_items:
+        for tok in re.split(r"[,;\s]+", str(item or "").strip()):
+            cleaned = tok.strip().lstrip("@")
+            if not cleaned:
+                continue
+            if "@" in cleaned:
+                cleaned = cleaned.split("@", 1)[0].strip()
+            if not cleaned:
+                continue
+            if EXCLUDED_BOT_APPROVER_RE.match(cleaned) or cleaned.lower().endswith("-bot"):
+                if cleaned not in bots:
+                    bots.append(cleaned)
+            else:
+                if cleaned not in humans:
+                    humans.append(cleaned)
+    return humans, bots
+
+
+def validate_spec_approvals_header(
+    spec_md: str,
+    ceremony_track: str = "standard",
+    strict: bool = False,
+) -> tuple[list[str], list[str], dict[str, Any]]:
+    """Validate living-spec `* **Status:**` and `* **Approved by:**` / multi-phase `* **Approvals:**` headers.
+
+    Enforces:
+      - Bot/agent account exclusion in human approval lists (`SD-APPR-02`).
+      - Multi-phase delta preservation: resetting single-line `Approved by:` to `PENDING` when completed (`- [x]`)
+        tasks or `Delta` phases exist is rejected (`SD-APPR-03`).
+      - Two-Person Review (`>= 2` distinct human approvers) when `ceremony_track == 'regulated'` and `strict=True`.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    status_m = _SPEC_STATUS_LINE_RE.search(spec_md)
+    raw_status = strip_md(status_m.group(1)).strip() if status_m else ""
+    has_completed_tasks = bool(re.search(r"^[ \t]*[\*\-][ \t]+\[[xX]\]", spec_md, re.MULTILINE))
+    has_delta_markers = bool(
+        re.search(r"^##[ \t]+Phase[ \t]+\d+[^\n]*\bDelta\b", spec_md, re.IGNORECASE | re.MULTILINE)
+        or re.search(r"^#\s+[^\n]*\bDelta\b", spec_md, re.IGNORECASE | re.MULTILINE)
+    )
+
+    header_type = ""
+    header_val = ""
+    sub_bullets: list[str] = []
+    in_block = False
+    for line in spec_md.splitlines():
+        stripped = line.strip()
+        if not in_block:
+            m_app = _APPROVALS_HDR_LINE_RE.match(line)
+            if m_app:
+                header_type = "Approvals"
+                header_val = m_app.group(1).strip()
+                in_block = True
+                continue
+            m_by = _APPROVED_BY_LINE_RE.match(line)
+            if m_by:
+                header_type = "Approved by"
+                header_val = m_by.group(1).strip()
+                in_block = True
+                continue
+        else:
+            if not stripped:
+                break
+            m_sub = re.match(r"^[ \t]+[\*\-][ \t]+(.+)$", line)
+            if m_sub:
+                sub_bullets.append(m_sub.group(1).strip())
+            else:
+                break
+
+    all_humans: list[str] = []
+    has_pending = False
+
+    if not header_type:
+        if strict or has_delta_markers:
+            errors.append(
+                "Missing required specification approvals metadata (`* **Approved by:**` or multi-phase `* **Approvals:**`)."
+            )
+    elif header_type == "Approved by":
+        if has_delta_markers:
+            errors.append(
+                "Multi-phase living specification delta detected, but flat `* **Approved by:**` is used. "
+                "Use structured `* **Approvals:**` with `* **Phases X - Y** - [ref] - <approvers>` sub-bullets."
+            )
+        if "PENDING" in header_val.upper():
+            has_pending = True
+            if has_delta_markers or has_completed_tasks:
+                errors.append(
+                    "Disallowed single-line pending reset in `* **Approved by:**` when completed roadmap items or delta phases exist; "
+                    "retain historic phase approvals under `* **Approvals:**` and append a pending sub-bullet for the new delta phase."
+                )
+            elif strict:
+                errors.append("`* **Approved by:**` still contains an unresolved PENDING placeholder.")
+        else:
+            humans, bots = sanitize_human_identities([header_val])
+            if bots:
+                errors.append(f"`* **Approved by:**` contains excluded bot/agent identity(ies): {', '.join(bots)}.")
+            all_humans.extend(humans)
+    else:  # Approvals
+        if header_val:
+            errors.append("`* **Approvals:**` must place phase entries on indented sub-bullets, not inline on the header line.")
+        if not sub_bullets:
+            errors.append("`* **Approvals:**` must contain at least one `* **Phases <range>** - <ticket/PR> - <approvers>` sub-bullet.")
+        for idx, sb in enumerate(sub_bullets, 1):
+            m_ph = _PHASE_APPROVAL_SUB_RE.match(sb)
+            if not m_ph:
+                errors.append(
+                    f"`* **Approvals:**` sub-bullet #{idx} does not match `* **Phases <X - Y>** - <ref> - <approvers>`: `{sb[:100]}`"
+                )
+                continue
+            approver_part = (m_ph.group(3) or "").strip()
+            if not approver_part:
+                errors.append(f"`* **Approvals:**` sub-bullet #{idx} is missing approvers or `{{{{PENDING_APPROVAL}}}}`.")
+                continue
+            if "PENDING" in approver_part.upper():
+                has_pending = True
+                if idx < len(sub_bullets):
+                    errors.append(
+                        f"`* **Approvals:**` historical sub-bullet #{idx} cannot remain PENDING once newer phase #{len(sub_bullets)} is appended."
+                    )
+                elif strict:
+                    errors.append(f"`* **Approvals:**` sub-bullet #{idx} still has unresolved PENDING approval.")
+            else:
+                humans, bots = sanitize_human_identities([approver_part])
+                if bots:
+                    errors.append(f"`* **Approvals:**` sub-bullet #{idx} contains excluded bot/agent identity(ies): {', '.join(bots)}.")
+                for h in humans:
+                    if h not in all_humans:
+                        all_humans.append(h)
+
+    if strict and ceremony_track == "regulated" and len(all_humans) < 2:
+        errors.append(
+            f"Regulated Two-Person Review requires >= 2 distinct human approvers in specification header (found {len(all_humans)}: {all_humans or 'none'})."
+        )
+
+    meta = {
+        "lifecycleStatus": raw_status or "ACTIVE",
+        "headerType": header_type or None,
+        "approvers": all_humans,
+        "hasPendingApproval": has_pending,
+        "isDeltaMode": has_delta_markers,
+        "hasCompletedTasks": has_completed_tasks,
+        "phaseApprovalCount": len(sub_bullets),
+    }
+    return errors, warnings, meta
+
+
+def audit_spec_conciseness_and_refs(
+    spec_md: str,
+    root: Path,
+    check_codebase: bool = False,
+    max_prose_words: int = 3500,
+) -> tuple[list[str], list[str], dict[str, Any]]:
+    """Enforce SDD narrative conciseness budget (`SD-NARR-01`) and optional physical path existence (`SD-REF-01`)."""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    in_fence = False
+    prose_words = 0
+    table_rows = 0
+    for line in spec_md.splitlines():
+        s = line.strip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence or not s:
+            continue
+        if s.startswith("|") and s.endswith("|"):
+            table_rows += 1
+            continue
+        if s.startswith("#"):
+            continue
+        prose_words += len(re.findall(r"\b\w+\b", s))
+
+    if prose_words > 12_000:
+        errors.append(
+            f"SD-NARR-01: Specification non-table prose ({prose_words} words) exceeds 12,000-word ceiling — "
+            "express business rules, roles, and transitions in structured tables rather than narrative BRD dumps."
+        )
+    elif prose_words > max_prose_words:
+        warnings.append(
+            f"SD-NARR-01: Specification non-table prose ({prose_words} words) exceeds recommended {max_prose_words}-word SDD budget."
+        )
+
+    checked_paths = 0
+    missing_paths: list[str] = []
+    if check_codebase:
+        for m in re.finditer(r"`((?:resources|src|specs|design|deploy)/[A-Za-z0-9_./-]+)`", spec_md):
+            rel_cand = m.group(1).rstrip(".,;:")
+            if "*" in rel_cand or "<" in rel_cand or "{" in rel_cand or "..." in rel_cand:
+                continue
+            checked_paths += 1
+            if not (root / rel_cand).exists():
+                if rel_cand not in missing_paths:
+                    missing_paths.append(rel_cand)
+        for mp in missing_paths:
+            errors.append(f"SD-REF-01: Specification cites codebase path `{mp}` which does not exist under project root.")
+
+    return errors, warnings, {
+        "proseWordCount": prose_words,
+        "structuredTableRows": table_rows,
+        "checkedCodebasePaths": checked_paths,
+        "missingCodebasePaths": missing_paths,
+    }
+
+
+def verify_delta_preservation(baseline_spec_md: str, candidate_spec_md: str) -> list[str]:
+    """Verify byte-for-byte preservation of completed (`- [x]`) roadmap items and historic approved phase sub-bullets
+    when evolving a living specification in Phase N+1 Delta Mode."""
+    errors: list[str] = []
+    cand_lines = {ln.strip() for ln in candidate_spec_md.splitlines() if ln.strip()}
+
+    for ln in baseline_spec_md.splitlines():
+        s = ln.strip()
+        if re.match(r"^[\*\-][ \t]+\[[xX]\][ \t]+", s):
+            if s not in cand_lines:
+                errors.append(f"Delta preservation violation: completed roadmap item modified or removed: `{s[:120]}`")
+        elif re.match(r"^[\*\-][ \t]+\*\*Phases?[ \t]+", s, re.IGNORECASE) and "PENDING" not in s.upper():
+            if s not in cand_lines:
+                errors.append(f"Delta preservation violation: historic phase approval modified or dropped: `{s[:120]}`")
+    return errors

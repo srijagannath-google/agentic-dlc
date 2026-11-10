@@ -1,4 +1,4 @@
-# agentic-dlc v4 — Architecture & Artefact Contracts
+# agentic-dlc v4.5 — Architecture & Artefact Contracts
 
 This document is the **single source of truth** for how v4 differs from v3 and for the file/JSON
 contracts that every skill, agent and script must honour. Anyone (human or agent) editing this
@@ -46,6 +46,7 @@ agentic-dlc/
 ├── _shared/                             # referenced by every skill & agent (never pasted)
 │   ├── project_root.md                  # PROJECT_ROOT resolution rule (short)
 │   ├── gate_matrix.md                   # Adaptive ceremony tracks (quick/standard/regulated) & gate decision briefs
+│   ├── sdd_governance_and_alm.md        # Living SDD lifecycle (standard/delta/retro-spec), thin-pointer ALM & Git PR review
 │   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (codmod-assessment, DB migration, Spanner, FinOps, Apigee)
 │   ├── ux_guardrails.md                 # the generic UX guardrails (single canonical copy)
 │   ├── google_cloud_ui_design.md        # Material 3 (--g-*) tokens, ShadCN/Radix & A2UI v0.9 standards
@@ -53,17 +54,17 @@ agentic-dlc/
 │   ├── zero_leak.md                     # zero internal-data-leakage rule + how token lists are derived
 │   ├── workflow_chain_of_custody.md     # state machine extraction / ask-don't-assume / derivation rules
 │   └── gdc_multicloud_guardrails.md     # GDC Fleet multi-cloud & on-prem portability guardrails
-├── schemas/                             # JSON schemas / canonical shapes for every machine artefact
-│   ├── project_setup.schema.json        # Stage 0 connection, ceremonyTrack, domainPacks, activeWave
-│   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger + decisionBriefPath
+├── schemas/                             # JSON schemas / canonical shapes for every machine artefact (schemaVersion: "4.0")
+│   ├── project_setup.schema.json        # Stage 0 connection, ceremonyTrack, specLifecycleMode, reviewPlane, domainPacks, activeWave
+│   ├── gate_approvals.schema.json       # Machine-enforced human gate ledger + approvers (bot-excluded) + decisionBriefPath
 │   ├── input_inventory.schema.json      # Stage 1 inventory + runtimeReadinessSignals + dependencyDagSummary + unverifiedAcronyms
 │   ├── target_stack.schema.json         # Stack + modernizationMode + commands.reset + coexistenceStrategy + aiSurface (A2UI v0.9)
 │   ├── spec_rubric.json                 # Stage 2 100-pt rubric the LLM spec-judge scores against
 │   ├── spec_scorecard.schema.json
 │   ├── architecture_rubric.json         # Stage 4A 100-pt rubric the LLM architecture-critic scores against
 │   ├── architecture_scorecard.schema.json
-│   ├── user_stories.schema.json
-│   ├── test_cases.schema.json           # Includes TC-PARITY-*, matrixCases & negative HTTP assertions
+│   ├── user_stories.schema.json         # Thin-pointer chained stories (specPointer, dependsOnStories, scopeBounds, verificationPlan)
+│   ├── test_cases.schema.json           # Includes TC-EDGE-BR-*, TC-PARITY-*, matrixCases & negative HTTP assertions
 │   ├── eval_results.schema.json
 │   ├── deployment_eval_results.schema.json
 │   └── drift_report.schema.json         # Stage 7 pre-deployment & Day-2 spec-to-code drift report

@@ -6,7 +6,7 @@ description: "Stage 2 of the Agentic DLC v4. discovery-architect authors the hol
 # Stage 2 — 5-Pillar Specification & LLM Spec Judge (Gate 2)
 
 **Read before acting:** `docs/ARCHITECTURE.md` §4.3–§4.4, `_shared/workflow_chain_of_custody.md` ("Stage 2"),
-`_shared/zero_leak.md`, `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `schemas/spec_rubric.json`.
+`_shared/sdd_governance_and_alm.md`, `_shared/zero_leak.md`, `_shared/ux_guardrails.md`, `_shared/google_cloud_ui_design.md`, `schemas/spec_rubric.json`.
 Subagents: `discovery-architect` (author), `spec-judge` (judge) — kept separate on purpose.
 
 ## Inputs
@@ -24,14 +24,18 @@ Gate 1 answers / `ASSUMPTION-NN` list, `resources/policies_and_statutes/` (if an
 
 ### 1. Author the spec (`discovery-architect`)
 Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITECTURE §4.3):
-- Header block: project name, `Input Scenario` (human-readable label: `Legacy Application Modernization` or `Greenfield Requirements Specification` — never internal `SCENARIO_*` enum constants), `Domain Slug`, accessibility standard(s), regulations, assumptions.
+- Header block: project name, `Input Scenario` (human-readable label: `Legacy Application Modernization` or `Greenfield Requirements Specification` — never internal `SCENARIO_*` enum constants), `Domain Slug`, `Status` (`🟡 IN REVIEW` → `🟡 IN PROGRESS` → `🟢 COMPLETED`, or `🟢 COMPLETED (Retro-Spec)` under `specLifecycleMode == "retro-spec"`), `Author` / optional `Co-Authors`, structured `Approvals` (`* **Approvals:**` with `* **Phases X - Y** - <ticket/PR> - <human_approvers>` sub-bullets; bot/agent identities strictly excluded), accessibility standard(s), regulations, assumptions.
+- **Narrative Conciseness Budget (`SD-NARR-01`):** Keep non-table narrative prose under `3,500` words — put enforceable rules, transitions, roles, and view topologies in structured tables, not bloated BRD paragraphs.
+- **Living Spec Modes (`standard` | `delta` | `retro-spec`):**
+  - **`delta` mode (`--baseline-spec`):** Append Phase `N+1` requirements/enhancements while preserving prior completed (`- [x]`) roadmap records and historic `* **Approvals:**` sub-bullets byte-for-byte (`lint_spec_structure.py --baseline-spec <prior_spec>`).
+  - **`retro-spec` mode (`specLifecycleMode == "retro-spec"`):** Reverse-engineer an existing production codebase into a verified `🟢 COMPLETED` 5-Pillar Living Specification + Traceability Matrix and **STOP after Gate 2** (enforcing the **Zero Backlog / Zero Child Ticket Creation Guarantee** — never spawn `To Do` stories for already-shipped code).
 - `## 1 Pillar 1 — Functionality` (`REQ-FUNC-NN`); `### 1.4 Modernization Enhancements (REQ-ENH-NN)` **legacy only**.
 - `## 2 Pillar 2 — Security` (`REQ-SEC-NN`) incl. RBAC matrix per §3.5 role and the **PII field list** to mask.
 - `## 3 Pillar 3 — Accessibility` (`REQ-A11Y-NN`) per `target_stack.json#accessibilityStandard` — **and** the
   three parsed subsections that live under §3 in this template:
   - `### 3.3 Lifecycle State Machine`: one `stateDiagram-v2` block + `| From | To | Trigger | Actor Role | Guard |`
     mirroring it exactly (parsed by `dlc_common.parse_state_machine`);
-  - `### 3.4 Business Rules & Formulas`: `| Rule ID | Formula / Rule | Inputs | Source |` (`BR-NN`; numbers, not adjectives);
+  - `### 3.4 Business Rules & Formulas`: `| Rule ID | Formula / Rule | Inputs | Source | Examples |` (`BR-NN`; numbers, not adjectives; populate `Examples` with `input -> expected` vectors such as `amount=100 -> fee=105; amount=0 -> REJECT` so Stage 4B `derive_test_cases.py` compiles deterministic `TC-EDGE-BR-*` tests);
   - `### 3.5 Roles`: `| Role | Kind | Views | Allowed Transitions |` (Kind = `external` or `internal`).
 - `## 4 Pillar 4 — UX & Zero Leakage` (`REQ-UX-NN`): the UX & Google Cloud UI Design guardrails by reference (`_shared/ux_guardrails.md` and `_shared/google_cloud_ui_design.md`, including Surface Mode declaration `Operate` | `Read` | `Persuade` | `Express`, Reference Layout Archetype from `skills/google-cloud-ui-design/references/*.md`, `--g-*` Light/Dark CSS tokens, Unified Surfaces without card soup, Guardrail #3 View & Tab Mutual Exclusivity, and Guardrail #11 Default Persona & Lifecycle Reachability),
   overrides from design references (`### 4.1`), the **mandatory parsed `### 4.2 View & Component Topology` table**

@@ -173,6 +173,10 @@ def main() -> int:
     ap.add_argument("--domain-packs", nargs="*", default=[],
                     help=f"Optional pluggable MCP modernization domain packs to activate (comma or space separated from: {', '.join(dlc.VALID_DOMAIN_PACKS)})")
     ap.add_argument("--active-wave", default=None, help="Optional Strangler capability wave ID (e.g. GRP-01)")
+    ap.add_argument("--spec-mode", default="standard", choices=list(dlc.SPEC_LIFECYCLE_MODES),
+                    help="SDD lifecycle mode: standard (default), delta (Phase N+1 living-spec append), or retro-spec (reverse-engineer existing app with zero backlog tickets)")
+    ap.add_argument("--review-plane", default=None, choices=["alm-and-git", "git-pr-docs-as-code", "interactive-briefs"],
+                    help="Human review & approval plane (auto-resolved from --alm-platform and --ceremony-track when omitted)")
     ap.add_argument("--persist-env", action="store_true", help="Persist non-secret org/project settings into <PROJECT_ROOT>/.env")
     ap.add_argument("--notes", default="")
     args = ap.parse_args()
@@ -363,11 +367,17 @@ def main() -> int:
                 f"Unsupported --domain-packs value(s): {invalid_packs}. Allowed: {list(dlc.VALID_DOMAIN_PACKS)}"
             )
 
+        resolved_review_plane = args.review_plane or (
+            "alm-and-git" if alm in ("ado", "jira")
+            else ("interactive-briefs" if args.ceremony_track == "quick" else "git-pr-docs-as-code")
+        )
         setup_payload = {
             "schemaVersion": dlc.SCHEMA_VERSION,
             "updatedAtUtc": dlc.utc_now_iso(False),
             "setupStatus": "AWAITING_HUMAN_REVIEW",
             "ceremonyTrack": args.ceremony_track,
+            "specLifecycleMode": args.spec_mode,
+            "reviewPlane": resolved_review_plane,
             "domainPacks": list(dict.fromkeys(raw_packs)),
             "activeWave": args.active_wave,
             "inputSource": {

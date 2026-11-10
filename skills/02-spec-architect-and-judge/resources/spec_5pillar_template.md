@@ -2,6 +2,10 @@
 
 - **Input Scenario:** `Legacy Application Modernization` | `Greenfield Requirements Specification`
 - **Domain Slug:** `<domainSlug>`
+- **Status:** `🟡 IN REVIEW`
+- **Author:** `<primary_human_owner>`
+- **Approvals:**
+  - **Phases 1.1 - 1.N** - `[Pending Gate 2 / PR Review]` - `{{PENDING_APPROVAL}}`
 - **Accessibility Standard(s):** `WCAG 2.1 AA` *(plus any the user named in `specs/target_stack.json`)*
 - **Regulations / Policies in Scope:** `<names | none declared>`
 - **Assumptions:** `ASSUMPTION-01 …` *(autonomous-mode answers to open workflow questions; empty if all were confirmed)*
@@ -61,9 +65,9 @@ stateDiagram-v2
 
 **State labels shown to users:** `| State code | Visible label |` *(the UI never shows the code)*
 
-### 3.4 Business Rules & Formulas *(parsed; thresholds are numbers)*
-| Rule ID | Formula / Rule | Inputs | Source |
-| :-- | :-- | :-- | :-- |
+### 3.4 Business Rules & Formulas *(parsed; thresholds are numbers; include `input -> expected` vectors in `Examples`)*
+| Rule ID | Formula / Rule | Inputs | Source | Examples |
+| :-- | :-- | :-- | :-- | :-- |
 
 ### 3.5 Roles *(parsed; Kind is `external` or `internal` — no other values)*
 | Role | Kind | Views | Allowed Transitions |

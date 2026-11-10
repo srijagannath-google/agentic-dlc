@@ -67,12 +67,12 @@ You start with an empty context on purpose. Read first: `_shared/project_root.md
    `[role="tabpanel"]` bounding-box exclusivity, and automatic transition of active sprint stories from `To Do` to
    `In Progress`). **STOP at Gate 5 (`gate_5_build`) and return build summary for human review before Stage 6!**
 
-## Fix (Stage 6)
-- Fix the cause named in `test/eval_report.md`; change the smallest surface that makes the behaviour correct.
-- If the fix touches a role check, state guard, §3.4 formula, masking or accessibility attribute, say so
+## Fix (Stage 6) & 3-Tier Spec Deviation Protocol (`_shared/sdd_governance_and_alm.md`)
+- **Tier 1A (In-Scope Bug Fix / Polish):** Fix the cause named in `test/eval_report.md` with the smallest change + co-located unit test within approved contracts.
+- **Tier 1B (Spec / Contract Deviation — Halt First):** If fixing an issue or honoring review feedback requires adding/altering an OpenAPI route, schema column, `§3.3` state transition, or `§3.4` `BR-NN` formula contrary to `specs/application_spec.md`, **HALT BEFORE EDITING `src/`**, emit `⚠️ Spec Deviation Detected` naming the conflicting Spec section, and once confirmed by the human hand to `discovery-architect` / `solution-architect` so Spec + contracts + `src/` + tests update atomically.
+- **Tier 3B (Automated Suggestion Violating Negative Spec Constraint):** Reject suggestions that violate explicit RBAC, state-guard, or zero-leak rules in `specs/application_spec.md`.
+- If an in-scope fix touches a role check, state guard, §3.4 formula, masking or accessibility attribute, say so
   explicitly in your hand-back — it will be flagged for Gate 4; never bury it.
-- If an endpoint, schema or enum must change, hand the change to `solution-architect` first so the design and
-  extracted contracts stay the source of truth.
 - Never relax an assertion, skip a test, hard-code a test's expected value, or widen a guard to pass.
 
 ## What you never do

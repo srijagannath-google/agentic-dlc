@@ -190,6 +190,17 @@ def main() -> int:
             if not any(s.get("action") == "expectHidden" for s in subsequent):
                 fails.append(f"{tid} step {c_idx}: clicking a navigation tab ({steps[c_idx].get('selector')!r}) must assert 'expectHidden' on at least one previously active sibling panel")
 
+        # UI Component Reachability Gate: unmounted / non-runnable-contract slices must not prescribe interactive browser steps
+        parent_story = story_by_id.get(t.get("storyRef")) if t.get("storyRef") else None
+        if isinstance(parent_story, dict):
+            vp = parent_story.get("verificationPlan")
+            if isinstance(vp, dict) and vp.get("surface") == "non-runnable-contract" and t.get("runtime") == "browser":
+                if any(isinstance(s, dict) and s.get("action") in ("click", "fill", "select", "check", "uncheck") for s in steps):
+                    fails.append(
+                        f"{tid}: UI Component Reachability Gate failed — parent story {parent_story.get('id')} has "
+                        "verificationPlan.surface='non-runnable-contract' (unmounted/contract slice), so interactive browser steps are forbidden."
+                    )
+
         # Default landing persona journey rule: TC-POS-JOURNEY-01 must not call setRole before triggering the entry transition
         if tid == "TC-POS-JOURNEY-01":
             if any(s.get("action") == "setRole" for s in steps):

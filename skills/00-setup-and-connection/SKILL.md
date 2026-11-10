@@ -5,7 +5,7 @@ description: "Stage 0 (Gate 0) of the Agentic DLC v4. Project Setup, ALM/SCM Con
 
 # Stage 0 — Project Setup, Connection Verification & Project/Repository Selection (Gate 0)
 
-**Read before acting:** `_shared/project_root.md`, `_shared/gate_matrix.md`, `_shared/mcp_domain_packs.md`, `docs/ARCHITECTURE.md` §4.0–§4.1. `<PLUGIN>` = installed plugin dir.
+**Read before acting:** `_shared/project_root.md`, `_shared/gate_matrix.md`, `_shared/sdd_governance_and_alm.md`, `_shared/mcp_domain_packs.md`, `docs/ARCHITECTURE.md` §4.0–§4.1. `<PLUGIN>` = installed plugin dir.
 
 > **CRITICAL HARD-STOP RULE (GATE 0):**
 > Stage 0 is **strictly setup, connection verification, and project/input-source selection**.
@@ -48,14 +48,15 @@ python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection
 - **Jira Boards:** Run `--action list-jira-projects` to verify `JIRA_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` and ask the user which Jira project key to bind.
 - **Git Repository / Local Directory / `resources/inputs/`:** Ask the user to confirm the Git repository URL (`--input-kind git`), external local directory (`--input-kind local-dir`), or files in `<PROJECT_ROOT>/resources/inputs/` (`--input-kind resources-inputs`).
 
-### 3. Choose Ceremony Track, Optional MCP Domain Packs & Save `specs/project_setup.json`
-Confirm the governance ceremony track (`_shared/gate_matrix.md`: `quick` for internal tools/prototypes, `standard` default for enterprise apps, `regulated` for mission-critical/public-sector compliance where Stage 4A `architecture-critic` is mandatory) and any optional MCP domain packs (`_shared/mcp_domain_packs.md`: `codmod-assessment` for `.NET`/Java/multi-cloud SDK assessment via Migration Center `codmod` CLI or `codmod-server` MCP, `cloud-dms`, `mainframe-mat`, `bqms`, `hadoop-oozie-flink`, `agentic-audit`), then save the Stage 0 setup:
+### 3. Choose Ceremony Track, SDD Lifecycle Mode, Review Plane & Save `specs/project_setup.json`
+Confirm the governance ceremony track (`_shared/gate_matrix.md`: `quick` for internal tools/prototypes, `standard` default for enterprise apps, `regulated` for mission-critical/public-sector compliance where Stage 4A `architecture-critic` and `>= 2` human approvers are enforced), the SDD lifecycle mode (`_shared/sdd_governance_and_alm.md`: `standard` default, `delta` for Phase `N+1` living-spec enhancements, or `retro-spec` to reverse-engineer an existing production system into a `COMPLETED` living spec with zero backlog tickets), the human review plane (`alm-and-git` when Jira/ADO is connected, or `git-pr-docs-as-code` when `almPlatform == "none"`), and any optional MCP domain packs (`_shared/mcp_domain_packs.md`: `codmod-assessment`, `cloud-dms`, `mainframe-mat`, `bqms`, `hadoop-oozie-flink`, `agentic-audit`), then save the Stage 0 setup:
 ```bash
 python3 <PLUGIN>/skills/00-setup-and-connection/scripts/setup_project_connection.py \
   --project-root "<PROJECT_ROOT>" --action save-setup \
   --input-kind ado --ado-project "<SELECTED_ADO_PROJECT>" --repo-name "<SELECTED_REPO>" [--branch main] \
-  --alm-platform ado --ceremony-track standard [--domain-packs "codmod-assessment,cloud-dms"] \
-  [--active-wave GRP-01] --persist-env
+  --alm-platform ado --ceremony-track standard [--spec-mode standard|delta|retro-spec] \
+  [--review-plane alm-and-git|git-pr-docs-as-code|interactive-briefs] \
+  [--domain-packs "codmod-assessment,cloud-dms"] [--active-wave GRP-01] --persist-env
 ```
 Then present the Executive Gate Decision Brief (`specs/gate_briefs/gate_0_setup.md`) and Stage 0 summary (`<PROJECT_ROOT>`, Ceremony Track, ADO/Jira Board target, Repository & Branch) and ask:
 > *"Stage 0 (Setup & Connection) is complete. Please confirm if you approve Gate 0 and want me to proceed to Stage 1 (Current-State Discovery)."*

@@ -1,8 +1,8 @@
 {
   "name": "agentic-dlc",
-  "version": "4.4.0",
-  "displayName": "Enterprise Agentic DLC Harness (LLM authors, scripts verify)",
-  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.4) with adaptive ceremony tracks (quick/standard/regulated), executive gate decision briefs, strangler coexistence waves, adversarial spec & architecture critics, differential legacy parity oracles, Gemini Enterprise A2UI v0.9 surfaces, multi-cloud GDC Fleet GitOps packaging, and continuous brownfield drift & ADR governance. The LLM (8 subagents, 12 skills) authors every project artefact from user inputs; scripts scan, derive, lint, execute, and gate.",
+  "version": "4.5.0",
+  "displayName": "Enterprise Agentic DLC Harness — Living Spec-Driven Development (v4.5.0)",
+  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.5.0) combining Living Spec-Driven Development (--mode standard|delta|retro-spec, thin-pointer chained ALM slices, executable BR-NN decision vectors, multi-phase human approvals with bot exclusion & regulated 2-person review, 3-Tier Spec Deviation Halt, and Git-Native Docs-as-Code PR review) with brownfield .NET/Java runtime readiness (codmod-assessment MCP, clean-room-rebuild vs in-place-upgrade, Stateless Container Contract & docker build --check), adaptive ceremony tracks (quick/standard/regulated), adversarial spec & architecture critics, Gemini Enterprise A2UI v0.9 surfaces, and multi-cloud GDC Fleet GitOps packaging.",
   "author": "Enterprise Agentic Architecture Team",
   "rules": [
     "rules/AGENTS.md"

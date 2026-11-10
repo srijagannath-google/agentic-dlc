@@ -104,7 +104,32 @@ def cmd_status(root: Path) -> int:
     return 0
 
 
-def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous: bool) -> int:
+def _artifact_sha_for_gate(root: Path, gate_id: str) -> str | None:
+    """Compute canonical SHA-256 of the primary artifact governed by `gate_id` when present."""
+    mapping = {
+        "gate_1_discovery": root / "specs" / "discovery_architecture_and_inventory.md",
+        "gate_2_spec": root / "specs" / "application_spec.md",
+        "gate_4_design_and_tests": root / "design" / "solution_design.md",
+        "gate_7_drift": root / "test" / "drift_report.json",
+    }
+    if gate_id == "gate_3_backlog":
+        sp = root / "backlog" / "user_stories.json"
+        return dlc.stories_content_sha256(sp) if sp.is_file() else None
+    target = mapping.get(gate_id)
+    return dlc.sha256_file(target) if (target and target.is_file()) else None
+
+
+def cmd_approve(
+    root: Path,
+    gate_id: str,
+    user_response: str | None,
+    autonomous: bool,
+    approvers_raw: list[str] | None = None,
+    original_author: str | None = None,
+    pair_raw: list[str] | None = None,
+    verified_by: str | None = None,
+    strict_2pc: bool = False,
+) -> int:
     if gate_id not in dlc.GATE_DEFINITIONS:
         raise dlc.GateFailure(
             f"Unknown gate '{gate_id}'. Valid gates: {', '.join(dlc.GATE_DEFINITIONS.keys())}"
@@ -118,6 +143,34 @@ def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous:
             )
     else:
         resp = (user_response or "Pre-approved via --autonomous mode").strip()
+
+    approvers, rejected_bots = dlc.sanitize_human_identities(approvers_raw or [])
+    if rejected_bots:
+        raise dlc.GateFailure(
+            f"Cannot approve {gate_id}: excluded robot/agent/bot identity(ies) in --approvers: {', '.join(rejected_bots)}.\n"
+            "  Human gate sign-off strictly requires genuine human usernames."
+        )
+    pair_humans, pair_bots = dlc.sanitize_human_identities(pair_raw or [])
+    if pair_bots:
+        raise dlc.GateFailure(f"Invalid robot/bot identity in --pair: {', '.join(pair_bots)}.")
+    if original_author:
+        oa_humans, oa_bots = dlc.sanitize_human_identities([original_author])
+        if oa_bots or not oa_humans:
+            raise dlc.GateFailure(f"--original-author must be a single human username (got {original_author!r}).")
+        original_author = oa_humans[0]
+    if verified_by:
+        vb_humans, vb_bots = dlc.sanitize_human_identities([verified_by])
+        if vb_bots or not vb_humans:
+            raise dlc.GateFailure(f"--verified-by must be a human verifier username (got {verified_by!r}).")
+        verified_by = vb_humans[0]
+
+    track = dlc.active_ceremony_track(root)
+    if not autonomous and (strict_2pc or (track == "regulated" and approvers_raw is not None)):
+        if len(approvers) < 2:
+            raise dlc.GateFailure(
+                f"Two-Person Review requirement failed for {gate_id} on '{track}' track: "
+                f"expected >= 2 distinct human approvers (got {len(approvers)}: {approvers or 'none'})."
+            )
 
     data = dlc.load_gate_approvals(root)
     gates = data.setdefault("gates", {})
@@ -164,7 +217,7 @@ def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous:
 
     now_iso = dlc.utc_now_iso(False)
     status_val = dlc.GATE_STATUS_PRE_APPROVED if autonomous else dlc.GATE_STATUS_APPROVED
-    gates[gate_id] = {
+    entry_out = {
         "gateId": gate_id,
         "stage": dlc.GATE_DEFINITIONS[gate_id],
         "status": status_val,
@@ -174,7 +227,22 @@ def cmd_approve(root: Path, gate_id: str, user_response: str | None, autonomous:
         "userResponse": resp,
         "summary": existing.get("summary") or f"{dlc.GATE_DEFINITIONS[gate_id]} approved.",
         "decisionBriefPath": existing.get("decisionBriefPath"),
+        "artifactSha256": _artifact_sha_for_gate(root, gate_id),
     }
+    if approvers:
+        entry_out["approvers"] = approvers
+    elif existing.get("approvers"):
+        entry_out["approvers"] = existing["approvers"]
+    if original_author or existing.get("originalAuthor"):
+        entry_out["originalAuthor"] = original_author or existing.get("originalAuthor")
+    if pair_humans:
+        # Universal non-exclusion invariant: reviewers who steer implementation remain in `approvers` AND appear in `pairCollaborators`
+        entry_out["pairCollaborators"] = pair_humans
+    elif existing.get("pairCollaborators"):
+        entry_out["pairCollaborators"] = existing["pairCollaborators"]
+    if verified_by or existing.get("manuallyVerifiedBy"):
+        entry_out["manuallyVerifiedBy"] = verified_by or existing.get("manuallyVerifiedBy")
+    gates[gate_id] = entry_out
     _validate_and_write_ledger(root, data)
 
     # Keep Stage 3 sprint_plan.md / sprint_plan.json marker synchronized when gate_3_backlog is approved
@@ -204,6 +272,11 @@ def main() -> int:
     ap.add_argument("--gate", default=None, help=f"Gate ID ({', '.join(dlc.GATE_DEFINITIONS.keys())})")
     ap.add_argument("--track", default=None, choices=list(dlc.CEREMONY_TRACKS), help="Adaptive ceremony track (quick | standard | regulated)")
     ap.add_argument("--user-response", default=None, help="Verbatim quote from the human's chat reply approving the gate")
+    ap.add_argument("--approvers", nargs="*", default=None, help="Comma- or space-separated human approver usernames (bot accounts rejected)")
+    ap.add_argument("--original-author", default=None, help="Primary human requester / feature owner username")
+    ap.add_argument("--pair", nargs="*", default=None, help="Human collaborator(s) / steering reviewer(s) for dual attribution")
+    ap.add_argument("--verified-by", default=None, help="Human UAT / manual verifier username")
+    ap.add_argument("--strict-2pc", action="store_true", help="Enforce >= 2 distinct human approvers on this approval")
     ap.add_argument("--summary", default="", help="Optional summary when marking a gate ready")
     ap.add_argument("--autonomous", action="store_true", help="Pre-approve only when the user explicitly requested autonomous mode")
     args = ap.parse_args()
@@ -226,7 +299,17 @@ def main() -> int:
     if args.action == "approve":
         if not args.gate:
             raise dlc.GateFailure("--gate is required for --action approve")
-        return cmd_approve(root, args.gate, args.user_response, args.autonomous)
+        return cmd_approve(
+            root,
+            args.gate,
+            args.user_response,
+            args.autonomous,
+            approvers_raw=args.approvers,
+            original_author=args.original_author,
+            pair_raw=args.pair,
+            verified_by=args.verified_by,
+            strict_2pc=args.strict_2pc,
+        )
     if args.action == "reset":
         if args.gate and args.gate not in dlc.GATE_DEFINITIONS:
             raise dlc.GateFailure(f"--gate must be one of: {', '.join(dlc.GATE_DEFINITIONS.keys())}")

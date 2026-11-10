@@ -5,7 +5,7 @@ description: "Stage 3 of the Agentic DLC v4. sprint-planner-agent authors ALL fu
 
 # Stage 3 — Unified User Stories, Sprint Alignment & Gate 3
 
-**Read before acting:** `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`,
+**Read before acting:** `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`,
 `_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`. Subagent: `sprint-planner-agent`.
 
 ## Inputs
@@ -43,7 +43,12 @@ Templates: `resources/user_stories_template.md`, `resources/sprint_plan_template
 | `EDGE / BOUNDARY` | §3.4 thresholds (value, −1 unit, +1 unit), empty/max payloads, duplicates, concurrency | exact expected values |
 
 - Each story carries `capabilityGroup` (`GRP-01..N` from `discovery_architecture_and_inventory.md` §6.1, or `SHARED` for cross-cutting `US-TECH-*` enablers), `capabilityGroupName`, `requirementRefs`, `businessRuleRefs`, `roles`, `workflowTransitions` (`FROM->TO` copied
-  from §3.3), `sprint`, `priority`, `storyPoints`.
+  from §3.3), `sprint`, `priority`, optional PMO `storyPoints` (`1..8`), plus **SDD Execution Slice Contracts** (`_shared/sdd_governance_and_alm.md`):
+  - **`dependsOnStories` (Contract-First Blocker Chaining):** Isolate schema/OpenAPI/testid contracts in foundational `US-TECH-*` slices first, then chain backend service slices and UI slices via `dependsOnStories` (synced as Jira `Blocks` / ADO `Predecessor` links; zero cycles allowed).
+  - **`specPointer` (Thin-Pointer Single Source of Truth):** Point every ALM ticket back to `specs/application_spec.md` (`specSha256` + `REQ-*`/`BR-*` anchors) instead of inventing diverging prose rules inside tickets.
+  - **`scopeBounds` (3D Small-Slice Bounds & Unit-Test Co-Location):** Target `<= 3` production files, `<= 400` implementation LOC, and non-empty `unitTestTargets` co-located in the **same slice** (never create a separate "write unit tests later" story, and avoid compound `"and"` titles bundling multiple views).
+  - **`verificationPlan` (4-Part Runnable Check):** Specify `surface` (`ui | cli | api | sql | non-runnable-contract`), `executionCommand`, `targetUrlOrSurface`, and `stepsAndExpectedOutcome` — or `nonRunnableRationale: "N/A — <specific contract rationale>"` (bare `"N/A"` is rejected).
+  - **Dual-Plane Human Review (`almPlatform != "none"` vs. `almPlatform == "none"`):** When Jira/ADO is configured (`alm-and-git`), stage stories + sprints on the live board before Gate 3; when `almPlatform == "none"` (`git-pr-docs-as-code`), present `backlog/user_stories.md` + `specs/gate_briefs/gate_3_backlog.md` for Git PR `CODEOWNERS` review and use `--action compact-completed` after Stage 6 to compact `Done` slices to single-line `- **Compacted Context:**` summaries.
 - **Capability-Group Tiering, Shared Prerequisites & Selection (`specs/target_stack.json#selectedCapabilityGroups`):**
   - **Shared Foundation & Prerequisite Resolution (`resolve_group_closure`):** Any capability group marked `isSharedFoundation: true` in `specs/target_stack.json#capabilityGroups` (or `Prerequisite for all` in discovery §6.1), any prerequisite group listed in `dependsOnGroups` of a selected group, and all cross-cutting `SHARED` technical foundation stories (`US-TECH-*`) are **automatically included** and scheduled into **`Sprint 1`** ahead of dependent groups (`Sprint 2..N`).
   - **Specific Group(s) Selected (`["GRP-01"]`, `["GRP-02"]`, etc.):** Stories belonging to the human-selected Capability Group(s) plus their prerequisite/shared foundation groups (`dependsOnGroups`, `isSharedFoundation`, `SHARED`) are scheduled into `Sprint 1..N` in topological prerequisite order; stories belonging to unselected Capability Groups are placed into `Product Backlog` (grouped by their `capabilityGroup`).

@@ -35,8 +35,8 @@ Read first: `docs/ARCHITECTURE.md` §4.6–§4.8 and §5, `schemas/test_cases.sc
    - `State` tests: `setRole` to the role, drive the record to state S (or seed it via `httpRequest`), then
      `click` the trigger control and `expectHidden`/`expectDisabled` or `expectText` the blocking reason.
    - `Negative` tests assert the user-readable reason from the AC's `then` clause, not an error code.
-   - `Edge` tests derived from `BR-NN` assert recomputed values after `fill` **without** submitting
-     (guardrail 7) at threshold, threshold−1, threshold+1.
+   - `Edge` tests derived from `BR-NN` (including auto-derived `TC-EDGE-BR-*` decision vectors from Spec `§3.4` `Examples`) assert recomputed values after `fill` **without** submitting
+     (guardrail 7) at threshold, threshold−1, threshold+1. Never prescribe interactive `browser` steps on unmounted slices (`verificationPlan.surface == "non-runnable-contract"` — `validate_test_cases.py` enforces the UI Component Reachability Gate).
    - `Api` tests when `backend.kind != none`: status code and `expectJsonPath` on the response.
    - Set `runtime` per test (`browser` | `http` | `static`) and `role` from spec §3.5.
 3. **Author `test/test_plan.md`** from the template: strategy, the eight categories with counts and

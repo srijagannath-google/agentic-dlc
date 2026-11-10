@@ -41,7 +41,7 @@
     },
     "story": {
       "type": "object",
-      "required": ["id", "type", "title", "narrative", "requirementRefs", "roles", "sprint", "priority", "storyPoints", "acceptanceCriteria"],
+      "required": ["id", "type", "title", "narrative", "requirementRefs", "roles", "sprint", "priority", "acceptanceCriteria"],
       "properties": {
         "id": { "type": "string", "pattern": "^US-(FUNC|TECH)-[0-9]{2,}$" },
         "type": { "type": "string", "enum": ["Functional", "Technical"] },
@@ -50,6 +50,45 @@
         "requirementRefs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^REQ-[A-Z0-9]+-[0-9]+$" } },
         "businessRuleRefs": { "type": "array", "items": { "type": "string", "pattern": "^BR-[0-9]+$" } },
         "legacyArtifactsReplaced": { "type": "array", "items": { "type": "string" } },
+        "dependsOnStories": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^US-(FUNC|TECH)-[0-9]{2,}$" },
+          "description": "Explicit predecessor story IDs enforcing contract-first -> domain-service -> UI execution order and synced as Jira 'Blocks' / ADO 'Predecessor' links."
+        },
+        "specPointer": {
+          "type": "object",
+          "description": "Thin-pointer reference to the authoritative specification so ALM work items never become a drifting prose copy.",
+          "properties": {
+            "specPath": { "type": "string" },
+            "specSha256": { "type": "string" },
+            "sectionAnchors": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "scopeBounds": {
+          "type": "object",
+          "description": "Deterministic 3D small-slice execution bounds (<= 3 production files, <= 400 implementation LOC, <= 2 co-located unit test targets).",
+          "properties": {
+            "maxProdFiles": { "type": "integer", "minimum": 1, "maximum": 5 },
+            "maxImplLoc": { "type": "integer", "minimum": 10, "maximum": 600 },
+            "unitTestTargets": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        },
+        "verificationPlan": {
+          "type": "object",
+          "description": "Standardized 4-part runnable verification contract (or explicit Surface E non-runnable rationale; bare 'N/A' forbidden).",
+          "properties": {
+            "surface": { "type": "string", "enum": ["ui", "cli", "api", "sql", "non-runnable-contract"] },
+            "patchOrCheckoutCommand": { "type": "string" },
+            "executionCommand": { "type": "string" },
+            "targetUrlOrSurface": { "type": "string" },
+            "stepsAndExpectedOutcome": { "type": "string" },
+            "nonRunnableRationale": { "type": "string" }
+          }
+        },
+        "compactedContext": {
+          "type": ["string", "null"],
+          "description": "Concise 1-2 sentence architectural context retained once a completed ('Done') slice compacts verbose execution scaffolding."
+        },
         "capabilityGroup": {
           "type": "string",
           "pattern": "^(GRP-[0-9]{2,}|SHARED)$",
@@ -66,7 +105,7 @@
         },
         "sprint": { "type": "string", "pattern": "^(Sprint [0-9]+|Product Backlog)$" },
         "priority": { "type": "string", "enum": ["Highest", "High", "Medium", "Low"] },
-        "storyPoints": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "storyPoints": { "type": ["integer", "null"], "minimum": 1, "maximum": 8 },
         "status": { "type": "string", "enum": ["To Do", "In Progress", "Done"] },
         "statusReason": { "type": "string" },
         "statusUpdatedAtUtc": { "type": "string" },

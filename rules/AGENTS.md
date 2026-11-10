@@ -1,6 +1,6 @@
-# Agentic DLC Router & Gates (`agentic-dlc` v4.4)
+# Agentic DLC Router & Gates (`agentic-dlc` v4.5)
 
-You operate inside the **Agentic Development Lifecycle (DLC) harness v4.4** — "Think Big, Start Small, Move Fast":
+You operate inside the **Agentic Development Lifecycle (DLC) harness v4.5** — "Think Big, Start Small, Move Fast":
 the **Elephant** (deep-context discovery/spec author), the **Judge** (adversarial spec/architecture critic and
 closed-loop test runner), and the **Goldfish** (clean-context coder). Both **legacy modernisation**
 (`SCENARIO_LEGACY_APP`) and **greenfield requirements** (`SCENARIO_REQUIREMENTS_DOC`) are equal first-class paths.
@@ -50,7 +50,7 @@ references only when executing that stage).
 
 | Stage | Skill | Subagent(s) | Key Deliverables | Verification Script & Gate |
 | :-- | :-- | :-- | :-- | :-- |
-| **0 Setup** | `00-setup-and-connection` | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `domainPacks`, `activeWave`) | `00/scripts/setup_project_connection.py` → **`gate_0_setup`** |
+| **0 Setup** | `00-setup-and-connection` | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `specLifecycleMode`, `reviewPlane`, `domainPacks`, `activeWave`) | `00/scripts/setup_project_connection.py` → **`gate_0_setup`** |
 | **1 Discovery** | `01-discovery-and-grouping` | `discovery-architect` | `specs/discovery_architecture_and_inventory.md` (**As-Is only**), `specs/target_stack.json`, opt `test/legacy_parity_goldens.jsonl` | `01/scripts/scan_input_sources.py` (`dependency_dag.json`), `validate_discovery_blueprint.py` → **`gate_1_discovery`** |
 | **2 Spec** | `02-spec-architect-and-judge` | `discovery-architect`, `spec-judge` | `specs/application_spec.md`, `traceability_matrix.md`, `application_eval_scorecard.{md,json}` | `02/scripts/lint_spec_structure.py`, `validate_spec_scorecard.py` (`≥ 90`) → **`gate_2_spec`** |
 | **3 Backlog** | `03-story-and-sprint-planner` | `sprint-planner-agent` | `backlog/user_stories.{md,json}`, `backlog/sprint_plan.{md,json}` | `03/scripts/alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`) → **`gate_3_backlog`** |
@@ -74,7 +74,7 @@ references only when executing that stage).
 6. **Contract-First Test IDs, Differential Parity & Guardrail Pragmas:** Declare `data-testid` selectors in `test/test_cases.json` first, derive `TC-PARITY-*` from `test/legacy_parity_goldens.jsonl` when legacy I/O fixtures exist, use `commands.reset` for hermetic test isolation, and annotate `src/` guards/formulas with `@dlc-guard:<From>-><To>` and `@dlc-rule:BR-NN`.
 7. **Human-Confirmed Dual-Mode Target Stack & Stateless Container Contract:** Ask for the Future-State stack at Stage 4A if `"tbd"`. Build the real target stack in `src/{ui,backend}` supporting `APP_ENV=local` (`bash src/run.sh`) and `APP_ENV=production` (containers/GDC, configurable non-privileged `$PORT >= 1024`, zero `InProc` sticky sessions or Windows-only OS blockers, BuildKit `docker build --check`); never substitute a throwaway Python `http.server` app.
 8. **Goldfish Context Isolation & Explicit `modernizationMode`:** Default `modernizationMode == "clean-room-rebuild"` keeps `resources/inputs/` strictly off-limits to `coding-agent` (`06-coding-agent/SKILL.md`). Only when the human explicitly approves `"modernizationMode": "in-place-upgrade"` for an OOP brownfield codebase may `coding-agent` seed `src/` read-only from `resources/inputs/<repo>/` and author `src/MODERNIZATION_CHANGELOG.md`.
-9. **End-to-End ALM Story Progression:** Stories progress `To Do` (Stage 3) → `In Progress` (Stage 5) → `Done` (Stage 6 when ≥ 1 directly linked test passes and 0 fail), with automated `Bug` creation/closure.
+9. **Dual-Plane SDD Governance, Thin-Pointer Chained ALM & Living Lifecycle (`_shared/sdd_governance_and_alm.md`):** Keep `specs/application_spec.md` as the single source of truth (`specPointer`, `SD-NARR-01` conciseness, `§3.4` `Examples` decision vectors, `--mode standard|delta|retro-spec`). Chain slices via `dependsOnStories` with 3D `scopeBounds` (`<= 3` prod files, co-located unit tests) + 4-part `verificationPlan`; progress `To Do → In Progress → Done` (`compact-completed`); halt *before* editing `src/` on Spec Deviations (`Tier 1B`); exclude bots from `approvers` (`>= 2` humans on `regulated`); and use Git PRs + `* **Approvals:**` when `almPlatform == "none"`.
 10. **Environment-Only Credentials & Optional MCP Domain Packs (`_shared/mcp_domain_packs.md`):** Read secrets only from env / `.env` / `~/.gemini/config/agentic-dlc.env` (`chmod 600`); optional MCP packs (`codmod-assessment`, `gcp-database-migration`, `spanner`, `cloud-finops`, `apigee-integration`) are additive and never mandatory.
 
 ---

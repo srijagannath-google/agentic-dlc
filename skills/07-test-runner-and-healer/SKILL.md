@@ -53,7 +53,7 @@ browser tests as static ones.
 | UI/backend behaviour, missing `data-testid`, dead control, leaked label | `coding-agent` | smallest change that makes the behaviour correct |
 | endpoint/schema/enum mismatch | `solution-architect` → edit design → `extract_contracts.py` → `coding-agent` | contracts stay the source of truth |
 | test steps contradict the AC | `testing-agent` edits the test and records why in the audit report | the AC, not the code, is the reference |
-| AC or spec itself wrong | stop; raise to the user — upstream artefacts change only with human consent | |
+| AC or spec itself wrong / Reviewer requests Spec Deviation (`Tier 1B`) | **HALT BEFORE MUTATING `src/`**; emit `⚠️ Spec Deviation Detected` citing the Spec section, obtain human confirmation, then atomically update Spec + Design + Contracts + `src/` (`_shared/sdd_governance_and_alm.md`) | upstream artefacts change only with human consent |
 
 Never: weaken an assertion, mark a test optional to pass, hard-code expected values, widen a guard, or
 relax masking. Re-run step 1 after each iteration.
