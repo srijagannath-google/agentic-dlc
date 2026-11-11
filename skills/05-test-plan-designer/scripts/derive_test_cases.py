@@ -29,7 +29,7 @@ import dlc_common as dlc  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "04-solution-architect" / "scripts"))
 from extract_contracts import legacy_identifier_sets  # noqa: E402
 
-CATEGORY_PREFIX = {"Positive": "POS", "Negative": "NEG", "Edge": "EDGE", "State": "STATE", "Interact": "UI-INTERACT",
+CATEGORY_PREFIX = {"Positive": "POS", "Negative": "NEG", "Edge": "EDGE", "Security": "SEC", "State": "STATE", "Interact": "UI-INTERACT",
                    "UiLeak": "UI-LEAK", "A11y": "A11Y", "Api": "API", "Parity": "PARITY"}
 ENGINEERING_NOTE_PATTERNS = [r"\bTODO\b", r"\bFIXME\b", r"\bparity\b", r"\bTraceback\b", r"\bSELECT\s+.+\s+FROM\b",
                              r"\bNullPointer|\bundefined is not\b", r"/api/[a-z0-9_/{}-]+", r"\blorem ipsum\b"]
@@ -398,6 +398,71 @@ def main() -> int:
     elif backend_kind != "none":
         dlc.warn("backend.kind != none but no OpenAPI operations in design/.contracts_index.json — no TC-API-* derived.")
 
+    # Security Abuse-Case & Unauthorized Mutating-Route Probes (`TC-SEC-AUTHZ-*`) + Legacy Anti-Regression (`TC-SEC-LEGACY-*`)
+    sec_reqs = dlc.extract_ids(spec, "REQ-SEC-") or ["REQ-SEC-01"]
+    if backend_kind != "none" and contracts and contracts.get("paths"):
+        mutating_ops = [p for p in contracts["paths"] if p.get("method") in ("POST", "PUT", "PATCH", "DELETE")]
+        for s_idx, p in enumerate(mutating_ops[:8], 1):
+            m_verb, raw_p = p["method"], p["path"]
+            concrete_p = re.sub(r"\{[^}]+\}", "sec-probe-0000", raw_p)
+            probe_step: dict[str, Any] = {
+                "action": "httpRequest",
+                "method": m_verb,
+                "path": concrete_p,
+                "headers": {"X-Actor-Role": "__unauthorized_probe__", "Authorization": "Bearer invalid-probe-token"},
+                "expectStatus": [400, 401, 403, 404, 422],
+                "expectBodyNotContains": "Traceback",
+            }
+            if m_verb in ("POST", "PUT", "PATCH"):
+                probe_step["json"] = {}
+            t_sec = tc(
+                counter,
+                "Security",
+                f"Security authorization boundary: unauthenticated/invalid-role {m_verb} {raw_p} is rejected without stack trace leak",
+                f"Unauthenticated or invalid-role {m_verb} {raw_p} is rejected (400/401/403/404/422) and never exposes internal stack traces.",
+                "http",
+                f"sec-authz:{m_verb} {raw_p}",
+                reqs=sec_reqs[:2],
+                steps=[probe_step],
+                derivation={"method": m_verb, "path": raw_p, "probe": "unauthorized-role"},
+                tc_id=f"TC-SEC-AUTHZ-{s_idx:02d}",
+            )
+            tcs.append(t_sec)
+
+    sec_posture = inv.get("securityPostureSignals") or {}
+    legacy_sec_findings = sec_posture.get("findings") or []
+    seen_leg_rules: dict[str, dict[str, Any]] = {}
+    for lf in legacy_sec_findings:
+        if isinstance(lf, dict) and lf.get("ruleId"):
+            seen_leg_rules.setdefault(str(lf["ruleId"]), lf)
+    for l_idx, (rule_id, lf) in enumerate(sorted(seen_leg_rules.items())[:10], 1):
+        cwe = str(lf.get("cwe") or "CWE-20")
+        if backend_kind != "none" and contracts and contracts.get("paths"):
+            first_get = next((p["path"] for p in contracts["paths"] if p.get("method") == "GET" and "{" not in p.get("path", "")), "/health")
+            anti_steps: list[dict[str, Any]] = [{
+                "action": "httpRequest",
+                "method": "GET",
+                "path": f"{first_get}?q=%27%20OR%20%271%27%3D%271",
+                "expectStatus": [200, 400, 401, 403, 404, 422],
+                "expectBodyNotContains": "Traceback",
+            }]
+            anti_rt = "http"
+        else:
+            anti_steps = [{"action": "goto", "target": "ui"}, {"action": "expectNoVisibleTextMatching", "pattern": r"\b(?:Traceback|SyntaxError|SQLITE_ERROR)\b"}]
+            anti_rt = "static"
+        tcs.append(tc(
+            counter,
+            "Security",
+            f"Legacy vulnerability anti-regression ({rule_id} / {cwe}): modernized target eliminates legacy flaw class",
+            f"Modernized application eliminates legacy {rule_id} ({cwe}) discovered in {lf.get('file', 'legacy input')} and leaks no SQL/stack errors.",
+            anti_rt,
+            f"sec-legacy:{rule_id}",
+            reqs=sec_reqs[:2],
+            steps=anti_steps,
+            derivation={"legacyRuleId": rule_id, "cwe": cwe, "legacyFile": lf.get("file")},
+            tc_id=f"TC-SEC-LEGACY-{l_idx:02d}",
+        ))
+
     # Structured Business-Rule Decision Vectors (`TC-EDGE-BR-*`) from `specs/application_spec.md` §3.4 `Examples` column
     for br in dlc.parse_business_rules(spec):
         rid = str(br.get("id") or "").strip()
@@ -540,7 +605,7 @@ def main() -> int:
     print(f"- Written: `{out_path.relative_to(root) if out_path.is_relative_to(root) else out_path}` — {len(tcs)} test cases "
           f"({preserved} with preserved authored steps, {len(retired)} retired).")
     print("\n| Category | Count |\n| :-- | :-: |")
-    for c in ["Positive", "Negative", "Edge", "State", "Interact", "UiLeak", "A11y", "Api", "Parity"]:
+    for c in ["Positive", "Negative", "Edge", "Security", "State", "Interact", "UiLeak", "A11y", "Api", "Parity"]:
         if cats.get(c):
             print(f"| {c} | {cats[c]} |")
     print(f"\n- Forbidden UI tokens: {len(schema_ids)} schema identifiers ({len(ignored)} plain words ignored), "

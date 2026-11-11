@@ -49,6 +49,7 @@ Templates: `resources/user_stories_template.md`, `resources/sprint_plan_template
 | `NEGATIVE — ROLE VISIBILITY` | §3.5 `Kind` + §3.3 actor roles | internal-transition controls absent for external roles |
 | `NEGATIVE — WORKFLOW PREREQUISITE GATE` | (state, trigger) pairs **not** in §3.3 | attempt is blocked with a reason; state unchanged |
 | `POSITIVE — INTERACTIVE COMPLETENESS` | controls the story introduces | each control's effect on DOM/data |
+| `NEGATIVE — SECURITY / ABUSE CASE` | Pillar 2 `REQ-SEC-*`, Stage 1 `securityPostureSignals`, mutating/ID routes | BOLA/IDOR cross-tenant rejection, unauthorized role `401`/`403`, injection/payload rejection (`TC-SEC-*`) |
 | `EDGE / BOUNDARY` | §3.4 thresholds (value, −1 unit, +1 unit), empty/max payloads, duplicates, concurrency | exact expected values |
 
 - Each story carries `capabilityGroup` (`GRP-01..N` from `discovery_architecture_and_inventory.md` §6.1, or `SHARED` for cross-cutting `US-TECH-*` enablers), `capabilityGroupName`, `requirementRefs`, `businessRuleRefs`, `roles`, `workflowTransitions` (`FROM->TO` copied
@@ -77,6 +78,7 @@ and nothing more — no "enhancement" stories.
 ```bash
 B=<PLUGIN>/skills/03-story-and-sprint-planner/scripts/alm_jira_ado_bridge.py
 python3 $B --project-root "<PROJECT_ROOT>" --action audit              # coverage, sizing, tiers — exit 0 required
+python3 <PLUGIN>/scripts/dlc_decisions_client.py --project-root "<PROJECT_ROOT>" --action route-stories  # assigns Flash vs Pro tier + security criticality
 python3 $B --project-root "<PROJECT_ROOT>" --action test-connection    # when almPlatform != none
 python3 $B --project-root "<PROJECT_ROOT>" --action sync-stories       # --platform defaults from target_stack.json#almPlatform
 ```

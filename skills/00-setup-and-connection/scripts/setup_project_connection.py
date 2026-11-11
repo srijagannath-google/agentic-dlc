@@ -35,6 +35,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
+import dlc_security_runner  # noqa: E402
 
 
 def load_env_files(project_root: Path | None = None) -> list[str]:
@@ -206,6 +207,7 @@ def main() -> int:
     jira_key = (args.jira_project_key or os.environ.get("JIRA_PROJECT_KEY") or "").strip()
 
     if args.action == "check-env":
+        cm_bin = dlc_security_runner.check_codemender_and_alert(root, "Stage 0 Environment Check")
         dlc.mark_gate_awaiting_human(
             root,
             "gate_0_setup",
@@ -230,6 +232,10 @@ def main() -> int:
             },
             "modernizationTools": {
                 "codmod_cli_present": bool(shutil.which("codmod")),
+                "codemender_cm_cli_present": bool(cm_bin),
+                "codemender_cm_binary": cm_bin,
+                "codemender_install_guide": dlc_security_runner.CM_INSTALL_DOC_URL,
+                "gemini_decisions_api_key_present": bool(os.environ.get("GEMINI_API_KEY")),
                 "supportedDomainPacks": list(dlc.VALID_DOMAIN_PACKS),
             },
         }
@@ -401,6 +407,7 @@ def main() -> int:
         }
         out = _write_setup(root, setup_payload)
         dlc.info(f"wrote {out}")
+        dlc_security_runner.check_codemender_and_alert(root, "Stage 0 Save Setup")
         if args.ceremony_track != "standard" or dlc.gate_approvals_path(root).is_file():
             ga_data = dlc.load_gate_approvals(root)
             if not ga_data.get("gates"):

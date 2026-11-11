@@ -212,6 +212,13 @@ ADO_PAT=
 # Default Sprint Velocity Capacity (story points per sprint, default 21)
 DLC_SPRINT_CAPACITY_POINTS=21
 
+# Gemini Decisions API (gemini-decision-1 low-cost control plane — $0.10/1M input tokens, $0 output tokens)
+GEMINI_API_KEY=
+
+# CodeMender Security CLI ('cm') authentication (or run `gcloud auth application-default login`)
+CM_API_KEY=
+# CM_BIN=~/.codemender/cm
+
 # Google Distributed Cloud (GDC) Fleet deployment: targets and connectivity come from
 # specs/target_stack.json#deployment. Only Stage 8 `--live` (kubectl apply) reads optional per-environment
 # kube contexts; uncomment and set as needed:
@@ -272,6 +279,28 @@ else
     echo "      (Optional) For full Playwright browser inspection & reference crawling, run:"
     echo "        python3 -m pip install --user playwright && python3 -m playwright install chromium"
   fi
+fi
+
+# 7. Check CodeMender ('cm') security CLI availability and alert user if missing
+CM_DETECTED=""
+if [[ -n "${CM_BIN:-}" && -x "${CM_BIN}" ]]; then
+  CM_DETECTED="${CM_BIN}"
+elif command -v cm >/dev/null 2>&1; then
+  CM_DETECTED="$(command -v cm)"
+elif [[ -x "${HOME}/.codemender/cm" ]]; then
+  CM_DETECTED="${HOME}/.codemender/cm"
+fi
+
+if [[ -n "${CM_DETECTED}" ]]; then
+  echo "      CodeMender ('cm') security CLI detected at: ${CM_DETECTED}"
+else
+  echo "------------------------------------------------------------------------------"
+  echo "[SECURITY ALERT] CodeMender ('cm') CLI is NOT installed on this machine."
+  echo "  Stage 1 (legacy code scan) and Post-Stage-5 (target code scan & patching)"
+  echo "  use CodeMender when installed. Please install 'cm' on this machine:"
+  echo "    Guide : https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender/set-up-environment"
+  echo "    Binary: ~/.codemender/cm (chmod +x) or export CM_BIN=/path/to/cm"
+  echo "------------------------------------------------------------------------------"
 fi
 
 echo "=============================================================================="

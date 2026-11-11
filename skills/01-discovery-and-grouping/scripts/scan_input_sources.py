@@ -38,6 +38,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
+import dlc_security_runner  # noqa: E402
 
 # --------------------------------------------------------------------------------------------------
 # Heuristics (generic — no domain literals)
@@ -1094,6 +1095,16 @@ def scan(
     unverified_acronyms = extract_unverified_acronyms(texts_by_rel)
     detected_ambiguities = detect_cross_artifact_ambiguities(texts_by_rel)
     runtime_signals = extract_runtime_readiness_signals(files, texts_by_rel, scenario)
+    security_signals = dlc_security_runner.run_stage1_legacy_scan(
+        root, input_dirs, texts_by_rel, deterministic=deterministic
+    )
+    if security_signals.get("securityOverrideRecommended") and runtime_signals.get("recommendedModernizationMode") == "in-place-upgrade":
+        runtime_signals["recommendedModernizationMode"] = "clean-room-rebuild"
+        runtime_signals["recommendationReason"] = (
+            f"Security posture override: {security_signals['findingCount']} security finding(s) "
+            f"({security_signals['criticalCount']} CRITICAL, {security_signals['highCount']} HIGH) detected in input codebase — "
+            "overriding 'in-place-upgrade' to 'clean-room-rebuild' (confirm action with human via Grill-Me)."
+        )
     large_repo_mr = bool(top_module_count > 15 or len(files) > 60)
 
     result: dict[str, Any] = {
@@ -1121,6 +1132,7 @@ def scan(
         "unverifiedAcronyms": unverified_acronyms,
         "detectedAmbiguities": detected_ambiguities,
         "runtimeReadinessSignals": runtime_signals,
+        "securityPostureSignals": security_signals,
         "inputFingerprintSha256": dlc.sha256_bytes(hasher_input),
         "totalFilesScanned": len(files),
         "files": files,
@@ -1294,6 +1306,13 @@ def main() -> int:
         )
     if inv["scenarioConfidence"] == "LOW":
         dlc.warn("scenario confidence LOW — Gate 1 must ask the user to confirm SCENARIO_LEGACY_APP vs SCENARIO_REQUIREMENTS_DOC.")
+    sec_sig = inv.get("securityPostureSignals") or {}
+    if int(sec_sig.get("findingCount") or 0) > 0 and not dlc.is_golden_run():
+        dlc.warn(
+            f"Stage 1 security scan found {sec_sig['findingCount']} vulnerability finding(s) "
+            f"({sec_sig.get('criticalCount', 0)} CRITICAL, {sec_sig.get('highCount', 0)} HIGH) -> "
+            "Grill-Me (`clarification-griller --stage pre-spec`) MUST quiz the user on what action to take before Stage 2!"
+        )
     if not inv["hasUserProvidedDesignReferences"]:
         dlc.info("no design references found — ask the user (Gate 1) or proceed with the default design system.")
     if not args.quiet:

@@ -1,19 +1,21 @@
-# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.7.0`)
+# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.8.0`)
 
-> **Version:** `4.7.0` · **Architecture:** Living Spec-Driven Development (SDD) + Machine-Enforced BA `grill-me` Intake + Dual-Plane Enterprise ALM & Git Governance
+> **Version:** `4.8.0` · **Architecture:** Security-Driven SDD + CodeMender (`cm`) + Gemini Decisions API (`gemini-decision-1`) + Machine-Enforced BA `grill-me`
 >
 > **"Think Big, Start Small, Move Fast"** — the **Elephant** (deep-context discovery & living-specification architect), the **Judge**
-> (adversarial spec/architecture critics + closed-loop browser & API test runner), and the **Goldfish** (clean-context target-stack coder).
-> `agentic-dlc` is **domain-neutral**, **scenario-aware**, and **visually verified**: it modernises legacy applications (MS Access, `.NET`, Java, Mainframe) beyond 1:1 lift-and-shift (`clean-room-rebuild` or brownfield `in-place-upgrade`), baselines existing production systems (`retro-spec`), evolves living specifications (`delta`), and builds greenfield systems from requirements documents — engaging Business Analysts & humans in bounded **`🔥 Grill-Me` frontier rounds** **before `application_spec.md` is created (`pre-spec`)**, **when `user_stories.json` are created (`pre-stories`)**, and **anytime unclear, contradictory, conflicting, or ambiguous rules arise** (`--action flag-conflict`).
+> (adversarial spec/architecture critics + closed-loop browser, security & API test runner), and the **Goldfish** (clean-context target-stack coder).
+> `agentic-dlc` is **domain-neutral**, **security-driven**, **scenario-aware**, and **visually verified**: it modernises legacy applications (MS Access, `.NET`, Java, Mainframe) beyond 1:1 lift-and-shift (`clean-room-rebuild` or brownfield `in-place-upgrade`), baselines existing production systems (`retro-spec`), evolves living specifications (`delta`), and builds greenfield systems from requirements documents — running **CodeMender (`cm`)** at **Stage 1** (always quizzing the human via **`🔥 Grill-Me`** on security findings) and **Post-Stage-5** (logging every target code finding as a **`BUG-SEC-*` defect in ALM** and enforcing rectification), while using the **Gemini Decisions API (`gemini-decision-1` at \$0.10/1M input tokens, \$0 output tokens)** to cut routing, triage, and rubric-scoring token spend by 60%–80%.
 
 ---
 
-## 1. Key Capabilities (`v4.7.0`)
+## 1. Key Capabilities (`v4.8.0`)
 
-| Dimension | `agentic-dlc` v4.7.0 Capability |
+| Dimension | `agentic-dlc` v4.8.0 Capability |
 | :-- | :-- |
 | **Who Authors vs. Who Verifies** | **The LLM (8 subagents, 13 skills) authors every artefact** from user inputs; Python 3.10+ stdlib scripts **scan, crawl, derive, lint, execute, and enforce human gates** |
-| **Machine-Enforced BA `grill-me` (`pre-spec`, `pre-stories`, & `flag-conflict`)** | Auto-seeds `specs/clarification_decisions.json#openFrontier` and blocks downstream validators **before `application_spec.md`** (`SD-GRILL-00/01/02`), **when `user_stories.json` are created** (`SD-GRILL-03`), and **anytime contradictions/conflicts/ambiguities arise** (`--action flag-conflict` & `detectedAmbiguities`); auto-bypasses cleanly (`CLEAR_AUTO_BYPASSED`) only when zero gaps exist |
+| **End-to-End Security Spine & CodeMender (`cm` CLI)** | Alerts the user to install `cm` (`~/.codemender/cm`) whenever missing; runs `cm find` at **Stage 1** (`specs/legacy_security_findings.sarif` + `securityPostureSignals`, **always using `grill-me` to quiz the human if findings > 0**) and **Post-Stage-5** (`validate_build.py`: runs `cm find ./src/` + `cm verify`, **logs every finding as a `BUG-SEC-*` Bug in `backlog/defects.*` & Jira/ADO**, fails Gate 5, and marks `BUG-SEC-*` `Done` once `cm fix` / `coding-agent` rectifies it); derives `TC-SEC-*` tests & checks `@dlc-sec` pragmas |
+| **Gemini Decisions API Control Plane (`gemini-decision-1`)** | Zero-dependency `scripts/dlc_decisions_client.py` (`POST /v1beta/decisions`, `$0.10/1M` input tokens, `$0.00` output tokens, SHA-256 cached in `specs/.decisions_cache.json`) for Stage 0 `classify-intent`, Stage 1 `triage-files`, calibrated `detect-ambiguities` (`< 0.75` confidence -> `grill-me`), Two-Tier Hybrid `score-rubric` (`spec` & `architecture`), and `route-stories` (`Flash` vs. `Pro`) |
+| **Machine-Enforced BA `grill-me` (`pre-spec`, `pre-stories`, & `flag-conflict`)** | Auto-seeds `specs/clarification_decisions.json#openFrontier` and blocks downstream validators **on any Stage 1 security finding**, **before `application_spec.md`** (`SD-GRILL-00/01/02`), **when `user_stories.json` are created** (`SD-GRILL-03`), and **anytime contradictions/conflicts/ambiguities arise** (`--action flag-conflict`); auto-bypasses cleanly (`CLEAR_AUTO_BYPASSED`) only when zero gaps exist |
 | **Living Spec-Driven Development (`standard` · `delta` · `retro-spec`)** | Supports full delivery (`standard`), **Phase `N+1` Living Spec Delta Mode** (`delta` with `--baseline-spec` byte-for-byte preservation of completed items and historic approvals), and **Brownfield Retro-Spec Mode** (`retro-spec` with Zero Backlog Ticket Creation Guarantee) |
 | **Dual-Plane Human Review (With ALM or Pure Git PRs)** | **Pattern A (`alm-and-git`):** Thin-pointer, dependency-chained Jira / Azure DevOps stories (`specPointer`, `dependsOnStories`) with 1-page 5-Question Gate Decision Briefs. **Pattern B (`git-pr-docs-as-code`):** Git PRs + `CODEOWNERS` + inline `* **Approvals:**` ledger (`>= 2` distinct humans on `regulated` track, strict bot exclusion) when no external ALM is used |
 | **3D Small-Slice Execution & 3-Tier Spec Deviation Gate** | Enforces `<= 3` prod files, `<= 400` LOC, co-located `unitTestTargets`, and 4-part `verificationPlan` (no bare `"N/A"`), compacts `Done` slices (`compact-completed`), and halts *before* mutating `src/` on `Tier 1B` Spec Deviations |
@@ -134,8 +136,9 @@ flowchart LR
 - [`_shared/project_root.md`](_shared/project_root.md) — `<PROJECT_ROOT>` resolution and containment rules.
 - [`_shared/gate_matrix.md`](_shared/gate_matrix.md) — Ceremony tracks (`quick`, `standard`, `regulated`) and Executive Gate Decision Briefs.
 - [`_shared/conditional_grilling.md`](_shared/conditional_grilling.md) — Conditional `grill-me` frontier rounds, evidence-backed `➡️ Recommended` answers, `capabilityDispositions` (`retire` | `parity` | `reimagine-enhance`), and Zero-Noise Bypass.
+- [`_shared/security_chain_of_custody.md`](_shared/security_chain_of_custody.md) — End-to-end Security Spine, CodeMender (`cm`) Stage 1 + Post-Stage-5 ALM `BUG-SEC-*` defect & rectification lifecycle, `@dlc-sec` pragmas, and Gemini Decisions API (`gemini-decision-1`) control plane.
 - [`_shared/sdd_governance_and_alm.md`](_shared/sdd_governance_and_alm.md) — Living SDD lifecycle (`standard`/`delta`/`retro-spec`), thin-pointer ALM chaining, 3D slice bounds, 3-Tier Spec Deviation Gate, and Git PR review.
-- [`_shared/mcp_domain_packs.md`](_shared/mcp_domain_packs.md) — Pluggable MCP domain packs (`codmod-assessment`, `mainframe-mat`, `cloud-dms`, `bqms`, `hadoop-oozie-flink`, `agentic-audit`).
+- [`_shared/mcp_domain_packs.md`](_shared/mcp_domain_packs.md) — Pluggable MCP domain packs (`codmod-assessment`, `codemender-security`, `mainframe-mat`, `cloud-dms`, `bqms`, `hadoop-oozie-flink`, `agentic-audit`).
 - [`_shared/workflow_chain_of_custody.md`](_shared/workflow_chain_of_custody.md) — Lifecycle state machine extraction (Stage 1) → frozen Spec `§3.3` → stories, tests, UI, and backend guards.
 - [`_shared/well_architected_and_diagram_standards.md`](_shared/well_architected_and_diagram_standards.md) — 7-perspective architecture portfolio & FinOps TCO standards.
 - [`_shared/google_cloud_ui_design.md`](_shared/google_cloud_ui_design.md) & [`_shared/ux_guardrails.md`](_shared/ux_guardrails.md) — Material 3 (`--g-*`) tokens, ShadCN/Radix, `A2UI v0.9`, tab exclusivity, and UX guardrails.
@@ -151,18 +154,18 @@ flowchart LR
 **Option A — New or Standalone Repository (`git` or `./push-to-github.sh`):**
 ```bash
 # 1. Extract the release bundle (extracts into ./agentic-dlc/)
-unzip -q agentic-dlc-v4.7.0.zip -d ~/workspace/
+unzip -q agentic-dlc-v4.8.0.zip -d ~/workspace/
 cd ~/workspace/agentic-dlc
 
-# 2. Initialize Git and create the v4.7.0 commit + tag
+# 2. Initialize Git and create the v4.8.0 commit + tag
 git init -b main
 git add .
-git commit -m "feat: release agentic-dlc v4.7.0 (Pre-Spec, Pre-Stories & Conflict grill-me + Mainframe/.NET/Java readiness)"
-git tag v4.7.0
+git commit -m "feat: release agentic-dlc v4.8.0 (Security Spine, CodeMender Stage 1 & Stage 5 ALM rectification, Gemini Decisions API)"
+git tag v4.8.0
 
 # 3a. Push with GitHub CLI helper (creates a private repo if missing)
 GITHUB_OWNER="<your-org-or-user>" GITHUB_REPO="agentic-dlc" ./push-to-github.sh main
-git push origin v4.7.0
+git push origin v4.8.0
 
 # 3b. Or push manually to any Git remote (GitHub, GitLab, Azure Repos)
 git remote add origin https://github.com/<your-org>/agentic-dlc.git
@@ -172,15 +175,15 @@ git push -u origin main --tags
 **Option B — Updating an Existing `agentic-dlc` Git Checkout:**
 ```bash
 # Extract into a staging directory and sync cleanly over your existing checkout (preserving .git/)
-unzip -q agentic-dlc-v4.7.0.zip -d /tmp/dlc-stage
+unzip -q agentic-dlc-v4.8.0.zip -d /tmp/dlc-stage
 rsync -a --delete --exclude '.git' /tmp/dlc-stage/agentic-dlc/ ~/workspace/agentic-dlc/
 rm -rf /tmp/dlc-stage
 
 cd ~/workspace/agentic-dlc
 git status
 git add -A
-git commit -m "feat: upgrade agentic-dlc to v4.7.0 (Pre-Spec, Pre-Stories & Conflict grill-me + Mainframe/.NET/Java readiness)"
-git tag v4.7.0
+git commit -m "feat: upgrade agentic-dlc to v4.8.0 (Security Spine, CodeMender Stage 1 & Stage 5 ALM rectification, Gemini Decisions API)"
+git tag v4.8.0
 git push origin main --tags
 ```
 
@@ -233,7 +236,15 @@ python3 "$PLUGIN/skills/02-spec-architect-and-judge/scripts/lint_spec_structure.
 python3 "$PLUGIN/scripts/run_agentic_dlc_pipeline.py" \
   --project-root "$ROOT" --mode standard [--wave GRP-01] [--autonomous]
 
-# 6. Compact completed ('Done') slices in living backlog to prevent multi-wave context bloat
+# 6. Optional: Run Gemini Decisions API (`gemini-decision-1`) Hybrid Rubric Pre-Judge & Per-Story Model Router
+python3 "$PLUGIN/scripts/dlc_decisions_client.py" --project-root "$ROOT" --action score-rubric --target spec
+python3 "$PLUGIN/scripts/dlc_decisions_client.py" --project-root "$ROOT" --action route-stories
+
+# 7. Check CodeMender ('cm') CLI availability & run Post-Stage-5 security scan + ALM defect sync
+python3 "$PLUGIN/scripts/dlc_security_runner.py" --project-root "$ROOT" --stage check-cm
+python3 "$PLUGIN/scripts/dlc_security_runner.py" --project-root "$ROOT" --stage post-build [--auto-fix-cm]
+
+# 8. Compact completed ('Done') slices in living backlog to prevent multi-wave context bloat
 python3 "$PLUGIN/skills/03-story-and-sprint-planner/scripts/alm_jira_ado_bridge.py" \
   --project-root "$ROOT" --action compact-completed
 

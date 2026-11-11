@@ -1,8 +1,8 @@
 {
   "name": "agentic-dlc",
-  "version": "4.7.0",
-  "displayName": "Enterprise Agentic DLC Harness — Living SDD & Machine-Enforced BA Grill-Me (v4.7.0)",
-  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.7.0) combining Living Spec-Driven Development (--mode standard|delta|retro-spec, thin-pointer chained ALM slices, executable BR-NN decision vectors, multi-phase human approvals with bot exclusion & regulated 2-person review, 3-Tier Spec Deviation Halt, and Git-Native Docs-as-Code PR review), Machine-Enforced BA Grill-Me Clarification (clarification-griller: auto-seeded before application_spec.md via SD-GRILL-00/01/02, when user_stories.json are created via SD-GRILL-03, and anytime contradictions/conflicts/ambiguities arise via --action flag-conflict), brownfield MS Access/.NET/Java/Mainframe readiness (codmod-assessment & mainframe-mat MCPs, clean-room-rebuild vs in-place-upgrade, Stateless Container Contract & docker build --check), adversarial critics, A2UI v0.9 surfaces, and multi-cloud GDC Fleet GitOps packaging.",
+  "version": "4.8.0",
+  "displayName": "Enterprise Agentic DLC Harness — Security Spine, CodeMender & Gemini Decisions API (v4.8.0)",
+  "description": "Domain-neutral, scenario-aware Agentic Development Lifecycle plugin (v4.8.0) featuring an end-to-end Security Chain of Custody + Google DeepMind CodeMender ('cm' CLI: alerts user to install 'cm' if missing, scans legacy code at Stage 1 and ALWAYS uses grill-me to quiz the human on findings, scans target src/ right after Stage 5 build, logs every finding as a BUG-SEC-* defect in Jira/ADO, and enforces rectification via cm fix / coding-agent), a low-cost Gemini Decisions API (gemini-decision-1, $0.10/1M input tokens, $0 output tokens) probabilistic control plane for intent classification, file triage, ambiguity escalation, Two-Tier Hybrid Rubric pre-scoring, and Flash/Pro per-story routing, Living Spec-Driven Development (--mode standard|delta|retro-spec), Machine-Enforced BA Grill-Me Clarification, brownfield MS Access/.NET/Java/Mainframe readiness, A2UI v0.9 surfaces, and multi-cloud GDC Fleet GitOps packaging.",
   "author": "Enterprise Agentic Architecture Team",
   "rules": [
     "rules/AGENTS.md"

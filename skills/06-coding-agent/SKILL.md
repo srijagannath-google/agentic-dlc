@@ -89,7 +89,7 @@ Encode the §3.3 table as one data structure shared (or duplicated verbatim) by 
   transition.
 - **Backend:** every transition endpoint validates `(fromState, trigger, role)` and returns 4xx + readable
   `message` otherwise. The UI is never the only guard. When `target_stack.json#commands.reset` is configured (e.g., `POST /__test/reset` enabled strictly under `APP_ENV=local`), re-seed deterministic fixture state between Stage 6 tests and disable the endpoint (`404`) under `APP_ENV=production`.
-- **Guardrail Contract Pragmas (`@dlc-*`):** Annotate transition guards with `@dlc-guard:<From>-><To>`, business-rule calculations with `@dlc-rule:BR-NN`, PII masking helpers with `@dlc-mask:<field>`, and custom accessibility widgets with `@dlc-a11y:<rule>` so Stage 4A/Stage 6 diff auditing (`design/.contracts_index.json#guardrailBindings`) binds hunks with deterministic precision.
+- **Guardrail Contract Pragmas (`@dlc-*`):** Annotate transition guards with `@dlc-guard:<From>-><To>`, business-rule calculations with `@dlc-rule:BR-NN`, security/authorization/parameterization boundaries with `@dlc-sec:REQ-SEC-NN`, PII masking helpers with `@dlc-mask:<field>`, and custom accessibility widgets with `@dlc-a11y:<rule>` so Stage 4A/Stage 6/Stage 7 diff and drift auditing binds hunks with deterministic precision.
 
 ### 4. Business rules, labels, leakage
 - Every `BR-NN` depending on input recomputes on `input`; one semantic status element per view; validation
@@ -106,11 +106,14 @@ Encode the §3.3 table as one data structure shared (or duplicated verbatim) by 
 - WCAG 2.1 AA (+ named standards): `<a href="#main-content">Skip to main content</a>` first in `<body>`, semantic HTML5 landmarks (`<header>`, `<nav aria-label>`, `<main id="main-content">`, `<section>`, `<aside>`, `<dl>`, `<footer>`, `<table>`), labelled inputs, keyboard operability, modal focus management, `aria-live` for validation/status, contrast tokens (`--g-amber-text: #B06000` in light mode), status never by colour alone.
 - UX & Google Cloud UI Design guardrails (`_shared/ux_guardrails.md` and `_shared/google_cloud_ui_design.md`) are defaults; design references / §4 overrides win.
 
-### 6. Verify
+### 6. Verify (Includes Post-Stage-5 CodeMender `cm` Security Scan, ALM `BUG-SEC-*` Defect Logging & Mandatory Rectification)
 ```bash
-python3 <PLUGIN>/skills/06-coding-agent/scripts/validate_build.py --project-root "<PROJECT_ROOT>"
+python3 <PLUGIN>/skills/06-coding-agent/scripts/validate_build.py --project-root "<PROJECT_ROOT>" [--auto-fix-cm]
 ```
-Runs `install` → `build` → `start` → polls `healthcheck` → optional `test` → stops the process, and automatically transitions active sprint stories from `To Do` to `In Progress` in `backlog/` and on Jira / Azure DevOps via `alm_jira_ado_bridge.py --action transition-stories --target-status "In Progress" --scope active-sprints --only-from-todo`. Fix until green.
+Runs `install` → `build` → `start` → polls `healthcheck` → optional `test` → stops the process, and **immediately runs the Post-Stage-5 Security Gate (`dlc_security_runner.py --stage post-build`)**:
+1. Alerts the user to install CodeMender (`cm`) on the machine if not already available, auto-generates `<PROJECT_ROOT>/.codemender/config.yaml`, and scans `src/` via `cm find ./src/ --format=sarif` (+ `cm verify <id>` sandboxed PoC check) and deterministic target-code security checks.
+2. **Logs EVERY discovered vulnerability as a `BUG-SEC-01..N` (`issueType: "Bug"`) defect in `backlog/defects.{json,md}` and syncs it to Jira / Azure DevOps (`alm_jira_ado_bridge.py --action sync-defects`)**, then **FAILS Gate 5** until rectified!
+3. **Rectify Every `BUG-SEC-*` Defect:** Run `cm fix <finding-id>` (or `--auto-fix-cm`) or have `coding-agent` remediate the vulnerable construct in `src/`, then re-run `validate_build.py` — once clean, `validate_build.py` appends remediation comments, transitions `BUG-SEC-01..N` to **`Done`** locally and on Jira/ADO, and transitions active sprint stories from `To Do` to `In Progress`. Fix until green.
 
 ### 7. Mandatory STOP at Gate 5 (`gate_5_build`) — Wait for Human Build Review & Approval
 `validate_build.py` stamps `gate_5_build = AWAITING_HUMAN_REVIEW` in `specs/gate_approvals.json`, blocking Stage 6 (`run_closed_loop_eval.py`).

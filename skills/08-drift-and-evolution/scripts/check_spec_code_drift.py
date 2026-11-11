@@ -31,7 +31,7 @@ import dlc_common as dlc  # noqa: E402
 CODE_EXTENSIONS = {
     ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".go", ".java", ".kt", ".cs", ".rb", ".rs", ".php", ".sql", ".html",
 }
-PRAGMA_RE = re.compile(r"@dlc-(?:guard|rule|mask|a11y)\b", re.IGNORECASE)
+PRAGMA_RE = re.compile(r"@dlc-(?:guard|rule|mask|a11y|sec)\b", re.IGNORECASE)
 TESTID_IN_UI_RE = re.compile(r'data-testid\s*=\s*["\']?([A-Za-z0-9_.:-]+)["\']?')
 
 
@@ -260,6 +260,27 @@ def main() -> int:
                     "warning", "adr-coverage", str(adr_f.relative_to(root)), str(adr_f.parent.relative_to(root)) + "/",
                     f"Architecture Decision Record '{adr_f.name}' is missing a '{req_sec}' section.",
                     "Include Status, Context, Decision, and Consequences in every ADR file.",
+                )
+
+    # 7. Unresolved Stage 5 Security Defects (`BUG-SEC-*`) check
+    defects_p = root / "backlog" / "defects.json"
+    if defects_p.is_file():
+        def_doc = dlc.read_json(defects_p)
+        def_list = def_doc.get("defects", def_doc) if isinstance(def_doc, dict) else def_doc
+        if isinstance(def_list, list):
+            open_sec_bugs = [
+                d for d in def_list
+                if isinstance(d, dict) and str(d.get("id") or "").startswith("BUG-SEC-") and d.get("status") != "Done"
+            ]
+            for sb in open_sec_bugs:
+                sf = sb.get("securityFinding") or {}
+                add_finding(
+                    "error",
+                    "security-posture",
+                    f"backlog/defects.json ({sb['id']})",
+                    str(sf.get("file") or "src/"),
+                    f"Unrectified security defect {sb['id']} ({sf.get('ruleId', 'SEC')} / {sf.get('cwe', 'CWE')}) remains open.",
+                    "Rectify the security vulnerability in src/ and re-run Stage 5 build verification so the defect transitions to Done.",
                 )
 
     err_count = sum(1 for f in findings if f["severity"] == "error")

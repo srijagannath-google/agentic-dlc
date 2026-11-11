@@ -149,6 +149,48 @@
         "recommendationReason": { "type": "string" }
       }
     },
+    "securityPostureSignals": {
+      "type": "object",
+      "description": "Stage 1 CodeMender ('cm') + deterministic static security posture & sensitive-data scan summary over input artifacts.",
+      "required": [
+        "codemenderInstalled", "scannerMode", "findingCount", "criticalCount",
+        "highCount", "securityOverrideRecommended", "findings"
+      ],
+      "properties": {
+        "codemenderInstalled": { "type": "boolean" },
+        "scannerMode": { "type": "string" },
+        "sarifPath": { "type": ["string", "null"] },
+        "summaryPath": { "type": "string" },
+        "findingCount": { "type": "integer", "minimum": 0 },
+        "criticalCount": { "type": "integer", "minimum": 0 },
+        "highCount": { "type": "integer", "minimum": 0 },
+        "mediumCount": { "type": "integer", "minimum": 0 },
+        "lowCount": { "type": "integer", "minimum": 0 },
+        "sensitiveDataIndicators": { "type": "array", "items": { "type": "string" } },
+        "securityOverrideRecommended": { "type": "boolean" },
+        "recommendedPathAction": { "type": "string" },
+        "scannerDetail": { "type": "string" },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["findingId", "ruleId", "severity", "cwe", "file", "line", "message"],
+            "properties": {
+              "findingId": { "type": "string" },
+              "ruleId": { "type": "string" },
+              "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] },
+              "cwe": { "type": "string" },
+              "category": { "type": "string" },
+              "file": { "type": "string" },
+              "line": { "type": "integer", "minimum": 1 },
+              "message": { "type": "string" },
+              "source": { "type": "string" },
+              "verificationStatus": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
     "inputFingerprintSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "files": {
       "type": "array",

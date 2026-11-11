@@ -32,7 +32,7 @@
         "properties": {
           "id": { "type": "string" },
           "severity": { "type": "string", "enum": ["error", "warning"] },
-          "category": { "type": "string", "enum": ["artifact-hash", "openapi-route", "ddl-schema", "state-machine", "testid-contract", "adr-coverage"] },
+          "category": { "type": "string", "enum": ["artifact-hash", "openapi-route", "ddl-schema", "state-machine", "testid-contract", "adr-coverage", "security-posture"] },
           "artifact": { "type": "string" },
           "codeLocation": { "type": "string" },
           "description": { "type": "string", "minLength": 1 },

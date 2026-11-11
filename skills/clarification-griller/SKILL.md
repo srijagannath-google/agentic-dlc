@@ -7,10 +7,11 @@ description: "Machine-enforced Decision-Tree Business Analyst Clarification, Mod
 
 **Read before acting:** `_shared/conditional_grilling.md`, `_shared/workflow_chain_of_custody.md`, `schemas/clarification_decisions.schema.json`. `<PLUGIN>` = installed plugin dir.
 
-> **Machine-Enforced Checkpoints (`SD-GRILL-00` / `SD-GRILL-01` / `SD-GRILL-02` / `SD-GRILL-03`):**
-> 1. **Before `specs/application_spec.md` (`--stage pre-spec`):** Auto-seeded by `validate_discovery_blueprint.py`. Blocks `gate_1_discovery` approval and `lint_spec_structure.py` until settled!
-> 2. **When Creating `backlog/user_stories.json` (`--stage pre-stories`):** Auto-seeded by `validate_spec_scorecard.py` and checked at Stage 3 entry. Blocks `alm_jira_ado_bridge.py --action audit` and `gate_3_backlog` until settled!
-> 3. **Anytime Unclear / Contradictory / Conflicting / Ambiguous (`--action flag-conflict`):** Run immediately by any skill or subagent whenever two artifacts disagree or a business rule / AC boundary is ambiguous!
+> **Machine-Enforced Checkpoints (`SD-GRILL-00` / `SD-GRILL-01` / `SD-GRILL-02` / `SD-GRILL-03` + Mandatory Security Quiz):**
+> 1. **Stage 1 Security Findings (`LEGACY_SECURITY_FINDINGS_REQUIRE_DECISION`):** Whenever Stage 1 (`cm find` or built-in security posture scan in `specs/input_inventory.json#securityPostureSignals`) finds **ANY** vulnerability (`findingCount > 0`), `clarification-griller` **ALWAYS** quizzes the user first (`Q1`, category `security-pii`) on what path forward should be taken (`clean-room-rebuild` + `TC-SEC-LEGACY-*` anti-regression tests vs. `GRP-00-SEC` Sprint 1 hardening wave vs. targeted `cm fix` remediation).
+> 2. **Before `specs/application_spec.md` (`--stage pre-spec`):** Auto-seeded by `validate_discovery_blueprint.py` (+ optional Gemini Decisions API `dlc_decisions_client.py --action detect-ambiguities --stage pre-spec`). Blocks `gate_1_discovery` approval and `lint_spec_structure.py` until settled!
+> 3. **When Creating `backlog/user_stories.json` (`--stage pre-stories`):** Auto-seeded by `validate_spec_scorecard.py` and checked at Stage 3 entry. Blocks `alm_jira_ado_bridge.py --action audit` and `gate_3_backlog` until settled!
+> 4. **Anytime Unclear / Contradictory / Conflicting / Ambiguous (`--action flag-conflict`):** Run immediately by any skill or subagent whenever two artifacts disagree or a business rule / AC boundary is ambiguous!
 
 ## Procedure
 

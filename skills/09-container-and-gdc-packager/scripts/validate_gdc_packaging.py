@@ -266,6 +266,24 @@ def main() -> int:
             "Stage 8 refuses to package containers until all drift is resolved or documented via ADR + upstream contract sync in Stage 7."
         )
 
+    # 0c. Zero Open Security Defects (`BUG-SEC-*`) release gate:
+    defects_p = root / "backlog" / "defects.json"
+    if defects_p.is_file():
+        try:
+            def_doc = dlc.read_json(defects_p)
+            def_list = def_doc.get("defects", def_doc) if isinstance(def_doc, dict) else def_doc
+            open_sec = [
+                str(d.get("id")) for d in (def_list if isinstance(def_list, list) else [])
+                if isinstance(d, dict) and str(d.get("id") or "").startswith("BUG-SEC-") and d.get("status") != "Done"
+            ]
+            if open_sec:
+                fails.append(
+                    f"Unresolved Stage 5 security defect(s) remain open in backlog/defects.json ({', '.join(open_sec)}). "
+                    "Stage 8 refuses to package OCI containers until all BUG-SEC-* vulnerabilities are rectified and verified Done."
+                )
+        except SystemExit:
+            pass
+
     # 1. Cloud-neutral application code check on src/
     src_dir = root / "src"
     if not src_dir.exists():

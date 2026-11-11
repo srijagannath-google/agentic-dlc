@@ -61,10 +61,13 @@ Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITE
 python3 <PLUGIN>/skills/02-spec-architect-and-judge/scripts/lint_spec_structure.py --project-root "<PROJECT_ROOT>"
 ```
 
-### 2. Judge the spec (`spec-judge`)
-The judge reads `schemas/spec_rubric.json`, scores each criterion with a **verbatim quote** from the spec,
-writes `specs/application_eval_scorecard.json` (ARCHITECTURE §4.4) and `.md`
-(`resources/scorecard_template.md`), then runs:
+### 2. Judge the spec (`spec-judge` + Two-Tier Hybrid Gemini Decisions API Pre-Check)
+First run the low-cost `gemini-decision-1` pre-judge (`$0.10/1M` input tokens, `$0` output tokens, cached in `specs/.decisions_cache.json`) to batch-score all 20 rubric criteria in one forward pass:
+```bash
+python3 <PLUGIN>/scripts/dlc_decisions_client.py --project-root "<PROJECT_ROOT>" --action score-rubric --target spec
+```
+Inspect `specs/.decisions_rubric_precheck.json#criteriaNeedingProReview` so `spec-judge` focuses deep adversarial reasoning on criteria scoring `< maxPoints` or `confidence < 0.80` while verifying verbatim quotes across all 20 criteria in `schemas/spec_rubric.json`, writing `specs/application_eval_scorecard.json` (ARCHITECTURE §4.4) and `.md`
+(`resources/scorecard_template.md`), then run:
 ```bash
 python3 <PLUGIN>/skills/02-spec-architect-and-judge/scripts/validate_spec_scorecard.py --project-root "<PROJECT_ROOT>"
 ```

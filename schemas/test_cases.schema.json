@@ -43,8 +43,8 @@
       "type": "object",
       "required": ["id", "category", "title", "expected", "runtime", "steps", "needsSteps"],
       "properties": {
-        "id": { "type": "string", "pattern": "^TC-(POS|POS-JOURNEY|NEG|EDGE|UI-LEAK|STATE|UI-INTERACT|UI-INTERACT-TAB|A11Y|API|PARITY)-[0-9]{2,}$" },
-        "category": { "type": "string", "enum": ["Positive", "Negative", "Edge", "UiLeak", "State", "Interact", "A11y", "Api", "Parity"] },
+        "id": { "type": "string", "pattern": "^TC-(POS|POS-JOURNEY|NEG|EDGE|EDGE-BR-[0-9]+|SEC|SEC-LEGACY|SEC-AUTHZ|SEC-BOLA|UI-LEAK|STATE|UI-INTERACT|UI-INTERACT-TAB|A11Y|API|PARITY)-[0-9]{2,}$" },
+        "category": { "type": "string", "enum": ["Positive", "Negative", "Edge", "Security", "UiLeak", "State", "Interact", "A11y", "Api", "Parity"] },
         "storyRef": { "type": ["string", "null"] },
         "acRef": { "type": ["string", "null"] },
         "capabilityGroup": { "type": ["string", "null"] },

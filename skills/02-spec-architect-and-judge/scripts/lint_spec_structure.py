@@ -268,6 +268,7 @@ def main() -> int:
         },
     }
     dlc.write_json(root / "specs" / ".spec_index.json", index)
+    dlc.record_validation_diagnostic(root, "lint_spec_structure.py", not fails, fails, warns)
 
     if args.json:
         print(json.dumps({"passed": not fails, "failures": fails, "warnings": warns, "index": index}, indent=2))

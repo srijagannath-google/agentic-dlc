@@ -42,6 +42,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 import dlc_common as dlc  # noqa: E402
+import dlc_security_runner  # noqa: E402
 
 BACKEND_PIDFILE = "test/.build_logs/backend.pid"  # shared with 07/scripts/run_closed_loop_eval.py so each reaps the other's leftovers
 
@@ -810,6 +811,7 @@ def main() -> int:
     ap.add_argument("--skip-test", action="store_true", help="Do not execute commands.test")
     ap.add_argument("--skip-alm-sync", action="store_true", help="Skip automatic transition of active sprint stories to 'In Progress'")
     ap.add_argument("--alm-sync", action="store_true", help="Force the ALM bridge call even when almPlatform is 'none' or --deterministic is set")
+    ap.add_argument("--auto-fix-cm", action="store_true", help="Automatically invoke CodeMender `cm fix <id>` on post-build security findings")
     ap.add_argument("--deterministic", action="store_true", help="Fixed timestamps when updating story statuses (also skips ALM sync unless --alm-sync)")
     args = ap.parse_args()
     root = dlc.resolve_project_root(args.project_root)
@@ -985,6 +987,39 @@ def main() -> int:
                      f"Gate 5 may pass locally, but Gate 7 (validate_gdc_packaging.py) refuses while the marker exists. Install the toolchain and re-run.")
             checks.append(("degraded mode", f"WARN — {summary}"))
 
+    # ---- Post-Stage-5 Security Verification (`cm` + static scanner), ALM BUG-SEC-* Defect Logging & Rectification ----
+    sec_report = dlc_security_runner.run_post_stage5_target_scan(
+        root,
+        stack,
+        deterministic=args.deterministic,
+        auto_fix_cm=args.auto_fix_cm,
+        skip_alm_sync=args.skip_alm_sync,
+        force_alm_sync=args.alm_sync,
+    )
+    if sec_report["openSecurityDefectCount"] > 0:
+        bug_ids = ", ".join(sec_report["openSecurityDefectIds"])
+        checks.append((
+            "post-build security scan & ALM defect check",
+            f"FAIL — {sec_report['openSecurityDefectCount']} open security defect(s) logged ({bug_ids})",
+        ))
+        finding_lines = [
+            f"    - {f['ruleId']} ({f['cwe']}, {f['severity']}) at {f['file']}:{f['line']}: {f['message']}"
+            for f in (sec_report.get("activeFindings") or [])[:10]
+        ]
+        failures.append(
+            f"Post-Stage-5 security scan detected {sec_report['openSecurityDefectCount']} vulnerability finding(s) in src/ "
+            f"(logged as {bug_ids} in backlog/defects.json and synced to ALM). Rectify every finding in src/ "
+            f"(or run CodeMender `cm fix <finding-id>`) and re-run validate_build.py to verify & close {bug_ids}:\n"
+            + "\n".join(finding_lines)
+        )
+    else:
+        resolved_sec = sec_report.get("resolvedSecurityDefectIds") or []
+        suffix = f" (rectified & closed: {', '.join(resolved_sec)})" if resolved_sec else ""
+        checks.append((
+            "post-build security scan & ALM defect check",
+            f"ok — 0 open findings [{sec_report['scannerMode']}]{suffix}",
+        ))
+
     print("\n=== Stage 5 build gate ===")
     for k, v in checks:
         mark = "✗" if v.startswith("FAIL") else ("•" if v.startswith(("SKIPPED", "WARN")) else "✓")
@@ -1000,6 +1035,7 @@ def main() -> int:
         "checks": [{"check": k, "result": v} for k, v in checks],
         "failures": failures,
         "degradedMode": degraded,
+        "securityScan": sec_report,
     }
     dlc.write_json(log_dir / "build_gate_summary.json", summary_json)
     if failures:

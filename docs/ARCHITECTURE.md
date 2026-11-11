@@ -1,4 +1,4 @@
-# agentic-dlc v4.7 — Architecture & Artefact Contracts
+# agentic-dlc v4.8 — Architecture & Artefact Contracts
 
 This document is the **single source of truth** for how v4 differs from v3 and for the file/JSON
 contracts that every skill, agent and script must honour. Anyone (human or agent) editing this
@@ -47,6 +47,7 @@ agentic-dlc/
 │   ├── project_root.md                  # PROJECT_ROOT resolution rule (short)
 │   ├── gate_matrix.md                   # Adaptive ceremony tracks (quick/standard/regulated) & gate decision briefs
 │   ├── conditional_grilling.md          # Conditional grill-me decision-tree frontier rounds & capability dispositions
+│   ├── security_chain_of_custody.md     # Security Spine, CodeMender ('cm' Stage 1 + Post-Stage-5 ALM defects) & Gemini Decisions API
 │   ├── sdd_governance_and_alm.md        # Living SDD lifecycle (standard/delta/retro-spec), thin-pointer ALM & Git PR review
 │   ├── mcp_domain_packs.md              # Optional additive MCP domain packs (codmod-assessment, DB migration, Spanner, FinOps, Apigee)
 │   ├── ux_guardrails.md                 # the generic UX guardrails (single canonical copy)
@@ -76,6 +77,8 @@ agentic-dlc/
 ├── evals/                               # Counterfactual A/B skill ablation suite (evalset.json + run_skill_ablation.py)
 ├── scripts/
 │   ├── dlc_common.py                    # shared helpers (project root, json io, md parsing, state machine, gate ledger)
+│   ├── dlc_security_runner.py           # CodeMender ('cm') + static security scanner + Stage 5 BUG-SEC-* ALM defect & rectification engine
+│   ├── dlc_decisions_client.py          # Gemini Decisions API (gemini-decision-1, $0.10/1M in, $0 out) SHA-256 cached control plane
 │   ├── gate_tracker.py                  # CLI for human gate status & anti-self-approval gate unlocking
 │   ├── lint_domain_neutrality.py        # CI check: no domain literals outside examples/
 │   ├── run_agentic_dlc_pipeline.py      # VERIFY-ONLY orchestrator: runs gates in order, never generates

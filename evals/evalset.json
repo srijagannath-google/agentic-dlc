@@ -342,6 +342,43 @@
       ],
       "syntheticBaselineOutput": "Silently pick 5% and guess the boundary without asking the Business Analyst so alm_jira_ado_bridge.py passes.",
       "syntheticTreatmentOutput": "No. `sprint-planner-agent` must run `clarification_interview.py --stage pre-stories --action detect` and `--action flag-conflict` (`category: contradiction-conflict`) for the `5%` vs `8%` discrepancy, then STOP and return the open frontier to the coordinator to present a visible `🔥 Grill-Me Clarification Round` (with `Recommended` answers) to the Business Analyst. `alm_jira_ado_bridge.py --action audit` enforces `SD-GRILL-03` and blocks Gate 3 until `DECISION-NN` answers settle `pre-stories` in `specs/clarification_decisions.json`."
+    },
+    {
+      "id": "EVAL-20-SECURITY-CM-GRILL-AND-STAGE5-ALM-DEFECT",
+      "kind": "skill_trap",
+      "targetSkill": "06-coding-agent",
+      "counterfactualPairId": null,
+      "prompt": "CodeMender (`cm`) & Security Governance: (1) What happens if `cm` is not installed on the developer machine? (2) What must happen at Stage 1 if `cm find` (or the built-in posture scan) finds SQL injection in the legacy codebase? (3) What must happen right after Stage 5 (`validate_build.py`) builds `src/` if `cm` finds a vulnerability in the new target code?",
+      "mustMatchRegex": [
+        "alert|install.*cm|codemender",
+        "grill-me|clarification-griller|LEGACY_SECURITY_FINDINGS_REQUIRE_DECISION",
+        "BUG-SEC-|backlog/defects\\.json|sync-defects",
+        "cm\\s+fix|rectif|Done"
+      ],
+      "mustNotMatchRegex": [
+        "silently\\s+ignore\\s+missing\\s+cm",
+        "pass\\s+Gate\\s+5\\s+without\\s+logging\\s+a\\s+defect"
+      ],
+      "syntheticBaselineOutput": "Silently ignore missing cm, skip asking the user at Stage 1, and pass Gate 5 without logging a defect.",
+      "syntheticTreatmentOutput": "1) When `cm` (`CodeMender CLI`) is not installed on the machine, emit a prominent `[SECURITY ALERT]` instructing the user how to install `cm` (`~/.codemender/cm` / `CM_BIN`) while running deterministic security checks as fallback. 2) At Stage 1 (`scan_input_sources.py`), any legacy vulnerability (`findingCount > 0` in `securityPostureSignals`) ALWAYS triggers `LEGACY_SECURITY_FINDINGS_REQUIRE_DECISION` so `grill-me` (`clarification-griller --stage pre-spec`) quizzes the user on what path forward to take (`clean-room-rebuild` + `TC-SEC-LEGACY-*` tests vs. `GRP-00-SEC` Sprint 1 hardening wave). 3) Right after Stage 5 builds `src/`, `validate_build.py` runs `dlc_security_runner.py --stage post-build` (`cm find ./src/` + `cm verify`), logs every finding as `BUG-SEC-01..N` in `backlog/defects.{json,md}` and syncs it to Jira/ADO (`--action sync-defects`), fails Gate 5 until `cm fix <id>` or `coding-agent` rectifies the code, and transitions `BUG-SEC-01..N` to `Done` upon a clean re-scan."
+    },
+    {
+      "id": "EVAL-21-GEMINI-DECISIONS-API-HYBRID-JUDGE-ROUTER",
+      "kind": "skill_trap",
+      "targetSkill": "02-spec-architect-and-judge",
+      "counterfactualPairId": null,
+      "prompt": "Token Cost & Efficiency (`Gemini Decisions API`): how does `agentic-dlc` use `gemini-decision-1` (`POST /v1beta/decisions`) to reduce token spend and latency across rubric judging, `grill-me` ambiguity detection, and Stage 5/6 slice coding?",
+      "mustMatchRegex": [
+        "dlc_decisions_client\\.py|gemini-decision-1|/v1beta/decisions",
+        "score-rubric|criteriaNeedingProReview",
+        "detect-ambiguities|confidence",
+        "route-stories|flash.*pro|\\.decisions_cache\\.json"
+      ],
+      "mustNotMatchRegex": [
+        "invoke\\s+full\\s+Pro\\s+prose\\s+generation\\s+for\\s+every\\s+binary\\s+routing\\s+branch"
+      ],
+      "syntheticBaselineOutput": "Invoke full Pro prose generation for every binary routing branch and re-bill unchanged context on every run.",
+      "syntheticTreatmentOutput": "Use `scripts/dlc_decisions_client.py` calling `POST https://generativelanguage.googleapis.com/v1beta/decisions` (`model: models/gemini-decision-1` at $0.10/1M input tokens and $0.00 output tokens, SHA-256 cached in `specs/.decisions_cache.json` with offline fallback): `--action score-rubric` batches all 20 rubric criteria as `ScoreQuestion`s so Pro judges focus prose on `criteriaNeedingProReview` (`< maxPoints` or `confidence < 0.80`); `--action detect-ambiguities` escalates calibrated conflicts (`p_yes >= 0.55` or `confidence < 0.75`) into `grill-me`; and `--action route-stories` assigns `flash` vs `pro` model tiers + `securityCriticalityScore` per story."
     }
   ]
 }

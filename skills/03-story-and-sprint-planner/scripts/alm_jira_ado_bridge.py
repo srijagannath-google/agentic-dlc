@@ -867,9 +867,12 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
         return default_tech_story
 
     existing_defects = load_defects(root)
+    security_defects = [d for d in existing_defects if str(d.get("id") or "").startswith("BUG-SEC-")]
     defect_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     next_bug_num = 1
     for d in existing_defects:
+        if str(d.get("id") or "").startswith("BUG-SEC-"):
+            continue
         m_num = re.match(r"^BUG-(\d+)$", str(d.get("id") or ""))
         if m_num:
             next_bug_num = max(next_bug_num, int(m_num.group(1)) + 1)
@@ -977,7 +980,7 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
                     bug.setdefault("remediationComments", []).append({
                         "iteration": it_num,
                         "createdAtUtc": now_iso,
-                        "author": "Stage 6 Self-Healing Agent (07-test-runner-and-healer)",
+                        "author": "Stage 6 Automated Self-Healing Verification",
                         "summary": f"Defect {bug['id']} resolved in Iteration {it_num}; verified by {tc_ids_str} passing.",
                         "stepsTaken": full_steps,
                         "filesModified": files_mod,
@@ -991,7 +994,7 @@ def sync_defects_from_eval(root: Path, stories: list[dict[str, Any]], determinis
                 bug["status"] = "Done"
                 bug["resolvedInIteration"] = it_num
 
-    all_defects = sorted(defect_by_key.values(), key=lambda d: str(d.get("id") or ""))
+    all_defects = sorted(list(defect_by_key.values()) + security_defects, key=lambda d: str(d.get("id") or ""))
     # Defect traceability is refreshed from the (story-specific) story traceability by refresh_defect_traceability()
     # and persisted once per action by finalize_local_artifacts().
     return all_defects
@@ -1448,6 +1451,7 @@ def audit_backlog(root: Path, stories: list[dict[str, Any]], allow_partial_cover
     grill_errs, grill_warns = dlc.validate_clarification_ledger_for_stories(root)
     failures.extend(grill_errs)
     warnings.extend(grill_warns)
+    dlc.record_validation_diagnostic(root, "alm_jira_ado_bridge.py (audit)", not failures, failures, warnings)
 
     coverage_pct = 100.0 if not req_ids else round(100.0 * (len(req_ids) - len(missing_reqs)) / len(req_ids), 1)
     return {
@@ -2942,8 +2946,8 @@ def build_parser() -> argparse.ArgumentParser:
                     "(or not connected for test-connection), 2 live sync had errors (see the state file's liveSyncErrors).")
     p.add_argument("--action", default="sync-stories",
                    choices=["test-connection", "audit", "sync-stories", "sync-sprints", "set-approval", "export-csv",
-                            "transition-stories", "sync-status-from-eval", "sync-deployment-status", "select-groups",
-                            "compact-completed"])
+                            "transition-stories", "sync-status-from-eval", "sync-defects", "sync-deployment-status",
+                            "select-groups", "compact-completed"])
     p.add_argument("--platform", default=None, choices=["jira", "ado", "azure-devops", "both", "none"],
                    help="Default: specs/target_stack.json#almPlatform, else none.")
     dlc.add_project_root_arg(p)
@@ -3606,6 +3610,19 @@ def main() -> int:
 
     if args.action == "sync-deployment-status":
         return action_sync_deployment_status(ctx)
+
+    if args.action == "sync-defects":
+        ctx.enrich()
+        run_live_phases(ctx, "transition", {})
+        summary = ctx.finalize_local_artifacts(write_csv=True, update_md=True)
+        print(json.dumps({
+            "action": "sync-defects",
+            "totalDefects": len(ctx.defects),
+            "openDefects": summary["openDefects"],
+            "resolvedDefects": summary["resolvedDefects"],
+            **ctx.live_summary,
+        }, indent=2))
+        return live_errors_exit(ctx, "defect sync")
 
     if args.action in ("transition-stories", "sync-status-from-eval"):
         return action_transition(ctx)

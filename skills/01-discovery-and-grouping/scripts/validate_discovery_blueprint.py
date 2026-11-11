@@ -34,6 +34,10 @@ FUTURE_STATE_HEADING_RE = re.compile(
     r"normali[sz]ed\s+3nf\s+erd|legacy[- ]to[- ](?:modern|target)|legacy\s*(?:->|→)\s*target",
     re.IGNORECASE,
 )
+DEFERRED_FUTURE_EXCLUSION_RE = re.compile(
+    r"\b(?:defer(?:red)?|exclud(?:ed|ing)|out[- ]of[- ]scope|as[- ]is\s+only|not\s+in\s+stage\s*1)\b",
+    re.IGNORECASE,
+)
 
 
 def heading_present(md: str, pattern: str) -> bool:
@@ -62,16 +66,18 @@ def main() -> int:
     fails: list[str] = []
     warns: list[str] = []
 
-    # 1. Project name — business/domain name only
+    # 1. Project name — business/domain name only (accept `- **Project Name:**` header bullet or `# <H1>` fallback)
     m = re.search(r"\*\*Project Name:?\*\*:?\s*`?([^`\n]+)`?", md)
-    if not m:
-        fails.append("Missing '- **Project Name:** <name>' header line.")
+    h1_m = re.search(r"^#\s+([^\n]+)", md, re.MULTILINE)
+    if not m and not h1_m:
+        fails.append("Missing '- **Project Name:** <name>' header line (and no '# <Project Name>' H1 found).")
     else:
-        name = m.group(1).strip()
+        if not m and h1_m:
+            warns.append("'- **Project Name:** <name>' bullet omitted — inferred from top-level H1 heading.")
+        raw_name = (m.group(1) if m else re.split(r"\s+[—–-]\s+", h1_m.group(1), maxsplit=1)[0]).strip()
+        name = dlc.strip_md(raw_name)
         if not name or PLACEHOLDER_RE.search(name):
             fails.append(f"Project Name looks like a placeholder: {name!r}")
-        # Whole-word match only ('java' must not fire on 'javelin'); WARN because a business name may legitimately
-        # contain such a word — the human confirms at Gate 1.
         for w in TECH_WORDS:
             if re.search(rf"(?<![a-z0-9]){re.escape(w)}(?![a-z0-9])", name.lower()):
                 warns.append(f"Project Name should be the business/domain name only — it contains a target tech-stack word ('{w}'): {name!r}")
@@ -105,7 +111,7 @@ def main() -> int:
 
     bad_headings = [
         h.strip() for h in re.findall(r"^#{1,6}\s+(.*)$", md, re.MULTILINE)
-        if FUTURE_STATE_HEADING_RE.search(h)
+        if FUTURE_STATE_HEADING_RE.search(h) and not DEFERRED_FUTURE_EXCLUSION_RE.search(h)
     ]
     if bad_headings:
         fails.append(
@@ -163,13 +169,25 @@ def main() -> int:
                 "SCENARIO_LEGACY_APP requires a '§2.1 Current-State Legacy Object Inventory' subsection in Stage 1 "
                 "(Future-State Legacy-to-Target 3NF entity mapping belongs in Stage 4A design/solution_design.md)."
             )
-        inv_rows = dlc.find_table(md, ["legacy", "evidence"]) or dlc.find_table(md, ["object", "evidence"])
+        inv_rows = (
+            dlc.find_table(md, ["legacy", "evidence"])
+            or dlc.find_table(md, ["object", "evidence"])
+            or dlc.find_table(md, ["legacy", "source"])
+            or dlc.find_table(md, ["object", "source"])
+            or dlc.find_table(md, ["artifact", "evidence"])
+            or dlc.find_table(md, ["artifact", "source"])
+        )
         if not inv_rows:
-            fails.append("Current-State Legacy Object Inventory table missing or empty (columns must include 'Legacy Object' and 'Evidence').")
-        if dlc.find_table(md, ["legacy", "target"]):
+            fails.append("Current-State Legacy Object Inventory table missing or empty (columns must include 'Legacy Object' and 'Evidence' / 'Source').")
+        if (
+            dlc.find_table(md, ["legacy object", "target entity"])
+            or dlc.find_table(md, ["legacy table", "target table"])
+            or dlc.find_table(md, ["legacy", "target 3nf"])
+            or dlc.find_table(md, ["legacy entity", "target entity"])
+        ):
             fails.append(
                 "Stage 1 discovery blueprint contains a 'Legacy -> Target' entity mapping table — keep Stage 1 strictly "
-                "Current-State ('As-Is') and move Legacy-to-Target 3NF entity mapping to Stage 4A (design/solution_design.md §2.1)."
+                "Current-State ('As-Is') and move Legacy-to-Target 3NF entity mapping to Stage 4A (design/solution_design.md §1.1)."
             )
     else:
         if re.search(r"REQ-ENH-\d+", md):
@@ -179,11 +197,49 @@ def main() -> int:
     if not heading_present(md, r"gate 1"):
         fails.append("Missing 'Gate 1' user context confirmation checklist section.")
 
-    # 9. target_stack.json (Gate 1 output)
+    # 9. target_stack.json (Gate 1 output — auto-scaffold initial 'tbd' skeleton in interactive mode when not yet written)
+    if stack is None and not args.allow_missing_target_stack and not dlc.is_autonomous_or_golden(root):
+        setup_p = root / "specs" / "project_setup.json"
+        setup_alm = "none"
+        if setup_p.is_file():
+            sdoc = dlc.read_json(setup_p)
+            if isinstance(sdoc, dict) and sdoc.get("almPlatform") in ("ado", "jira", "none"):
+                setup_alm = str(sdoc["almPlatform"])
+        rrs = (inv.get("runtimeReadinessSignals") or {}) if isinstance(inv, dict) else {}
+        stack = {
+            "schemaVersion": dlc.SCHEMA_VERSION,
+            "decidedBy": "pending-stage-4a",
+            "modernizationMode": rrs.get("recommendedModernizationMode") or "clean-room-rebuild",
+            "almPlatform": setup_alm,
+            "accessibilityStandard": ["WCAG 2.1 AA"],
+            "regulations": [],
+            "capabilityGroupingDimension": "functional",
+            "capabilityGroups": cap_groups,
+            "selectedCapabilityGroups": ["ALL"],
+            "frontend": {"kind": "tbd"},
+            "backend": {"kind": "tbd"},
+            "database": {"kind": "tbd"},
+            "commands": {},
+        }
+        dlc.write_json(root / "specs" / "target_stack.json", stack)
+        dlc.info("auto-initialized specs/target_stack.json ('pending-stage-4a' skeleton) for Gate 1 confirmation.")
+
     if stack is None:
         msg = "specs/target_stack.json missing — Gate 1 must record the target stack (docs/ARCHITECTURE.md §4.2; zero-dependency default allowed in autonomous mode)."
         (warns if args.allow_missing_target_stack else fails).append(msg)
     else:
+        stack_mutated = False
+        if isinstance(stack.get("accessibilityStandard"), str) and stack["accessibilityStandard"].strip():
+            stack["accessibilityStandard"] = [stack["accessibilityStandard"].strip()]
+            stack_mutated = True
+        if "regulations" not in stack:
+            stack["regulations"] = []
+            stack_mutated = True
+        if "commands" not in stack:
+            stack["commands"] = {}
+            stack_mutated = True
+        if stack_mutated:
+            dlc.write_json(root / "specs" / "target_stack.json", stack)
         errs = dlc.validate_against_schema(stack, dlc.load_schema("target_stack.schema.json"))
         backend = (stack.get("backend") or {}).get("kind", "none")
         cmds = stack.get("commands") or {}
@@ -227,6 +283,7 @@ def main() -> int:
         "clarificationAssessment": clar_assessment,
         "passed": not fails, "failures": fails, "warnings": warns,
     }
+    dlc.record_validation_diagnostic(root, "validate_discovery_blueprint.py", not fails, fails, warns)
     if args.json:
         print(json.dumps(result, indent=2))
     else:

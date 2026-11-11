@@ -76,8 +76,9 @@ Using `resources/solution_design_template.md`, author `§1` 3NF `erDiagram`, `§
 ### 3. Validate All Perspectives, Render All 7 Diagrams, Extract Contracts & Run Adversarial `architecture-critic`
 ```bash
 python3 <PLUGIN>/skills/04-solution-architect/scripts/extract_contracts.py --project-root "<PROJECT_ROOT>"
+python3 <PLUGIN>/scripts/dlc_decisions_client.py --project-root "<PROJECT_ROOT>" --action score-rubric --target architecture
 ```
-Validates all 7 perspective artifacts + `architecture_design.md` + `solution_design.md`, renders all 7 SVG/PNG diagram pairs in `design/diagrams/`, and extracts `src/contracts/openapi.yaml` and `src/db/schema.sql`.
+Validates all 7 perspective artifacts + `architecture_design.md` + `solution_design.md`, renders all 7 SVG/PNG diagram pairs in `design/diagrams/`, extracts `src/contracts/openapi.yaml` and `src/db/schema.sql`, and runs the low-cost `gemini-decision-1` rubric pre-check (`design/.decisions_rubric_precheck.json`) so `architecture-critic` focuses generative prose on criteria scoring `< maxPoints`.
 Then invoke **`architecture-critic`** (mandatory when `ceremonyTrack == "regulated"` or when requested; recommended on `standard`) to score the design against `schemas/architecture_rubric.json` into `design/architecture_eval_scorecard.{json,md}` and verify:
 ```bash
 python3 <PLUGIN>/skills/04-solution-architect/scripts/validate_architecture_scorecard.py --project-root "<PROJECT_ROOT>"

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Enterprise Agentic DLC (agentic-dlc) — Windows Developer Laptop Installer
 .DESCRIPTION
@@ -180,6 +180,12 @@ ADO_PAT=
 # Default Sprint Velocity Capacity (story points per sprint, default 21)
 DLC_SPRINT_CAPACITY_POINTS=21
 
+# Gemini Decisions API (gemini-decision-1 low-cost control plane — $0.10/1M input tokens, $0 output tokens)
+GEMINI_API_KEY=
+
+# CodeMender Security CLI ('cm') authentication (or run `gcloud auth application-default login`)
+CM_API_KEY=
+
 # Google Distributed Cloud (GDC) Fleet deployment: targets and connectivity come from
 # specs/target_stack.json#deployment. Only Stage 8 `--live` (kubectl apply) reads optional per-environment
 # kube contexts; uncomment and set as needed:
@@ -241,6 +247,19 @@ if ($InstallPlaywright) {
   }
 } else {
   Write-Host "[5/5] Done. (Optional: run 'python -m pip install --user playwright; python -m playwright install chromium' for full Playwright browser inspection.)"
+}
+
+# 6. Check CodeMender ('cm') security CLI availability and alert user if missing
+$CmCmd = Get-Command cm -ErrorAction SilentlyContinue
+$CmHomeBin = Join-Path $HOME ".codemender\cm.exe"
+if ($env:CM_BIN -and (Test-Path -LiteralPath $env:CM_BIN)) {
+  Write-Host "      CodeMender ('cm') security CLI detected at: $($env:CM_BIN)"
+} elseif ($CmCmd) {
+  Write-Host "      CodeMender ('cm') security CLI detected at: $($CmCmd.Source)"
+} elseif (Test-Path -LiteralPath $CmHomeBin) {
+  Write-Host "      CodeMender ('cm') security CLI detected at: $CmHomeBin"
+} else {
+  Write-Warning "[SECURITY ALERT] CodeMender ('cm') CLI is NOT installed on this machine. Install 'cm' (~/.codemender/cm or set CM_BIN) from https://docs.cloud.google.com/gemini-enterprise-agent-platform/codemender/set-up-environment so Stage 1 & Post-Stage-5 run deep AI taint verification and self-tested fixes."
 }
 
 Write-Host "=============================================================================="

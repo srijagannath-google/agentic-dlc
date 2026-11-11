@@ -37,6 +37,43 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 # --------------------------------------------------------------------------------------
 # Exit / logging helpers
 # --------------------------------------------------------------------------------------
+_ACTIVE_PROJECT_ROOT: Path | None = None
+
+
+def record_validation_diagnostic(
+    root: Path | None,
+    script_name: str,
+    passed: bool,
+    failures: list[str] | None = None,
+    warnings: list[str] | None = None,
+) -> Path | None:
+    """Append a human-readable validation run entry to `<PROJECT_ROOT>/specs/.validation_diagnostics.log`
+    so users can always inspect why and where any collapsed CLI step failed or passed."""
+    target_root = root or _ACTIVE_PROJECT_ROOT
+    if target_root is None or not target_root.is_dir():
+        return None
+    try:
+        log_path = target_root / "specs" / ".validation_diagnostics.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        status_str = "PASS" if passed else "FAIL"
+        fails = failures or []
+        warns = warnings or []
+        lines = [
+            f"[{ts}] {script_name} -> {status_str} (failures={len(fails)}, warnings={len(warns)})",
+        ]
+        for f in fails:
+            lines.append(f"  ✗ FAIL: {f}")
+        for w in warns[:10]:
+            lines.append(f"  ! WARN: {w}")
+        lines.append("")
+        with log_path.open("a", encoding="utf-8") as fh:
+            fh.write("\n".join(lines))
+        return log_path
+    except OSError:
+        return None
+
+
 class GateFailure(SystemExit):
     """Raised to stop a stage with a non-zero exit code and a human-readable reason.
 
@@ -48,6 +85,8 @@ class GateFailure(SystemExit):
 
     def __init__(self, message: str, code: int = 1):
         self.message = message
+        script_lbl = Path(sys.argv[0]).name if sys.argv else "dlc_script"
+        record_validation_diagnostic(_ACTIVE_PROJECT_ROOT, script_lbl, False, [message])
         print(f"\n[GATE FAILED] {message}", file=sys.stderr)
         super().__init__(code)
 
@@ -91,6 +130,7 @@ def resolve_project_root(explicit: str | None = None) -> Path:
     An explicit `--project-root` is authoritative: it must be an existing directory, otherwise the gate fails
     (it never silently falls through to `project_root.txt` or the cwd).
     """
+    global _ACTIVE_PROJECT_ROOT
     candidates: list[Path] = []
     if explicit:
         ex = Path(explicit).expanduser()
@@ -104,6 +144,7 @@ def resolve_project_root(explicit: str | None = None) -> Path:
             raise GateFailure(f"--project-root {explicit} is not an existing directory. Create it (bootstrap.sh --project-root <dir>) or fix the path.")
         if is_installer_dir(ex):
             raise GateFailure(f"--project-root {ex} is the plugin/installer directory — never a <PROJECT_ROOT> (see _shared/project_root.md).")
+        _ACTIVE_PROJECT_ROOT = ex
         return ex
     cfg = Path.home() / ".gemini" / "config" / "project_root.txt"
     if cfg.exists():
@@ -120,6 +161,7 @@ def resolve_project_root(explicit: str | None = None) -> Path:
         except OSError:
             continue
         if c.is_dir() and not is_installer_dir(c):
+            _ACTIVE_PROJECT_ROOT = c
             return c
     raise GateFailure(
         "Could not resolve <PROJECT_ROOT>. Pass --project-root <dir> (must not be the plugin/installer directory)."
@@ -876,6 +918,8 @@ def normalise_ac(ac: Any, index: int) -> dict[str, str]:
 
 def ac_category(tag: str) -> str:
     t = tag.upper()
+    if "SECURITY" in t or "ABUSE" in t:
+        return "Security"
     if "EDGE" in t or "BOUNDARY" in t:
         return "Edge"
     if "ROLE VISIBILITY" in t or "PREREQUISITE" in t or "STATE" in t:
@@ -1620,12 +1664,12 @@ def parse_scenario_label(text: str) -> str | None:
 
 DELIVERABLE_INTERNAL_LEAK_CORE_PATTERNS = [
     r"\b(?:0[0-9]|10)/scripts/[A-Za-z0-9_.-]+",
-    r"\bscripts/(?:dlc_common|gate_tracker|lint_domain_neutrality|run_agentic_dlc_pipeline|verify_golden_projects)\.py\b",
+    r"\bscripts/(?:dlc_common|dlc_decisions_client|dlc_security_runner|gate_tracker|lint_domain_neutrality|run_agentic_dlc_pipeline|verify_golden_projects)\.py\b",
     r"\b(?:setup_project_connection|scan_input_sources|capture_design_reference|validate_discovery_blueprint|"
     r"lint_spec_structure|validate_spec_scorecard|alm_jira_ado_bridge|extract_contracts|validate_architecture_scorecard|"
     r"gcp_diagram_renderer|derive_test_cases|validate_test_cases|check_testid_contract|validate_build|run_closed_loop_eval|"
     r"validate_gdc_packaging|run_gdc_fleet_deploy_and_verify|check_spec_code_drift|run_agentic_dlc_pipeline|gate_tracker|"
-    r"dlc_common|lint_domain_neutrality|verify_golden_projects)\.py\b",
+    r"dlc_common|dlc_decisions_client|dlc_security_runner|lint_domain_neutrality|verify_golden_projects)\.py\b",
     r"(?<![A-Za-z0-9_/-])_shared/[A-Za-z0-9_.-]+",
     r"\bskills/[0-9]{2}-[A-Za-z0-9_-]+",
     r"\bresources/reference_[A-Za-z0-9_.-]+",
@@ -1711,7 +1755,7 @@ def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = No
                         f"{rel}:{lineno} exposes internal harness detail '{m.group(0)}' — "
                         f"project deliverables must never contain internal script names, plugin paths, subagent slugs, or scenario enum constants."
                     )
-        elif suf == ".json" and Path(rel).name not in ("gate_approvals.json",):
+        elif suf == ".json" and Path(rel).name not in ("gate_approvals.json", "clarification_decisions.json", "project_setup.json"):
             txt = p.read_text(encoding="utf-8", errors="replace")
             for lineno, raw_line in enumerate(txt.splitlines(), 1):
                 line = strip_inline_data_uris(raw_line)
@@ -1729,6 +1773,7 @@ def scan_deliverable_internal_leaks(root: Path, rel_paths: list[str] | None = No
 # --------------------------------------------------------------------------------------
 VALID_DOMAIN_PACKS = (
     "codmod-assessment",
+    "codemender-security",
     "mainframe-mat",
     "cloud-dms",
     "bqms",
@@ -1908,7 +1953,7 @@ _SPEC_STATUS_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Status:\*\*[ \t]*(.+)$", re
 _APPROVED_BY_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Approved by:\*\*[ \t]*(.*)$", re.IGNORECASE)
 _APPROVALS_HDR_LINE_RE = re.compile(r"^[\*\-][ \t]+\*\*Approvals:\*\*[ \t]*(.*)$", re.IGNORECASE)
 _PHASE_APPROVAL_SUB_RE = re.compile(
-    r"^\*\*Phases?[ \t]+([^\*]+?)\*\*[ \t]+-[ \t]+(.+?)(?:[ \t]+-[ \t]+(.+))?$",
+    r"^\*\*Phases?[ \t]+([^\*]+?)\*\*[ \t]+[-–—][ \t]+(.+?)(?:[ \t]+[-–—][ \t]+(.+))?$",
     re.IGNORECASE,
 )
 
@@ -2267,6 +2312,25 @@ def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[s
     unverified_acrs: list[str] = []
     detected_ambigs: list[dict[str, Any]] = []
     story_ambigs: list[dict[str, str]] = []
+    security_findings: list[dict[str, Any]] = []
+    decisions_signals: list[dict[str, Any]] = []
+
+    def _load_decisions_signals(st_name: str) -> list[dict[str, Any]]:
+        sig_p = root / "specs" / f".decisions_ambiguities_{st_name}.json"
+        if not sig_p.is_file() and os.environ.get("GEMINI_API_KEY") and os.environ.get("DLC_DISABLE_DECISIONS_API") != "1":
+            try:
+                import dlc_decisions_client as dclient
+                dclient.detect_ambiguities(root, stage=st_name, offline=False)
+            except Exception:
+                pass
+        if sig_p.is_file():
+            try:
+                sdoc = read_json(sig_p)
+                if isinstance(sdoc, dict) and isinstance(sdoc.get("escalatedSignals"), list):
+                    return [x for x in sdoc["escalatedSignals"] if isinstance(x, dict)]
+            except Exception:
+                pass
+        return []
 
     if norm_stage == "pre-spec":
         inv_path = root / "specs" / "input_inventory.json"
@@ -2275,6 +2339,17 @@ def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[s
         conf = str(inv.get("scenarioConfidence") or "HIGH").upper() if isinstance(inv, dict) else "HIGH"
         unverified_acrs = list(inv.get("unverifiedAcronyms") or []) if isinstance(inv, dict) else []
         detected_ambigs = list(inv.get("detectedAmbiguities") or []) if isinstance(inv, dict) else []
+        sec_posture = (inv.get("securityPostureSignals") or {}) if isinstance(inv, dict) else {}
+        if not sec_posture and (root / "specs" / "legacy_security_summary.json").is_file():
+            try:
+                sec_posture = read_json(root / "specs" / "legacy_security_summary.json")
+            except Exception:
+                sec_posture = {}
+        if isinstance(sec_posture, dict):
+            security_findings = [f for f in (sec_posture.get("findings") or []) if isinstance(f, dict)]
+            sec_cnt = max(len(security_findings), int(sec_posture.get("findingCount") or 0))
+        else:
+            sec_cnt = 0
 
         missing_role_trans: list[str] = []
         doc_path = root / "specs" / "discovery_architecture_and_inventory.md"
@@ -2284,12 +2359,20 @@ def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[s
             sm_tbl = parse_state_table(md)
             missing_role_trans = [f"{t.src}->{t.dst} ({t.trigger})" for t in sm_tbl.transitions if not t.roles]
 
+        decisions_signals = _load_decisions_signals("pre-spec")
+
+        if sec_cnt > 0:
+            # MANDATORY v4.8 RULE: Whenever Stage 1 (CodeMender 'cm' or static posture scan) finds ANY vulnerability,
+            # ALWAYS use grill-me to quiz the user on what path forward should be taken!
+            reasons.append(f"LEGACY_SECURITY_FINDINGS_REQUIRE_DECISION:{sec_cnt}")
         if conf == "LOW":
             reasons.append("LOW_SCENARIO_CONFIDENCE")
         if scenario == "SCENARIO_LEGACY_APP" and spec_mode in ("standard", "delta"):
             reasons.append("LEGACY_MODERNIZATION_AMBITION_UNSETTLED")
         if detected_ambigs:
             reasons.append(f"CONTRADICTORY_OR_AMBIGUOUS_INPUTS:{len(detected_ambigs)}")
+        if decisions_signals:
+            reasons.append(f"DECISIONS_API_UNCERTAINTY_OR_CONFLICT:{len(decisions_signals)}")
         if open_qs:
             reasons.append(f"OPEN_WORKFLOW_QUESTIONS:{len(open_qs)}")
         if missing_role_trans:
@@ -2384,6 +2467,16 @@ def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[s
                             "Sprint 1, followed by downstream capability groups in topological dependency order (`<= 3` prod files per slice)."
                         ),
                     })
+        decisions_signals = _load_decisions_signals("pre-stories")
+        if decisions_signals:
+            reasons.append(f"DECISIONS_API_UNCERTAINTY_OR_CONFLICT:{len(decisions_signals)}")
+            for ds in decisions_signals[:2]:
+                story_ambigs.append({
+                    "category": str(ds.get("category") or "story-acceptance-criteria"),
+                    "evidenceSource": f"Gemini Decisions API calibrated check ({ds.get('signalId')}, P={ds.get('pConflictOrGap')}, conf={ds.get('confidence')})",
+                    "question": str(ds.get("question") or ""),
+                    "recommendedAnswer": str(ds.get("recommendedAnswer") or ""),
+                })
 
     elif norm_stage == "stage4a":
         ts_path = root / "specs" / "target_stack.json"
@@ -2409,6 +2502,8 @@ def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[s
         "unverifiedAcronyms": unverified_acrs,
         "detectedAmbiguities": detected_ambigs,
         "storyAmbiguities": story_ambigs,
+        "securityFindings": security_findings,
+        "decisionsSignals": decisions_signals,
     }
 
 
@@ -2427,7 +2522,50 @@ def build_clarification_frontier(root: Path, stage: str = "pre-spec") -> dict[st
         cap_groups = parse_capability_groups(md) if md else []
         grp_labels = ", ".join(f"{g['id']} ({g['name']})" for g in cap_groups[:6]) or "discovered capability groups"
 
-        # Surface contradictions/conflicts FIRST so BA resolves conflicting business rules immediately!
+        # 0. MANDATORY v4.8 RULE: Whenever Stage 1 (CodeMender 'cm' or security posture scan) finds ANY vulnerability,
+        # ALWAYS quiz the user FIRST via Grill-Me on what path forward should be taken!
+        sec_findings = assessment.get("securityFindings") or []
+        if any(str(r).startswith("LEGACY_SECURITY_FINDINGS_REQUIRE_DECISION:") for r in assessment["triggerReasons"]):
+            sec_posture = (inv.get("securityPostureSignals") or {}) if isinstance(inv, dict) else {}
+            if not sec_posture and (root / "specs" / "legacy_security_summary.json").is_file():
+                try:
+                    sec_posture = read_json(root / "specs" / "legacy_security_summary.json")
+                except Exception:
+                    sec_posture = {}
+            f_cnt = int(sec_posture.get("findingCount") or len(sec_findings) or 1)
+            crit_n = int(sec_posture.get("criticalCount") or sum(1 for f in sec_findings if f.get("severity") == "CRITICAL"))
+            high_n = int(sec_posture.get("highCount") or sum(1 for f in sec_findings if f.get("severity") == "HIGH"))
+            samples = [
+                f"{f.get('ruleId', 'SEC')} ({f.get('cwe', 'CWE')} in {f.get('file', 'input')}:{f.get('line', 1)})"
+                for f in sec_findings[:3]
+            ]
+            sample_str = "; ".join(samples) if samples else f"{f_cnt} security finding(s)"
+            ev_src = str(sec_posture.get("sarifPath") or sec_posture.get("summaryPath") or "specs/legacy_security_summary.json")
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "security-pii",
+                "evidenceSource": f"{ev_src} ({f_cnt} finding(s): {sample_str})",
+                "question": (
+                    f"Stage 1 security scan (CodeMender / posture baseline) found {f_cnt} vulnerability finding(s) in the legacy input "
+                    f"({crit_n} CRITICAL, {high_n} HIGH — {sample_str}). What action and modernization path should we take for these findings?"
+                ),
+                "recommendedAnswer": (
+                    "Execute a clean-room rebuild that eliminates all discovered legacy vulnerability classes by design "
+                    "(parameterized queries, OIDC/RBAC tenant checks, modern cryptography), prioritize high-exposure workflows in Wave 1, "
+                    "and derive TC-SEC-LEGACY-* anti-regression exploit tests."
+                ),
+                "options": [
+                    "(Recommended) Clean-room rebuild eliminating all legacy vulnerability classes + generate TC-SEC-LEGACY-* anti-regression tests",
+                    "Schedule mandatory GRP-00-SEC Security Hardening Wave in Sprint 1 (US-SEC-* remediation stories) before migrating features",
+                    "In-place upgrade with CodeMender / targeted remediation and compensating GDC Policy Controller & mTLS controls",
+                ],
+            })
+            q_idx += 1
+
+        # Surface contradictions/conflicts next so BA resolves conflicting business rules immediately!
         for amb in (assessment.get("detectedAmbiguities") or [])[:2]:
             if q_idx > 4:
                 break
@@ -2443,6 +2581,21 @@ def build_clarification_frontier(root: Path, stage: str = "pre-spec") -> dict[st
                     "Treat the governed policy/query rule from the primary business workflow as authoritative, "
                     "parameterize the threshold in configuration, and document the superseded legacy value."
                 ),
+            })
+            q_idx += 1
+
+        for ds in (assessment.get("decisionsSignals") or [])[:2]:
+            if q_idx > 4:
+                break
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": str(ds.get("category") or "contradiction-conflict"),
+                "evidenceSource": f"Gemini Decisions API calibrated check ({ds.get('signalId')}, P={ds.get('pConflictOrGap')}, conf={ds.get('confidence')})",
+                "question": str(ds.get("question") or ""),
+                "recommendedAnswer": str(ds.get("recommendedAnswer") or ""),
             })
             q_idx += 1
 

@@ -268,6 +268,7 @@ def main() -> int:
 
     result = {"verdict": computed, "totalScore": total_calc, "pillarTotals": pillar_sum, "blockingZero": blocking_zero,
               "failures": fails, "warnings": warns}
+    dlc.record_validation_diagnostic(root, "validate_spec_scorecard.py", computed == "PASS", fails, warns)
     if args.json:
         print(json.dumps(result, indent=2))
     else:

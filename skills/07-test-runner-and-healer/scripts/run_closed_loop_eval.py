@@ -122,13 +122,13 @@ GUARDRAIL_PATTERNS: dict[str, re.Pattern[str]] = {
     "accessibility": re.compile(r"(aria-|\brole=|<label\b|tabindex|\balt=|\blang=|\bfor=|accesskey)", re.I),
     "leakage label mapping": re.compile(r"(label\s*map|_LABELS\b|labelFor|toLabel|displayName|statusLabel|humanLabel|enumLabel|LABELS\s*[=:])", re.I),
     "business formula / threshold": stem_regex(["formula", "rate", "threshold", "accrual", "balance", "penalt", "surcharge", "percent", "rounding"], [r"\bround\("]),
-    "contract-pinned @dlc-guard/@dlc-rule/@dlc-mask/@dlc-a11y annotation": re.compile(r"@dlc-(?:guard|rule|mask|a11y)\b", re.I),
+    "contract-pinned @dlc-guard/@dlc-rule/@dlc-mask/@dlc-a11y/@dlc-sec annotation": re.compile(r"@dlc-(?:guard|rule|mask|a11y|sec|sec-safe)\b", re.I),
 }
 # Every identifier here must be matched by at least one GUARDRAIL_PATTERNS entry (checked by --selftest-guardrail-patterns).
 GUARDRAIL_SELFTEST = ["allowedRoles", "userRole", "hasRole(", "canApprove(", "@PreAuthorize", "hasPermission(", "checkRole(",
                       "ALLOWED_TRANSITIONS", "aria-label", "maskSsn", "redactEmail", "ROLE_PERMISSIONS", "isTransitionAllowed",
                       "guardFor(", "nextState", "APPROVAL_THRESHOLD", "accrualRate", "<label for=", "tabindex=\"0\"",
-                      "STATUS_LABELS", "authorizeTransition", "can_transition(", "@dlc-guard:Draft->Submitted"]
+                      "STATUS_LABELS", "authorizeTransition", "can_transition(", "@dlc-guard:Draft->Submitted", "@dlc-sec:REQ-SEC-01"]
 DIFF_CONTEXT_LINES = 6  # unified-diff context so a one-line change inside a guard function is classified with its surroundings
 GUARDRAIL_STATE_FILE = "test/.guardrail_state.json"
 BACKEND_PIDFILE = "test/.build_logs/backend.pid"  # process-group id of the backend started by validate_build.py / this script
