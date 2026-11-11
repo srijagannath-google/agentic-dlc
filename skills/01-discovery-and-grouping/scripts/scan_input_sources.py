@@ -765,6 +765,7 @@ def build_dependency_dag(
     }
     summary = {
         "dagFile": "specs/dependency_dag.json",
+        "dagMarkdownFile": "specs/dependency_dag.md",
         "nodeCount": len(nodes),
         "edgeCount": len(edges),
         "tierCount": len(tiers),
@@ -772,6 +773,161 @@ def build_dependency_dag(
         "tiers": tiers,
     }
     return dag_doc, summary, len(top_modules)
+
+
+_DAG_KIND_LABELS: dict[str, tuple[str, str]] = {
+    "table": ("Table", "dagTable"),
+    "legacy_schema": ("Schema", "dagSchema"),
+    "legacy_query": ("Query", "dagQuery"),
+    "legacy_form": ("Form / Screen", "dagForm"),
+    "legacy_report": ("Report", "dagReport"),
+    "legacy_source": ("Source Module", "dagSource"),
+}
+_MERMAID_NODE_CAP = 120
+_MERMAID_EDGE_CAP = 250
+
+
+def render_dependency_dag_markdown(dag_doc: dict[str, Any]) -> str:
+    """Render `specs/dependency_dag.md` with a VS Code-ready Mermaid `flowchart LR` grouped by topological tiers
+    plus full blast-radius node and directed-edge tables."""
+    nodes_list = [n for n in (dag_doc.get("nodes") or []) if isinstance(n, dict) and n.get("id")]
+    edges_list = [e for e in (dag_doc.get("edges") or []) if isinstance(e, dict) and e.get("from") and e.get("to")]
+    tiers_list = [t for t in (dag_doc.get("tiers") or []) if isinstance(t, list)]
+
+    by_id = {str(n["id"]): n for n in nodes_list}
+    m_id = {str(n["id"]): f"N{idx:03d}" for idx, n in enumerate(nodes_list, 1)}
+
+    inbound_cnt: dict[str, int] = {str(n["id"]): 0 for n in nodes_list}
+    outbound_cnt: dict[str, int] = {str(n["id"]): 0 for n in nodes_list}
+    for e in edges_list:
+        src, dst = str(e["from"]), str(e["to"])
+        outbound_cnt[src] = outbound_cnt.get(src, 0) + 1
+        inbound_cnt[dst] = inbound_cnt.get(dst, 0) + 1
+
+    tier_of: dict[str, int] = {}
+    for t_idx, tier_nodes in enumerate(tiers_list):
+        for nid in tier_nodes:
+            tier_of[str(nid)] = t_idx
+
+    # Select up to _MERMAID_NODE_CAP highest-connectivity nodes if repo is very large so VS Code Mermaid renders fast
+    if len(nodes_list) <= _MERMAID_NODE_CAP:
+        shown_ids = {str(n["id"]) for n in nodes_list}
+        truncated_note = ""
+    else:
+        ranked = sorted(
+            nodes_list,
+            key=lambda n: (-(inbound_cnt.get(str(n["id"]), 0) + outbound_cnt.get(str(n["id"]), 0)), str(n["id"])),
+        )
+        shown_ids = {str(n["id"]) for n in ranked[:_MERMAID_NODE_CAP]}
+        truncated_note = (
+            f"\n> [!NOTE]\n"
+            f"> Showing the top `{len(shown_ids)}` connected artifacts (out of `{len(nodes_list)}`) in the Mermaid diagram "
+            "for visual clarity in VS Code; all nodes and edges are listed in Sections 3 and 4 below.\n"
+        )
+
+    gen_utc = str(dag_doc.get("generatedAtUtc") or "")
+    has_cycles = bool(dag_doc.get("hasCycles"))
+    lines = [
+        "# Current-State Dependency DAG & Topological Tier Map",
+        "",
+        f"- **Generated At (UTC):** `{gen_utc}`",
+        f"- **Total Artifacts / Nodes:** `{len(nodes_list)}`",
+        f"- **Directed Dependency Edges:** `{len(edges_list)}`",
+        f"- **Topological Modernization Tiers:** `{len(tiers_list)}` (`Tier 0` = leaf data/schema foundations → `Tier {max(0, len(tiers_list) - 1)}` = top-level UI/caller surfaces)",
+        f"- **Circular Dependencies Detected:** `{'Yes (cycles broken deterministically)' if has_cycles else 'No (strict acyclic graph)'}`",
+        "",
+        "> [!TIP]",
+        "> In VS Code, press **`Cmd+Shift+V`** (macOS) or **`Ctrl+Shift+V`** (Windows / Linux) to open **Markdown Preview** and inspect the visual dependency graph below.",
+    ]
+    if truncated_note:
+        lines.append(truncated_note.rstrip())
+
+    lines.extend([
+        "",
+        "## 1. Visual Dependency Graph (Topological Tiers)",
+        "",
+        "```mermaid",
+        "flowchart LR",
+    ])
+    for t_idx, tier_nodes in enumerate(tiers_list):
+        visible_in_tier = [str(nid) for nid in tier_nodes if str(nid) in shown_ids]
+        if not visible_in_tier:
+            continue
+        role_hint = "Leaf / Data Foundation" if t_idx == 0 else f"Dependent Layer {t_idx}"
+        lines.append(f'  subgraph T{t_idx}["Tier {t_idx} — {role_hint}"]')
+        for nid in visible_in_tier:
+            node = by_id.get(nid, {"name": nid, "kind": "other"})
+            raw_name = str(node.get("name") or nid).replace('"', "'")
+            kind_lbl, cls_name = _DAG_KIND_LABELS.get(str(node.get("kind") or ""), ("Artifact", "dagSource"))
+            lines.append(f'    {m_id[nid]}["{raw_name} ({kind_lbl})"]:::{cls_name}')
+        lines.append("  end")
+
+    shown_edges = [e for e in edges_list if str(e["from"]) in shown_ids and str(e["to"]) in shown_ids][:_MERMAID_EDGE_CAP]
+    for e in shown_edges:
+        rel_lbl = str(e.get("relationship") or "depends-on").replace('"', "'")
+        lines.append(f'  {m_id[str(e["from"])]} -->|"{rel_lbl}"| {m_id[str(e["to"])]}')
+
+    lines.extend([
+        "  classDef dagTable fill:#E8F0FE,stroke:#1A73E8,stroke-width:1.5px,color:#174EA6;",
+        "  classDef dagSchema fill:#E4F7FB,stroke:#12B5CB,stroke-width:1.5px,color:#007B83;",
+        "  classDef dagQuery fill:#E6F4EA,stroke:#1E8E3E,stroke-width:1.5px,color:#137333;",
+        "  classDef dagForm fill:#FEF7E0,stroke:#F9AB00,stroke-width:1.5px,color:#B06000;",
+        "  classDef dagReport fill:#FCE8E6,stroke:#D93025,stroke-width:1.5px,color:#A50E0E;",
+        "  classDef dagSource fill:#F3E8FD,stroke:#9334E6,stroke-width:1.5px,color:#681DA8;",
+        "```",
+        "",
+        "## 2. Topological Modernization Tiers (Strangler Wave Sequencing)",
+        "",
+        "| Tier | Modernization Role | Count | Artifacts |",
+        "| :-- | :-- | :-: | :-- |",
+    ])
+    for t_idx, tier_nodes in enumerate(tiers_list):
+        role_desc = (
+            "Shared data tables & leaf schemas (Wave 1 / `GRP-01` foundation candidates)"
+            if t_idx == 0
+            else f"Callers depending only on Tier 0..{t_idx - 1}"
+        )
+        names_preview = ", ".join(f"`{by_id.get(str(nid), {}).get('name', nid)}`" for nid in tier_nodes[:25])
+        if len(tier_nodes) > 25:
+            names_preview += f" *(+{len(tier_nodes) - 25} more)*"
+        lines.append(f"| **Tier {t_idx}** | {role_desc} | {len(tier_nodes)} | {names_preview or '—'} |")
+
+    lines.extend([
+        "",
+        "## 3. Artifact Node Inventory & Blast Radius",
+        "",
+        "| Artifact Name | Kind | Tier | Inbound Callers (Blast Radius) | Outbound Dependencies | Source Path |",
+        "| :-- | :-- | :-: | :-: | :-: | :-- |",
+    ])
+    sorted_nodes = sorted(
+        nodes_list,
+        key=lambda n: (tier_of.get(str(n["id"]), 999), -inbound_cnt.get(str(n["id"]), 0), str(n.get("name") or "")),
+    )
+    for n in sorted_nodes:
+        nid = str(n["id"])
+        kind_lbl, _ = _DAG_KIND_LABELS.get(str(n.get("kind") or ""), (str(n.get("kind") or "Artifact"), "dagSource"))
+        src_p = str(n.get("sourcePath") or "—").replace("|", "\\|")
+        nm = str(n.get("name") or nid).replace("|", "\\|")
+        lines.append(
+            f"| `{nm}` | {kind_lbl} | Tier {tier_of.get(nid, 0)} | {inbound_cnt.get(nid, 0)} | {outbound_cnt.get(nid, 0)} | `{src_p}` |"
+        )
+
+    lines.extend(["", "## 4. Directed Dependency Edges", ""])
+    if not edges_list:
+        lines.append("No cross-artifact edges were statically detected across the scanned files.")
+    else:
+        lines.extend([
+            "| Caller / Dependent (`From`) | Dependency Target (`To`) | Relationship |",
+            "| :-- | :-- | :-- |",
+        ])
+        for e in edges_list:
+            fn = str(by_id.get(str(e["from"]), {}).get("name") or e["from"]).replace("|", "\\|")
+            tn = str(by_id.get(str(e["to"]), {}).get("name") or e["to"]).replace("|", "\\|")
+            rel = str(e.get("relationship") or "depends-on").replace("|", "\\|")
+            lines.append(f"| `{fn}` | `{tn}` | `{rel}` |")
+
+    lines.append("")
+    return "\n".join(lines)
 
 
 def extract_runtime_readiness_signals(
@@ -1090,8 +1246,10 @@ def scan(
     dag_doc, dag_summary, top_module_count = build_dependency_dag(files, texts_by_rel, deterministic)
     if dag_doc["nodeCount"] > 0:
         dlc.write_json(root / "specs" / "dependency_dag.json", dag_doc)
+        dlc.write_text(root / "specs" / "dependency_dag.md", render_dependency_dag_markdown(dag_doc))
     else:
         dag_summary["dagFile"] = None
+        dag_summary["dagMarkdownFile"] = None
     unverified_acronyms = extract_unverified_acronyms(texts_by_rel)
     detected_ambiguities = detect_cross_artifact_ambiguities(texts_by_rel)
     runtime_signals = extract_runtime_readiness_signals(files, texts_by_rel, scenario)
@@ -1154,12 +1312,20 @@ def main() -> int:
     ap.add_argument("--git-branch", default=None, help="Optional Git branch/tag to clone")
     ap.add_argument("--domain-slug", default=None, help="Override the kebab-case domain slug")
     ap.add_argument("--output", default="specs/input_inventory.json")
+    ap.add_argument("--render-dag-only", action="store_true", help="Render specs/dependency_dag.md directly from an existing specs/dependency_dag.json without re-scanning")
     ap.add_argument("--deterministic", action="store_true", help="Freeze timestamp for byte-identical output")
     ap.add_argument("--allow-empty", action="store_true", help="Allow zero input files during dry-run checks")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
     root = dlc.resolve_project_root(args.project_root)
+    if args.render_dag_only:
+        dag_json_p = dlc.require_file(root / "specs" / "dependency_dag.json", "Stage 1 scan_input_sources.py")
+        dag_doc = dlc.read_json(dag_json_p)
+        md_p = root / "specs" / "dependency_dag.md"
+        dlc.write_text(md_p, render_dependency_dag_markdown(dag_doc))
+        dlc.info(f"wrote {md_p}")
+        return 0
     load_env_files(root)
     dlc.require_gate_approved(root, "gate_0_setup", "Stage 1 (01-discovery-and-grouping / scan_input_sources.py)", deterministic=args.deterministic)
 

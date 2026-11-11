@@ -25,7 +25,7 @@ references only when executing that stage).
 ```text
 <PROJECT_ROOT>/
 ├── resources/{inputs,design_references,policies_and_statutes,shared_services}/   # user-provided only (read-only)
-├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · clarification_decisions.json · input_inventory.json · dependency_dag.json
+├── specs/     project_setup.json · gate_approvals.json · gate_briefs/*.md · clarification_decisions.json · input_inventory.json · dependency_dag.{md,json}
 │              discovery_architecture_and_inventory.md · target_stack.json · application_spec.md · traceability_matrix.md
 │              application_eval_scorecard.{md,json}
 ├── backlog/   user_stories.{md,json} · sprint_plan.{md,json} · defects.{md,json} · jira_import.csv

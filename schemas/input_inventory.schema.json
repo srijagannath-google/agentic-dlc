@@ -65,10 +65,11 @@
     },
     "dependencyDagSummary": {
       "type": "object",
-      "description": "Deterministic static dependency & call/FK graph summary written alongside specs/dependency_dag.json to ground §6.1 Business Capability Groupings and wave sequencing.",
+      "description": "Deterministic static dependency & call/FK graph summary written alongside specs/dependency_dag.md and specs/dependency_dag.json to ground §6.1 Business Capability Groupings and wave sequencing.",
       "required": ["dagFile", "nodeCount", "edgeCount", "tierCount", "hasCycles", "tiers"],
       "properties": {
         "dagFile": { "type": ["string", "null"] },
+        "dagMarkdownFile": { "type": ["string", "null"] },
         "nodeCount": { "type": "integer", "minimum": 0 },
         "edgeCount": { "type": "integer", "minimum": 0 },
         "tierCount": { "type": "integer", "minimum": 0 },

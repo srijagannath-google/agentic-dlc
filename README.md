@@ -1,6 +1,6 @@
-# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.8.0`)
+# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.8.1`)
 
-> **Version:** `4.8.0` · **Architecture:** Security-Driven SDD + CodeMender (`cm`) + Gemini Decisions API (`gemini-decision-1`) + Machine-Enforced BA `grill-me`
+> **Version:** `4.8.1` · **Architecture:** Security-Driven SDD + CodeMender (`cm`) + Gemini Decisions API (`gemini-decision-1`) + Machine-Enforced BA `grill-me`
 >
 > **"Think Big, Start Small, Move Fast"** — the **Elephant** (deep-context discovery & living-specification architect), the **Judge**
 > (adversarial spec/architecture critics + closed-loop browser, security & API test runner), and the **Goldfish** (clean-context target-stack coder).
@@ -109,7 +109,7 @@ flowchart LR
 │   └── shared_services/            # Enterprise shared service catalogs & style guides
 ├── specs/
 │   ├── project_setup.json · gate_approvals.json · gate_briefs/*.md · clarification_decisions.json
-│   ├── input_inventory.json · dependency_dag.json · design_reference/ (manifest + screenshots)
+│   ├── input_inventory.json · dependency_dag.{md,json} · design_reference/ (manifest + screenshots)
 │   ├── discovery_architecture_and_inventory.md · target_stack.json
 │   └── application_spec.md · traceability_matrix.md · application_eval_scorecard.{md,json}
 ├── backlog/
@@ -154,18 +154,18 @@ flowchart LR
 **Option A — New or Standalone Repository (`git` or `./push-to-github.sh`):**
 ```bash
 # 1. Extract the release bundle (extracts into ./agentic-dlc/)
-unzip -q agentic-dlc-v4.8.0.zip -d ~/workspace/
+unzip -q agentic-dlc-v4.8.1.zip -d ~/workspace/
 cd ~/workspace/agentic-dlc
 
-# 2. Initialize Git and create the v4.8.0 commit + tag
+# 2. Initialize Git and create the v4.8.1 commit + tag
 git init -b main
 git add .
-git commit -m "feat: release agentic-dlc v4.8.0 (Security Spine, CodeMender Stage 1 & Stage 5 ALM rectification, Gemini Decisions API)"
-git tag v4.8.0
+git commit -m "feat: release agentic-dlc v4.8.1 (VS Code Mermaid dependency_dag.md, Security Spine, CodeMender & Gemini Decisions API)"
+git tag v4.8.1
 
 # 3a. Push with GitHub CLI helper (creates a private repo if missing)
 GITHUB_OWNER="<your-org-or-user>" GITHUB_REPO="agentic-dlc" ./push-to-github.sh main
-git push origin v4.8.0
+git push origin v4.8.1
 
 # 3b. Or push manually to any Git remote (GitHub, GitLab, Azure Repos)
 git remote add origin https://github.com/<your-org>/agentic-dlc.git
@@ -175,15 +175,15 @@ git push -u origin main --tags
 **Option B — Updating an Existing `agentic-dlc` Git Checkout:**
 ```bash
 # Extract into a staging directory and sync cleanly over your existing checkout (preserving .git/)
-unzip -q agentic-dlc-v4.8.0.zip -d /tmp/dlc-stage
+unzip -q agentic-dlc-v4.8.1.zip -d /tmp/dlc-stage
 rsync -a --delete --exclude '.git' /tmp/dlc-stage/agentic-dlc/ ~/workspace/agentic-dlc/
 rm -rf /tmp/dlc-stage
 
 cd ~/workspace/agentic-dlc
 git status
 git add -A
-git commit -m "feat: upgrade agentic-dlc to v4.8.0 (Security Spine, CodeMender Stage 1 & Stage 5 ALM rectification, Gemini Decisions API)"
-git tag v4.8.0
+git commit -m "feat: upgrade agentic-dlc to v4.8.1 (VS Code Mermaid dependency_dag.md, Security Spine, CodeMender & Gemini Decisions API)"
+git tag v4.8.1
 git push origin main --tags
 ```
 
@@ -225,8 +225,9 @@ python3 "$PLUGIN/scripts/gate_tracker.py" \
   --project-root "$ROOT" --action approve --gate gate_0_setup \
   --user-response "Approved Gate 0" --approvers alice,bob --original-author carol
 
-# 3. Stage 1 — Ingest & scan repository (extracts dependency_dag.json + runtimeReadinessSignals)
+# 3. Stage 1 — Ingest & scan repository (extracts VS Code-viewable specs/dependency_dag.md + dependency_dag.json + runtimeReadinessSignals + securityPostureSignals)
 python3 "$PLUGIN/skills/01-discovery-and-grouping/scripts/scan_input_sources.py" --project-root "$ROOT"
+# (Or render specs/dependency_dag.md from an existing dependency_dag.json: add --render-dag-only)
 
 # 4. Stage 2 — Lint Living Spec (conciseness, codebase refs, approvals & optional delta preservation)
 python3 "$PLUGIN/skills/02-spec-architect-and-judge/scripts/lint_spec_structure.py" \
