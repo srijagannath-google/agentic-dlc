@@ -2150,6 +2150,18 @@ _NONE_WORKFLOW_Q_RE = re.compile(
     r"^(?:none|n/?a|no\s+open\s+(?:workflow\s+)?questions?|all\s+workflow\s+transitions?\s+(?:are\s+)?(?:settled|evidenced|resolved))[\s.—-]*$",
     re.IGNORECASE,
 )
+_EMPTY_GUARD_RE = re.compile(r"^(?:|—|-|n/?a|none|tbd|\?)$", re.IGNORECASE)
+
+
+def normalize_clarification_stage(stage: str | None) -> str:
+    s = (stage or "pre-spec").strip().lower()
+    if s in ("gate1", "pre-spec", "spec", "stage1", "stage2"):
+        return "pre-spec"
+    if s in ("pre-stories", "stories", "stage3", "gate3"):
+        return "pre-stories"
+    if s in ("stage4a", "gate4", "design", "architecture"):
+        return "stage4a"
+    return "anytime"
 
 
 def parse_open_workflow_questions(md: str) -> list[str]:
@@ -2192,31 +2204,24 @@ def active_spec_lifecycle_mode(root: Path) -> str:
     return "standard"
 
 
-def assess_clarification_triggers(root: Path, stage: str = "gate1") -> dict[str, Any]:
-    """Deterministically evaluate whether Conditional Grilling (`clarification-griller`) is needed.
-
-    - Auto-bypasses (`needsClarification=False`) in `--autonomous` / golden runs, or once
-      `specs/clarification_decisions.json` has `openFrontier == []` and a terminal status.
-    - At `gate1`:
-        * `SCENARIO_LEGACY_APP` in `standard`/`delta` mode ALWAYS triggers at least Round 1 for
-          Modernization Ambition & Capability Disposition (`retire` vs `parity` vs `reimagine-enhance`)
-          unless already recorded in `specs/clarification_decisions.json`.
-        * `SCENARIO_REQUIREMENTS_DOC` (BRD/PRD) and `retro-spec` mode trigger ONLY when concrete gaps
-          exist (`openWorkflowQuestions`, `unverifiedAcronyms`, or `scenarioConfidence == 'LOW'`).
-    - At `stage4a`:
-        * Triggers ONLY when `specs/target_stack.json` has `decidedBy != 'user'` or any `"tbd"` stack kind.
-    """
+def assess_clarification_triggers(root: Path, stage: str = "pre-spec") -> dict[str, Any]:
+    """Deterministically evaluate whether `grill-me` (`clarification-griller`) must run before creating
+    `specs/application_spec.md` (`pre-spec`), when creating `backlog/user_stories.json` (`pre-stories`),
+    at Stage 4A architecture entry (`stage4a`), or whenever contradictions/ambiguities exist."""
+    norm_stage = normalize_clarification_stage(stage)
     spec_mode = active_spec_lifecycle_mode(root)
     clar_path = root / "specs" / "clarification_decisions.json"
     if is_autonomous_or_golden(root):
         return {
-            "stage": stage,
+            "stage": norm_stage,
             "specLifecycleMode": spec_mode,
             "needsClarification": False,
             "bypassReason": "autonomous_or_golden_mode",
             "triggerReasons": [],
             "openWorkflowQuestions": [],
             "unverifiedAcronyms": [],
+            "detectedAmbiguities": [],
+            "storyAmbiguities": [],
         }
 
     if clar_path.is_file():
@@ -2224,53 +2229,163 @@ def assess_clarification_triggers(root: Path, stage: str = "gate1") -> dict[str,
         if isinstance(clar, dict):
             c_status = str(clar.get("clarificationStatus") or "")
             open_f = clar.get("openFrontier") or []
-            if open_f:
+            settled = list(clar.get("stagesSettled") or [])
+            # Backwards compatibility: a settled v4.6 ledger without `stagesSettled` settled pre-spec
+            if not settled and not open_f and c_status in ("RESOLVED_BY_HUMAN", "ACCEPTED_RECOMMENDATIONS", "CLEAR_AUTO_BYPASSED", "AUTONOMOUS_ASSUMPTIONS"):
+                settled = ["pre-spec"]
+            matching_open = [
+                q for q in open_f
+                if isinstance(q, dict) and normalize_clarification_stage(q.get("stage")) in (norm_stage, "anytime")
+            ]
+            if matching_open or (open_f and norm_stage == "anytime"):
                 return {
-                    "stage": stage,
+                    "stage": norm_stage,
                     "specLifecycleMode": spec_mode,
                     "needsClarification": True,
                     "bypassReason": None,
-                    "triggerReasons": [f"OPEN_FRONTIER_PENDING:{len(open_f)}"],
+                    "triggerReasons": [f"OPEN_FRONTIER_PENDING:{len(matching_open or open_f)}"],
                     "openWorkflowQuestions": [],
                     "unverifiedAcronyms": [],
+                    "detectedAmbiguities": [],
+                    "storyAmbiguities": [],
                 }
-            if stage == "gate1" and c_status in ("RESOLVED_BY_HUMAN", "ACCEPTED_RECOMMENDATIONS", "CLEAR_AUTO_BYPASSED", "AUTONOMOUS_ASSUMPTIONS"):
+            if norm_stage in settled:
                 return {
-                    "stage": stage,
+                    "stage": norm_stage,
                     "specLifecycleMode": spec_mode,
                     "needsClarification": False,
-                    "bypassReason": f"already_settled:{c_status}",
+                    "bypassReason": f"already_settled:{norm_stage}({c_status})",
                     "triggerReasons": [],
                     "openWorkflowQuestions": [],
                     "unverifiedAcronyms": [],
+                    "detectedAmbiguities": [],
+                    "storyAmbiguities": [],
                 }
 
     reasons: list[str] = []
     open_qs: list[str] = []
     unverified_acrs: list[str] = []
+    detected_ambigs: list[dict[str, Any]] = []
+    story_ambigs: list[dict[str, str]] = []
 
-    if stage == "gate1":
+    if norm_stage == "pre-spec":
         inv_path = root / "specs" / "input_inventory.json"
         inv = read_json(inv_path) if inv_path.is_file() else {}
         scenario = inv.get("inputScenario", "SCENARIO_REQUIREMENTS_DOC") if isinstance(inv, dict) else "SCENARIO_REQUIREMENTS_DOC"
         conf = str(inv.get("scenarioConfidence") or "HIGH").upper() if isinstance(inv, dict) else "HIGH"
         unverified_acrs = list(inv.get("unverifiedAcronyms") or []) if isinstance(inv, dict) else []
+        detected_ambigs = list(inv.get("detectedAmbiguities") or []) if isinstance(inv, dict) else []
 
+        missing_role_trans: list[str] = []
         doc_path = root / "specs" / "discovery_architecture_and_inventory.md"
         if doc_path.is_file():
             md = read_text(doc_path)
             open_qs = parse_open_workflow_questions(md)
+            sm_tbl = parse_state_table(md)
+            missing_role_trans = [f"{t.src}->{t.dst} ({t.trigger})" for t in sm_tbl.transitions if not t.roles]
 
         if conf == "LOW":
             reasons.append("LOW_SCENARIO_CONFIDENCE")
         if scenario == "SCENARIO_LEGACY_APP" and spec_mode in ("standard", "delta"):
             reasons.append("LEGACY_MODERNIZATION_AMBITION_UNSETTLED")
+        if detected_ambigs:
+            reasons.append(f"CONTRADICTORY_OR_AMBIGUOUS_INPUTS:{len(detected_ambigs)}")
         if open_qs:
             reasons.append(f"OPEN_WORKFLOW_QUESTIONS:{len(open_qs)}")
+        if missing_role_trans:
+            reasons.append(f"INCOMPLETE_TRANSITION_ROLES:{len(missing_role_trans)}")
         if unverified_acrs:
             reasons.append(f"UNVERIFIED_ACRONYMS:{len(unverified_acrs)}")
 
-    elif stage == "stage4a":
+    elif norm_stage == "pre-stories":
+        spec_path = root / "specs" / "application_spec.md"
+        if spec_path.is_file():
+            spec_md = read_text(spec_path)
+            # 1. Residual ASSUMPTION-NN items in spec that a BA has not explicitly confirmed
+            assump_lines = [
+                strip_md(ln.strip()).lstrip("-*|> ")
+                for ln in spec_md.splitlines()
+                if re.search(r"\bASSUMPTION-\d+\b", ln)
+            ]
+            if assump_lines:
+                reasons.append(f"UNCONFIRMED_SPEC_ASSUMPTIONS:{len(assump_lines)}")
+                story_ambigs.append({
+                    "category": "story-acceptance-criteria",
+                    "evidenceSource": "specs/application_spec.md (Assumptions)",
+                    "question": (
+                        f"Before authoring user stories and GIVEN/WHEN/THEN acceptance criteria, please confirm or "
+                        f"adjust the {len(assump_lines)} open specification assumption(s): {'; '.join(assump_lines[:3])}"
+                    ),
+                    "recommendedAnswer": "Confirm the documented restrictive specification assumptions as authoritative story acceptance criteria.",
+                })
+
+            # 2. Business rules (BR-NN) without concrete boundary/negative Examples vectors
+            brs = parse_business_rules(spec_md)
+            br_no_examples = [b["id"] for b in brs if b.get("id") and not b.get("parsedExamples")]
+            if br_no_examples:
+                reasons.append(f"STORY_BR_BOUNDARY_EXAMPLES_MISSING:{len(br_no_examples)}")
+                story_ambigs.append({
+                    "category": "business-rule",
+                    "evidenceSource": f"specs/application_spec.md (§3.4 Business Rules: {', '.join(br_no_examples[:5])})",
+                    "question": (
+                        f"Business rule(s) {', '.join(br_no_examples[:5])} do not yet specify boundary/rejection input->output "
+                        "examples. For user story EDGE / BOUNDARY and NEGATIVE acceptance criteria, should exact threshold "
+                        "values be inclusive (`>=` / `<=`) and return inline field-level validation errors on violation?"
+                    ),
+                    "recommendedAnswer": (
+                        "Treat stated numeric thresholds as inclusive boundaries (`>=` min, `<=` max), use half-up 2-decimal "
+                        "rounding for currency/rates, and reject out-of-range inputs with inline human-readable validation messages."
+                    ),
+                })
+
+            # 3. Transitions in §3.3 with blank/unspecified Guard conditions on decision triggers
+            sm = parse_state_table(spec_md)
+            unguarded = [
+                f"{t.src}->{t.dst} ({t.trigger})"
+                for t in sm.transitions
+                if _EMPTY_GUARD_RE.match(str(t.guard or "").strip())
+            ]
+            if unguarded:
+                reasons.append(f"STORY_TRANSITION_GUARD_AMBIGUOUS:{len(unguarded)}")
+                story_ambigs.append({
+                    "category": "workflow-state",
+                    "evidenceSource": f"specs/application_spec.md (§3.3 State Machine: {', '.join(unguarded[:4])})",
+                    "question": (
+                        f"Workflow transition(s) {', '.join(unguarded[:4])} have no explicit guard condition in §3.3. "
+                        "What prerequisite fields, mandatory comments/reasons, or maker-checker separation-of-duties rules "
+                        "should the user story acceptance criteria enforce?"
+                    ),
+                    "recommendedAnswer": (
+                        "Require all mandatory intake fields before submission, require a non-empty audit reason on rejection/return "
+                        "or override transitions, and enforce role-based separation between requester and approver."
+                    ),
+                })
+
+        # 4. Multi-group Sprint 1 MVP slicing & prioritization confirmation
+        ts_path = root / "specs" / "target_stack.json"
+        if ts_path.is_file():
+            ts = read_json(ts_path)
+            if isinstance(ts, dict):
+                cgroups = ts.get("capabilityGroups") or []
+                sel = [str(x).upper() for x in (ts.get("selectedCapabilityGroups") or ["ALL"])]
+                if len(cgroups) >= 2 and ("ALL" in sel or len(sel) >= 2):
+                    grp_names = ", ".join(f"{g.get('id')} ({g.get('name', '')})" for g in cgroups[:5] if isinstance(g, dict))
+                    reasons.append(f"MULTI_GROUP_SPRINT_SLICING_UNCONFIRMED:{len(cgroups)}")
+                    story_ambigs.append({
+                        "category": "story-acceptance-criteria",
+                        "evidenceSource": f"specs/target_stack.json ({len(cgroups)} capability groups: {grp_names})",
+                        "question": (
+                            f"When slicing user stories across {grp_names}, confirm Sprint 1 MVP ordering and story granularity "
+                            "(foundational contracts + shared group in Sprint 1 followed by dependent business groups, or re-order "
+                            "a specific high-value business workflow earlier?)."
+                        ),
+                        "recommendedAnswer": (
+                            "Schedule foundational schema/API contract slices (`US-TECH-*`) and `GRP-01` core intake/registry in "
+                            "Sprint 1, followed by downstream capability groups in topological dependency order (`<= 3` prod files per slice)."
+                        ),
+                    })
+
+    elif norm_stage == "stage4a":
         ts_path = root / "specs" / "target_stack.json"
         if not ts_path.is_file():
             reasons.append("TARGET_STACK_MISSING")
@@ -2285,24 +2400,283 @@ def assess_clarification_triggers(root: Path, stage: str = "gate1") -> dict[str,
                     reasons.append(f"TARGET_STACK_TBD(decidedBy={decided},fe={fe},be={be},db={db})")
 
     return {
-        "stage": stage,
+        "stage": norm_stage,
         "specLifecycleMode": spec_mode,
         "needsClarification": len(reasons) > 0,
         "bypassReason": None if reasons else "inputs_complete_zero_ambiguity",
         "triggerReasons": reasons,
         "openWorkflowQuestions": open_qs,
         "unverifiedAcronyms": unverified_acrs,
+        "detectedAmbiguities": detected_ambigs,
+        "storyAmbiguities": story_ambigs,
     }
+
+
+def build_clarification_frontier(root: Path, stage: str = "pre-spec") -> dict[str, Any]:
+    """Build the full detection + suggested `1..4` root `grill-me` frontier questions for `stage`."""
+    norm_stage = normalize_clarification_stage(stage)
+    assessment = assess_clarification_triggers(root, stage=norm_stage)
+    frontier: list[dict[str, Any]] = []
+    q_idx = 1
+
+    if norm_stage == "pre-spec":
+        inv_path = root / "specs" / "input_inventory.json"
+        inv = read_json(inv_path) if inv_path.is_file() else {}
+        doc_path = root / "specs" / "discovery_architecture_and_inventory.md"
+        md = read_text(doc_path) if doc_path.is_file() else ""
+        cap_groups = parse_capability_groups(md) if md else []
+        grp_labels = ", ".join(f"{g['id']} ({g['name']})" for g in cap_groups[:6]) or "discovered capability groups"
+
+        # Surface contradictions/conflicts FIRST so BA resolves conflicting business rules immediately!
+        for amb in (assessment.get("detectedAmbiguities") or [])[:2]:
+            if q_idx > 4:
+                break
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "contradiction-conflict",
+                "evidenceSource": ", ".join(amb.get("files") or ["resources/inputs"]),
+                "question": f"{amb.get('summary')} — Which value or rule is authoritative for `specs/application_spec.md`?",
+                "recommendedAnswer": (
+                    "Treat the governed policy/query rule from the primary business workflow as authoritative, "
+                    "parameterize the threshold in configuration, and document the superseded legacy value."
+                ),
+            })
+            q_idx += 1
+
+        if "LEGACY_MODERNIZATION_AMBITION_UNSETTLED" in assessment["triggerReasons"] and q_idx <= 4:
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "capability-disposition",
+                "evidenceSource": "specs/discovery_architecture_and_inventory.md (§5 Pain Points & §6.1 Capability Groupings)",
+                "question": (
+                    f"Modernizing a legacy application goes beyond 1:1 lift-and-shift. Across {grp_labels}, "
+                    "which capabilities should be (a) Re-imagined (`REQ-ENH-*`: self-service UX, automated workflow & "
+                    "notifications, live rule engine, or grounded AI copilot), (b) Kept at strict 1:1 parity, or (c) Retired?"
+                ),
+                "recommendedAnswer": (
+                    "Re-imagine core operational & intake capabilities with self-service UX, live rule validation, "
+                    "and automated status notifications derived from §5 pain points; keep deterministic core "
+                    "calculations at 1:1 parity; retire obsolete manual export/print forms."
+                ),
+                "options": [
+                    "(Recommended) Re-imagine core workflows (REQ-ENH-*) + keep core formulas at parity + retire obsolete manual forms",
+                    "Add AI-assisted triage / copilot surface alongside re-imagined self-service workflows",
+                    "Strict 1:1 functional parity across all discovered capabilities (modernize architecture/UI only)",
+                ],
+            })
+            q_idx += 1
+
+        if "LEGACY_MODERNIZATION_AMBITION_UNSETTLED" in assessment["triggerReasons"] and q_idx <= 4:
+            rrs = (inv.get("runtimeReadinessSignals") or {}) if isinstance(inv, dict) else {}
+            rec_mode = rrs.get("recommendedModernizationMode") or "clean-room-rebuild"
+            blockers = (rrs.get("osAndPlatformBlockers") or []) + (rrs.get("statelessScalingHazards") or [])
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "modernization-ambition",
+                "evidenceSource": f"specs/input_inventory.json (recommended={rec_mode}, blockers={len(blockers)})",
+                "question": (
+                    "Which modernization execution approach and initial delivery wave should govern implementation: "
+                    "`clean-room-rebuild` vs. `in-place-upgrade`, and foundational wave `GRP-01` first vs. `ALL` groups?"
+                ),
+                "recommendedAnswer": (
+                    f"Use `{rec_mode}` and take `ALL` capability groups forward (or `GRP-01` first for phased Strangler "
+                    "cutover) while eliminating legacy desktop/OS/session blockers."
+                ),
+                "options": [
+                    f"(Recommended) {rec_mode} — take ALL capability groups forward across ordered sprints",
+                    f"{rec_mode} — phased Strangler wave starting with foundational GRP-01 only",
+                    "Switch modernizationMode (clean-room-rebuild <-> in-place-upgrade)",
+                ],
+            })
+            q_idx += 1
+
+        for oq in assessment.get("openWorkflowQuestions", [])[:2]:
+            if q_idx > 4:
+                break
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "workflow-state",
+                "evidenceSource": "specs/discovery_architecture_and_inventory.md (§3.1 Open Workflow Questions)",
+                "question": oq,
+                "recommendedAnswer": (
+                    "Adopt the most restrictive role-gated workflow transition (explicit reviewer/supervisor role "
+                    "required; rejected records return to an editable revision state with mandatory audit reason)."
+                ),
+            })
+            q_idx += 1
+
+        unv = assessment.get("unverifiedAcronyms") or []
+        if unv and q_idx <= 4:
+            acr_list = ", ".join(unv[:6])
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-spec",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "acronym-definition",
+                "evidenceSource": "specs/input_inventory.json (unverifiedAcronyms)",
+                "question": f"Please confirm the authoritative business expansion/meaning for undefined acronym(s): {acr_list}.",
+                "recommendedAnswer": f"Preserve literal acronym(s) ({acr_list}) verbatim unless defined by the Business Analyst.",
+            })
+            q_idx += 1
+
+    elif norm_stage == "pre-stories":
+        for sa in (assessment.get("storyAmbiguities") or [])[:4]:
+            frontier.append({
+                "questionId": f"Q{q_idx}",
+                "stage": "pre-stories",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": sa["category"],
+                "evidenceSource": sa["evidenceSource"],
+                "question": sa["question"],
+                "recommendedAnswer": sa["recommendedAnswer"],
+            })
+            q_idx += 1
+
+    elif norm_stage == "stage4a":
+        if any("TARGET_STACK_TBD" in r for r in assessment["triggerReasons"]):
+            frontier.append({
+                "questionId": "Q1",
+                "stage": "stage4a",
+                "round": 1,
+                "parentDecisionId": None,
+                "category": "architecture-stack",
+                "evidenceSource": "specs/target_stack.json (decidedBy != 'user' or stack kind == 'tbd')",
+                "question": (
+                    "Which Future-State ('To-Be') frontend framework, backend runtime/framework, relational database, "
+                    "and GDC target environments should Stage 4A design and Stage 5 build?"
+                ),
+                "recommendedAnswer": (
+                    "React + TypeScript (Vite, M3/ShadCN tokens), stateless REST backend (FastAPI / Spring Boot / ASP.NET Core 8 "
+                    "matching team skill), PostgreSQL 16 (3NF), targeting GDC multi-cloud overlays."
+                ),
+            })
+
+    return {
+        **assessment,
+        "suggestedRootFrontier": frontier[:4],
+    }
+
+
+def format_grill_me_banner(stage: str, frontier: list[dict[str, Any]]) -> str:
+    """Render a prominent, unmistakable Grill-Me round block for terminal & chat presentation."""
+    lines = [
+        "=" * 78,
+        f"[🔥 GRILL-ME CLARIFICATION REQUIRED — STAGE: {stage.upper()} ({len(frontier)} QUESTION(S))]",
+        "Engage the Business Analyst / Human with these Frontier Questions BEFORE proceeding",
+        "(use `ask_question` UI widget when available, or reply `accept recommendations`):",
+        "-" * 78,
+    ]
+    for q in frontier:
+        lines.append(f"❓ **{q.get('questionId', 'Q')}** ({q.get('category', '')} · Source: {q.get('evidenceSource', '')}):")
+        lines.append(f"   {q.get('question', '')}")
+        lines.append(f"   ➡️ Recommended: {q.get('recommendedAnswer', '')}")
+    lines.extend([
+        "-" * 78,
+        f"Record answers: python3 \"{PLUGIN_ROOT / 'skills/clarification-griller/scripts/clarification_interview.py'}\" "
+        f"--project-root \"<PROJECT_ROOT>\" --stage {stage} --action record-round --decisions-json '[...]'",
+        f"Or fast-exit  : python3 \"{PLUGIN_ROOT / 'skills/clarification-griller/scripts/clarification_interview.py'}\" "
+        f"--project-root \"<PROJECT_ROOT>\" --stage {stage} --action accept-recommendations",
+        "=" * 78,
+    ])
+    return "\n".join(lines)
+
+
+def auto_seed_clarification_stage(root: Path, stage: str, deterministic: bool = False) -> dict[str, Any]:
+    """Deterministically seed `specs/clarification_decisions.json` at stage boundaries (`pre-spec`, `pre-stories`)
+    in interactive mode so `grill-me` can NEVER be silently skipped when clarification is needed."""
+    norm_stage = normalize_clarification_stage(stage)
+    if is_autonomous_or_golden(root, deterministic=deterministic):
+        return {"seeded": False, "needsClarification": False, "stage": norm_stage}
+
+    clar_path = root / "specs" / "clarification_decisions.json"
+    if clar_path.is_file():
+        ledger = read_json(clar_path)
+        if not isinstance(ledger, dict):
+            ledger = {}
+    else:
+        ledger = {}
+
+    ledger.setdefault("schemaVersion", SCHEMA_VERSION)
+    ledger.setdefault("clarificationStatus", "IN_PROGRESS")
+    ledger.setdefault("stagesSettled", [])
+    ledger.setdefault("roundsCompleted", 0)
+    ledger.setdefault("triggerReasons", [])
+    ledger.setdefault("capabilityDispositions", [])
+    ledger.setdefault("decisions", [])
+    ledger.setdefault("openFrontier", [])
+
+    # Backfill `stagesSettled` for settled pre-v4.7 ledgers
+    if not ledger["stagesSettled"] and not ledger["openFrontier"] and ledger["clarificationStatus"] in (
+        "RESOLVED_BY_HUMAN", "ACCEPTED_RECOMMENDATIONS", "CLEAR_AUTO_BYPASSED", "AUTONOMOUS_ASSUMPTIONS"
+    ):
+        ledger["stagesSettled"] = ["pre-spec"]
+
+    # If this stage is already settled and no open frontier exists, leave ledger untouched
+    if norm_stage in ledger["stagesSettled"] and not ledger["openFrontier"]:
+        return {"seeded": False, "needsClarification": False, "stage": norm_stage, "alreadySettled": True}
+
+    # If openFrontier already contains items for this stage, keep them without overwriting
+    existing_stage_open = [
+        q for q in ledger["openFrontier"]
+        if isinstance(q, dict) and normalize_clarification_stage(q.get("stage")) in (norm_stage, "anytime")
+    ]
+    if existing_stage_open:
+        return {
+            "seeded": True,
+            "needsClarification": True,
+            "stage": norm_stage,
+            "openFrontier": existing_stage_open,
+        }
+
+    report = build_clarification_frontier(root, stage=norm_stage)
+    ledger["updatedAtUtc"] = utc_now_iso(deterministic)
+    if report["needsClarification"] and report["suggestedRootFrontier"]:
+        ledger["clarificationStatus"] = "IN_PROGRESS"
+        ledger["triggerReasons"] = list(dict.fromkeys(ledger["triggerReasons"] + report["triggerReasons"]))
+        ledger["openFrontier"] = list(ledger["openFrontier"]) + report["suggestedRootFrontier"]
+        write_json(clar_path, ledger)
+        return {
+            "seeded": True,
+            "needsClarification": True,
+            "stage": norm_stage,
+            "triggerReasons": report["triggerReasons"],
+            "openFrontier": report["suggestedRootFrontier"],
+        }
+
+    # Inputs are crystal clear for this stage -> mark stage settled automatically (zero noise!)
+    if norm_stage not in ledger["stagesSettled"]:
+        ledger["stagesSettled"].append(norm_stage)
+    if not ledger["openFrontier"] and not ledger["decisions"]:
+        ledger["clarificationStatus"] = "CLEAR_AUTO_BYPASSED"
+    elif not ledger["openFrontier"] and ledger["clarificationStatus"] == "IN_PROGRESS":
+        ledger["clarificationStatus"] = "RESOLVED_BY_HUMAN"
+    write_json(clar_path, ledger)
+    return {"seeded": True, "needsClarification": False, "stage": norm_stage, "openFrontier": []}
 
 
 def validate_clarification_ledger_for_spec(
     root: Path,
     spec_md: str,
 ) -> tuple[list[str], list[str], dict[str, Any]]:
-    """Validate `specs/clarification_decisions.json` (when present) before Stage 2 spec lint passes.
+    """Validate `specs/clarification_decisions.json` before Stage 2 spec lint passes.
 
     Enforces:
-      - Schema conformance against `schemas/clarification_decisions.schema.json`.
+      - `SD-GRILL-00` (Interactive Mode): When `specs/gate_approvals.json` exists, `pre-spec` `grill-me` MUST
+        have been run/settled (`specs/clarification_decisions.json` cannot be skipped).
       - `SD-GRILL-01`: No unresolved `openFrontier` or `IN_PROGRESS` status when finalizing `application_spec.md`.
       - `SD-GRILL-02`: Capabilities explicitly marked `disposition == 'retire'` must not appear as active
         `REQ-FUNC-*` / `REQ-ENH-*` requirement definitions in Pillar 1.
@@ -2310,7 +2684,18 @@ def validate_clarification_ledger_for_spec(
     errors: list[str] = []
     warnings: list[str] = []
     clar_path = root / "specs" / "clarification_decisions.json"
+    interactive_enforced = gate_approvals_path(root).is_file() and not is_autonomous_or_golden(root)
+
     if not clar_path.is_file():
+        if interactive_enforced:
+            rep = build_clarification_frontier(root, stage="pre-spec")
+            if rep["needsClarification"]:
+                errors.append(
+                    f"SD-GRILL-00: Pre-Spec Grill-Me clarification has NOT been run yet "
+                    f"(reasons={rep['triggerReasons']}). Run `clarification_interview.py --project-root \"{root}\" "
+                    "--stage pre-spec --action detect`, engage the Business Analyst / human on the Frontier Questions, "
+                    "and record their answers BEFORE creating/finalizing `specs/application_spec.md`."
+                )
         return errors, warnings, {"present": False, "decisionIds": [], "retiredTargets": []}
 
     clar = read_json(clar_path)
@@ -2324,12 +2709,26 @@ def validate_clarification_ledger_for_spec(
 
     c_status = str(clar.get("clarificationStatus") or "")
     open_f = clar.get("openFrontier") or []
-    if c_status == "IN_PROGRESS" or open_f:
+    pre_spec_open = [
+        q for q in open_f
+        if not isinstance(q, dict) or normalize_clarification_stage(q.get("stage")) in ("pre-spec", "anytime")
+    ]
+    if (c_status == "IN_PROGRESS" and pre_spec_open) or pre_spec_open:
         errors.append(
-            f"SD-GRILL-01: specs/clarification_decisions.json still has unresolved clarification frontier "
-            f"(status={c_status!r}, openFrontier={len(open_f)}). Finish the clarification round or run "
-            "`clarification_interview.py --action accept-recommendations` before finalizing specs/application_spec.md."
+            f"SD-GRILL-01: specs/clarification_decisions.json still has {len(pre_spec_open)} unresolved Pre-Spec "
+            f"Grill-Me question(s) (status={c_status!r}). Engage the Business Analyst / human and run "
+            "`clarification_interview.py --stage pre-spec --action record-round` (or `--action accept-recommendations`) "
+            "before finalizing specs/application_spec.md."
         )
+    elif interactive_enforced:
+        settled = list(clar.get("stagesSettled") or [])
+        if not settled and c_status in ("RESOLVED_BY_HUMAN", "ACCEPTED_RECOMMENDATIONS", "CLEAR_AUTO_BYPASSED", "AUTONOMOUS_ASSUMPTIONS"):
+            settled = ["pre-spec"]
+        if "pre-spec" not in settled:
+            errors.append(
+                "SD-GRILL-00: `pre-spec` clarification stage is not marked settled in `specs/clarification_decisions.json`. "
+                "Run `clarification_interview.py --stage pre-spec --action detect --auto-bypass-if-clear`."
+            )
 
     retired_targets = [
         str(d.get("targetId")).strip()
@@ -2351,6 +2750,57 @@ def validate_clarification_ledger_for_spec(
     return errors, warnings, {
         "present": True,
         "clarificationStatus": c_status,
+        "stagesSettled": clar.get("stagesSettled") or [],
         "decisionIds": decision_ids,
         "retiredTargets": retired_targets,
     }
+
+
+def validate_clarification_ledger_for_stories(root: Path) -> tuple[list[str], list[str]]:
+    """Enforce `SD-GRILL-03` during Stage 3 (`alm_jira_ado_bridge.py` `audit_backlog`):
+    When `specs/gate_approvals.json` exists in interactive mode (or when `openFrontier` has unresolved
+    `pre-stories`/`anytime` questions), user stories cannot pass Gate 3 until the `pre-stories` BA `grill-me`
+    check/interview is settled."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if is_autonomous_or_golden(root):
+        return errors, warnings
+
+    clar_path = root / "specs" / "clarification_decisions.json"
+    interactive_enforced = gate_approvals_path(root).is_file()
+
+    if clar_path.is_file():
+        clar = read_json(clar_path)
+        if isinstance(clar, dict):
+            open_f = clar.get("openFrontier") or []
+            story_open = [
+                q for q in open_f
+                if not isinstance(q, dict) or normalize_clarification_stage(q.get("stage")) in ("pre-stories", "anytime")
+            ]
+            if story_open:
+                errors.append(
+                    f"SD-GRILL-03: {len(story_open)} unresolved User-Story / BA Grill-Me question(s) remain in "
+                    "`specs/clarification_decisions.json#openFrontier`. Present the `🔥 Grill-Me` questions to the "
+                    "Business Analyst / human and run `clarification_interview.py --stage pre-stories --action record-round` "
+                    "(or `--action accept-recommendations`) before finalizing Gate 3 user stories."
+                )
+                return errors, warnings
+            settled = list(clar.get("stagesSettled") or [])
+            if interactive_enforced and "pre-stories" not in settled:
+                rep = build_clarification_frontier(root, stage="pre-stories")
+                if rep["needsClarification"]:
+                    errors.append(
+                        f"SD-GRILL-03: Story-creation Grill-Me check (`--stage pre-stories`) found unsettled BA "
+                        f"clarifications ({rep['triggerReasons']}). Run `clarification_interview.py --project-root \"{root}\" "
+                        "--stage pre-stories --action detect`, engage the Business Analyst / human, and record their "
+                        "answers before finalizing `backlog/user_stories.json`."
+                    )
+    elif interactive_enforced:
+        rep = build_clarification_frontier(root, stage="pre-stories")
+        if rep["needsClarification"]:
+            errors.append(
+                f"SD-GRILL-03: Story-creation Grill-Me check (`--stage pre-stories`) has NOT been run yet "
+                f"(reasons={rep['triggerReasons']}). Run `clarification_interview.py --project-root \"{root}\" "
+                "--stage pre-stories --action detect` and resolve BA clarifications before Gate 3."
+            )
+    return errors, warnings

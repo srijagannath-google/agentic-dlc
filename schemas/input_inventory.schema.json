@@ -93,6 +93,20 @@
       "description": "All-caps domain acronyms detected in inputs that lack an explicit inline expansion; Gate 1 must ask rather than guess expansions.",
       "items": { "type": "string" }
     },
+    "detectedAmbiguities": {
+      "type": "array",
+      "description": "Cross-artifact numeric/rule contradictions or explicit TBD/CONFLICT ambiguity markers detected across input files that trigger a Grill-Me clarification round.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "identifier", "summary", "files"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["conflicting-numeric-rule", "explicit-ambiguity-marker"] },
+          "identifier": { "type": "string" },
+          "summary": { "type": "string" },
+          "files": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
     "runtimeReadinessSignals": {
       "type": "object",
       "description": "Deterministic brownfield runtime, OS-portability, ORM/database, cloud-SDK, and horizontal-scaling readiness signals extracted from project manifests (.sln, .csproj, web.config, pom.xml) and source code.",

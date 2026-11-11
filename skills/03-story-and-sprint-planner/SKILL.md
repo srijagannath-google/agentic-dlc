@@ -5,21 +5,30 @@ description: "Stage 3 of the Agentic DLC v4. sprint-planner-agent authors ALL fu
 
 # Stage 3 — Unified User Stories, Sprint Alignment & Gate 3
 
-**Read before acting:** `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`,
-`_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`. Subagent: `sprint-planner-agent`.
+**Read before acting:** `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`, `_shared/conditional_grilling.md`,
+`_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`. Subagent: `sprint-planner-agent`. Companion skill: `clarification-griller`.
 
 ## Inputs
-`specs/application_spec.md` (Gate 2 PASS), `specs/traceability_matrix.md`,
+`specs/application_spec.md` (Gate 2 PASS), `specs/traceability_matrix.md`, `specs/clarification_decisions.json`,
 `specs/discovery_architecture_and_inventory.md`, `specs/input_inventory.json`, `specs/target_stack.json#almPlatform`.
 
 ## Outputs
 | File | Author | Checked by |
 | :-- | :-- | :-- |
+| `specs/clarification_decisions.json` (`stagesSettled` incl. `"pre-stories"`) | `clarification-griller` (`clarification_interview.py --stage pre-stories`) | `alm_jira_ado_bridge.py --action audit` (`SD-GRILL-03`) |
 | `backlog/user_stories.md`, `backlog/user_stories.json` | `sprint-planner-agent` | `alm_jira_ado_bridge.py --action audit` (100 % REQ coverage, ≤ 8 SP, tiers), schema |
 | `backlog/sprint_plan.md` (+ `sprint_plan.json` summary) | `sprint-planner-agent` (+ script summary) | approval marker |
 | `backlog/jira_import.csv`, `backlog/jira_state.json`, `backlog/azure_devops_state.json` | script | `liveSyncErrors` empty |
 
 ## Procedure
+
+### 0. Mandatory User-Story & Acceptance-Criteria `grill-me` Check (`--stage pre-stories` / `SD-GRILL-03`)
+Before finalizing `backlog/user_stories.{md,json}` (and whenever decomposing requirements into `GIVEN/WHEN/THEN` acceptance criteria), run:
+```bash
+python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
+  --project-root "<PROJECT_ROOT>" --stage pre-stories --action detect --auto-bypass-if-clear --seed-if-needed
+```
+- **Engage the Business Analyst / Human When Needed:** If `needsClarification == true` (unconfirmed `ASSUMPTION-NN`, `BR-NN` rules missing boundary/rejection `Examples` for `EDGE / BOUNDARY` & `NEGATIVE` ACs, unguarded `§3.3` workflow transitions, multi-group Sprint 1 MVP slicing order) — OR if `sprint-planner-agent` encounters **any unclear, contradictory, conflicting, or ambiguous requirement/rule** while authoring stories (in which case it MUST run `clarification_interview.py --stage pre-stories --action flag-conflict ...`) — **STOP**, present a visible **`## 🔥 Grill-Me Clarification Round (User Stories & Acceptance Criteria)`** (`❓ Q1..Qn` + `➡️ Recommended` + native `ask_question` widget) to the Business Analyst / human, and record their answers via `--action record-round` (or `--action accept-recommendations`)! `alm_jira_ado_bridge.py --action audit` enforces `SD-GRILL-03` and refuses to pass Gate 3 while `"pre-stories"` is unsettled.
 
 ### 1. Author the backlog (before any script)
 Templates: `resources/user_stories_template.md`, `resources/sprint_plan_template.md`. Rules:

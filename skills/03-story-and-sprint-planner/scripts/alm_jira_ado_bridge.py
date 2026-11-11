@@ -1445,6 +1445,10 @@ def audit_backlog(root: Path, stories: list[dict[str, Any]], allow_partial_cover
         )
     )
 
+    grill_errs, grill_warns = dlc.validate_clarification_ledger_for_stories(root)
+    failures.extend(grill_errs)
+    warnings.extend(grill_warns)
+
     coverage_pct = 100.0 if not req_ids else round(100.0 * (len(req_ids) - len(missing_reqs)) / len(req_ids), 1)
     return {
         "requirementSources": req_sources,

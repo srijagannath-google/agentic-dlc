@@ -1,38 +1,29 @@
-# Conditional Decision-Tree Grilling (`grill-me` Intake & Modernization Ambition Protocol)
+# Conditional Decision-Tree Grilling (`grill-me` BA Clarification, Modernization & Conflict Protocol)
 
-Modernizing a legacy application is **not** a mechanical 1:1 lift-and-shift, and authoring a living specification from a BRD/PRD must **never** rely on silent agent assumptions. `agentic-dlc` integrates the **`grill-me` Frontier-Round Decision-Tree Interview** (`skills/clarification-griller/SKILL.md`) **conditionally — only when clarification or modernization vision is genuinely needed**.
+Modernizing a legacy application (MS Access, `.NET`, Java, Mainframe) is **not** a mechanical 1:1 lift-and-shift, and authoring specifications or user stories must **never** silently guess over contradictions or ambiguities. `agentic-dlc` machine-enforces **`grill-me` Frontier-Round Clarification** (`skills/clarification-griller/SKILL.md`) at **two mandatory Business Analyst checkpoints** — **before `specs/application_spec.md` is created (`pre-spec`)** and **when `backlog/user_stories.json` are created (`pre-stories`)** — plus **anytime** an agent encounters unclear, contradictory, conflicting, or ambiguous inputs (`--action flag-conflict`).
 
 ---
 
-## 1. Deterministic Activation vs. Zero-Noise Bypass
+## 1. Machine-Enforced Activation Matrix vs. Zero-Noise Bypass
 
-Run `clarification_interview.py --action detect --stage gate1|stage4a` before asking questions:
-
-| Scenario & Lifecycle Mode | When Conditional Grilling Activates (`NEEDS_CLARIFICATION`) | When Grilling Auto-Bypasses (`CLEAR_AUTO_BYPASSED`) |
-| :--- | :--- | :--- |
-| **Legacy Modernization (`SCENARIO_LEGACY_APP` in `standard` / `delta` mode)** | **Always runs at least Round 1 at Gate 1** unless the user's prompt already defined capability dispositions and modernization mode — resolving: (1) **Capability Disposition (`CAP-*` / `GRP-*`)**: `retire` vs. `parity` vs. `reimagine-enhance` (`REQ-ENH-*`: self-service UX, workflow automation, live rule calculation, AI/RAG copilot or `A2UI v0.9` surface, API/event integration); (2) **Modernization Approach**: `clean-room-rebuild` vs. `in-place-upgrade` + Strangler wave (`GRP-01` vs. `ALL`); and (3) any open `§3.1` workflow/acronym gaps. | Only when `--autonomous` is active (`AUTONOMOUS_ASSUMPTIONS`) or `specs/clarification_decisions.json` already resolved all branches (`openFrontier == []`). |
-| **Greenfield BRD / PRD / RFP (`SCENARIO_REQUIREMENTS_DOC`)** | **Activates ONLY when concrete input gaps exist:** non-empty `§3.1 Open Workflow Questions` (missing actor roles, rejection/reopen/escalation transitions), undefined `[UNVERIFIED_ACRONYM]` tokens, missing formula thresholds/edge cases in `BR-NN`, conflicting requirements across docs, or `scenarioConfidence == LOW`. | **Skipped completely (`0` extra turns)** when the BRD + policies settle all states, roles, and formulas (`openWorkflowQuestions == 0` and `unverifiedAcronyms == 0`). |
-| **Brownfield Baseline (`retro-spec` mode)** | **Activates ONLY if** source code has unreachable/dead workflow states, undefined `[UNVERIFIED_ACRONYM]` business terms, or `scenarioConfidence == LOW`. Never asks To-Be modernization enhancement questions in `retro-spec` mode. | **Skipped completely** when code evidence settles As-Is states, roles, and rules. |
-| **Stage 4A Entry (`04-solution-architect`)** | **Activates ONLY if** `specs/target_stack.json` still has `"tbd"` stack choices (`decidedBy != "user"`) or unsettled brownfield refactoring branches (`InProc` sticky-session replacement, ORM/DB target, coexistence routing). | **Skipped completely** when `decidedBy == "user"` and target stack/coexistence are already settled. |
+| Lifecycle Checkpoint | When `grill-me` Automatically Seeds `openFrontier` & Blocks Downstream Gate | Hard Validator Gate | When Grilling Auto-Bypasses (`CLEAR_AUTO_BYPASSED`) |
+| :--- | :--- | :--- | :--- |
+| **1. Before `application_spec.md` (`--stage pre-spec`)** | Auto-seeded by `validate_discovery_blueprint.py` whenever: (a) **Legacy Modernization** (`SCENARIO_LEGACY_APP` in `standard`/`delta` mode: MS Access, `.NET`, Java, Mainframe) needs BA `capabilityDispositions` (`retire` vs. `parity` vs. `reimagine-enhance` `REQ-ENH-*`) & modernization mode; (b) `scan_input_sources.py` finds **cross-artifact contradictions** (`detectedAmbiguities`, e.g., conflicting fees/rates/thresholds across forms vs. queries vs. docs); or (c) `§3.1 Open Workflow Questions`, missing transition roles, `[UNVERIFIED_ACRONYM]`, or `LOW` confidence exist. | `gate_tracker.py` (`gate_1_discovery`) + `lint_spec_structure.py` (`SD-GRILL-00` / `SD-GRILL-01` / `SD-GRILL-02`) | Clean greenfield BRD or settled `retro-spec` with `0` contradictions, `0` open workflow questions, and `0` unverified acronyms (`stagesSettled: ["pre-spec"]`). |
+| **2. When Creating `user_stories.json` (`--stage pre-stories`)** | Auto-seeded at Gate 2 (`validate_spec_scorecard.py`) / Stage 3 entry whenever: (a) `BR-NN` rules in Spec `§3.4` lack boundary/negative `Examples` vectors needed for `EDGE / BOUNDARY` & `NEGATIVE` ACs; (b) `§3.3` transitions have blank/ambiguous `Guard` conditions; (c) unconfirmed `ASSUMPTION-NN` items remain in `specs/application_spec.md`; (d) `>= 2` capability groups require BA Sprint 1 MVP slicing confirmation; or (e) `sprint-planner-agent` flags a story/AC conflict. | `alm_jira_ado_bridge.py --action audit` + `gate_tracker.py` (`gate_3_backlog`) (`SD-GRILL-03`) | Spec has explicit `BR-NN` `Examples`, explicit transition guards, `0` unconfirmed assumptions, single-group scope, and `0` story conflicts (`stagesSettled: ["pre-stories"]`). |
+| **3. Stage 4A Architecture Entry (`--stage stage4a`)** | `specs/target_stack.json` has `decidedBy != "user"` or `"tbd"` stack components. | Stage 4A Step 0 | `decidedBy == "user"` and concrete stack already chosen. |
+| **4. Anytime Conflict / Contradiction Interrupt (`--action flag-conflict`)** | **Any stage (`01`–`08`):** Whenever any skill or subagent encounters **unclear, contradictory, conflicting, or ambiguous** files, formulas, state transitions, or instructions, it runs `clarification_interview.py --action flag-conflict` to halt and run `🔥 Grill-Me` with the BA/human. | Blocks active stage validator (`SD-GRILL-01` / `SD-GRILL-03`) | Never bypassed in interactive mode — conflicts must be resolved by the human/BA. |
 
 ---
 
 ## 2. Five Non-Negotiable Grilling Rules
 
-1. **Evidence First ("Finding Facts Is Your Job, Decisions Are the User's"):**
-   Never ask the user anything answerable by reading `resources/inputs/`, `resources/policies_and_statutes/`, or `resources/design_references/`. Every frontier question **must cite the exact file, object, table, or BRD section** that created the decision branch.
-2. **Bounded Frontier Rounds (`2–4` Independent Questions per Round, Cap `3` Rounds):**
-   - Model ambiguities as a **decision tree**. The **current frontier** contains only independent root decisions whose prerequisites are already known (`2–4` questions per round — never dump 10+ flat questions at once, and never drag out 15 single-question turns).
-   - **Round 2 (Dependent Child Frontier)** runs **only if** a Round 1 answer opens a dependent child branch (e.g., asking AI human-in-the-loop guardrail thresholds *only after* the user selects an AI triage enhancement in Round 1). Stop immediately once `openFrontier` is empty.
-3. **Mandatory Evidence-Backed Recommendation (`➡️ Recommended`) + Native UI Selector:**
-   Format every question clearly (and also invoke the host IDE's native `ask_question` multiple-choice widget with `(Recommended)` first when available):
-   ```markdown
-   ❓ **Q1 — <Decision Title>** *(Source: `<file:line or §section>`)*:
-   <Concise explanation of the gap or modernization trade-off + concrete options>
-   ➡️ **Recommended:** <Your evidence-backed recommendation and 1-sentence rationale>
-   ```
-4. **Fast-Exit Escape Hatch (`"Accept Recommendations"`):**
-   End every frontier round with: *"Reply with your choices, or say **`accept recommendations`** to lock in all `➡️ Recommended` defaults and proceed."* If the user accepts recommendations, run `clarification_interview.py --action accept-recommendations`.
+1. **Subagents Never Silently Guess — Surface Frontier to Coordinator & Human BA:**
+   Subagents (`discovery-architect`, `sprint-planner-agent`, `solution-architect`, `coding-agent`) cannot message the user directly; whenever `openFrontier` is non-empty or they call `--action flag-conflict`, they **MUST STOP and return the frontier questions to the coordinator** so the coordinator presents a visible **`🔥 Grill-Me Clarification Round`** to the human / Business Analyst!
+2. **Evidence First ("Finding Facts Is Your Job, Decisions Are the User's"):**
+   Never ask anything already answered in `resources/inputs/`, `policies_and_statutes/`, or `design_references/`. Every question cites the exact conflicting/ambiguous file, query, form, or section.
+3. **Bounded Frontier Rounds (`1–4` Independent Questions per Round) + `➡️ Recommended` + Native UI Selector:**
+   Present questions with a visible **`## 🔥 Grill-Me Clarification Round`** header, `❓ **Q1 — ...**` + `➡️ **Recommended:** ...`, and call the host IDE's `ask_question` UI selector (with `(Recommended)` first) when available. Defer dependent child questions to Round 2 *only if* Round 1 answers open new sub-branches.
+4. **Fast-Exit Escape Hatch (`"accept recommendations"`):**
+   Always remind the BA/human they can reply **`accept recommendations`** to lock in the `➡️` recommendations via `clarification_interview.py --stage <stage> --action accept-recommendations`.
 5. **Auditable Chain of Custody (`specs/clarification_decisions.json` → `DECISION-NN`):**
-   - Persist every settled answer via `clarification_interview.py --action record-round` into `specs/clarification_decisions.json` (`DECISION-01..NN` + `capabilityDispositions`).
-   - Stage 2 (`lint_spec_structure.py`) blocks `specs/application_spec.md` (`SD-GRILL-01`) if `clarificationStatus == "IN_PROGRESS"` or `openFrontier` is non-empty, and blocks (`SD-GRILL-02`) if any capability marked `disposition: "retire"` is included as an active `REQ-FUNC-*` / `REQ-ENH-*` requirement.
+   Every answer is recorded as `DECISION-01..NN` (rendered in `specs/gate_briefs/*.md §3b`), and `stagesSettled` tracks `["pre-spec", "pre-stories", "stage4a"]`.

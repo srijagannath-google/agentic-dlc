@@ -1,71 +1,54 @@
 ---
 name: clarification-griller
-description: "Conditional Decision-Tree Clarification & Modernization Ambition Interview skill ('grill-me' for Agentic DLC). Triggered automatically during Stage 1 (Gate 1) or Stage 4A ONLY when clarification is needed — either to define Legacy-to-Modernized target capabilities beyond lift-and-shift (retire vs. 1:1 parity vs. reimagined REQ-ENH-* / AI / self-service capabilities, rebuild vs. in-place-upgrade, Strangler waves) OR to resolve concrete ambiguities in a BRD/requirements document or codebase (open workflow transitions, edge-case formulas, unverified acronyms, or unsettled target stack). Auto-bypasses with zero questions when inputs are already complete."
+description: "Machine-enforced Decision-Tree Business Analyst Clarification, Modernization Ambition & Conflict-Resolution skill ('grill-me' for Agentic DLC). Runs automatically BEFORE specs/application_spec.md is created (--stage pre-spec), WHEN backlog/user_stories.json are created (--stage pre-stories), at Stage 4A (--stage stage4a), and ANYTIME an agent encounters unclear, contradictory, conflicting, or ambiguous inputs (--action flag-conflict). Presents visible 🔥 Grill-Me Frontier Rounds (1–4 questions with evidence citations, ➡️ Recommended answers, and native ask_question UI cards) and persists DECISION-NN into specs/clarification_decisions.json."
 ---
 
-# Conditional Decision-Tree Clarification & Modernization Griller (`clarification-griller`)
+# Conditional Decision-Tree BA Clarification & Conflict Griller (`clarification-griller`)
 
 **Read before acting:** `_shared/conditional_grilling.md`, `_shared/workflow_chain_of_custody.md`, `schemas/clarification_decisions.schema.json`. `<PLUGIN>` = installed plugin dir.
 
-> **Core Rule ("Grill Only When Needed, Never Ask What the Repo/BRD Already Answers"):**
-> 1. Run `clarification_interview.py --action detect` first to inspect `specs/input_inventory.json`, `specs/discovery_architecture_and_inventory.md`, `specs/project_setup.json`, and `specs/target_stack.json`.
-> 2. If `needsClarification == false`, record `CLEAR_AUTO_BYPASSED` and **return immediately without asking extra questions**.
-> 3. If `needsClarification == true`, interview the human in **bounded Frontier Rounds** (`2–4` independent root decisions per round, each with an evidence citation and `➡️ Recommended` answer; dependent child questions deferred to Round 2 *only if* opened by Round 1 answers), and persist resolved `DECISION-NN` items into `specs/clarification_decisions.json`.
-
-## Outputs
-| File | Author | Checked by |
-| :-- | :-- | :-- |
-| `specs/clarification_decisions.json` | `clarification-griller` (`clarification_interview.py`) | `schemas/clarification_decisions.schema.json`, `02/scripts/lint_spec_structure.py` (`SD-GRILL-01/02`) |
+> **Machine-Enforced Checkpoints (`SD-GRILL-00` / `SD-GRILL-01` / `SD-GRILL-02` / `SD-GRILL-03`):**
+> 1. **Before `specs/application_spec.md` (`--stage pre-spec`):** Auto-seeded by `validate_discovery_blueprint.py`. Blocks `gate_1_discovery` approval and `lint_spec_structure.py` until settled!
+> 2. **When Creating `backlog/user_stories.json` (`--stage pre-stories`):** Auto-seeded by `validate_spec_scorecard.py` and checked at Stage 3 entry. Blocks `alm_jira_ado_bridge.py --action audit` and `gate_3_backlog` until settled!
+> 3. **Anytime Unclear / Contradictory / Conflicting / Ambiguous (`--action flag-conflict`):** Run immediately by any skill or subagent whenever two artifacts disagree or a business rule / AC boundary is ambiguous!
 
 ## Procedure
 
-### 1. Detect Whether Clarification or Modernization Ambition Grilling Is Needed
+### 1. Detect or Inspect Active Frontier (`pre-spec` | `pre-stories` | `stage4a`)
 ```bash
 python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
-  --project-root "<PROJECT_ROOT>" --action detect --stage gate1 [--auto-bypass-if-clear]
+  --project-root "<PROJECT_ROOT>" --stage pre-spec --action detect --auto-bypass-if-clear --seed-if-needed
 ```
-Inspect the JSON output (`needsClarification`, `triggerReasons`, `suggestedRootFrontier`):
-- **`needsClarification == false`:** `--auto-bypass-if-clear` writes `clarificationStatus: "CLEAR_AUTO_BYPASSED"` to `specs/clarification_decisions.json`. Do **not** grill the user; proceed directly with the normal gate brief.
-- **`needsClarification == true`:** Proceed to Step 2.
+(Use `--stage pre-stories` before/during Stage 3 User Story creation, or `--stage stage4a` at Stage 4A entry.)
+- **`needsClarification == false`:** Stage is automatically added to `stagesSettled` in `specs/clarification_decisions.json` — ask **zero** extra questions and proceed.
+- **`needsClarification == true`:** Refine `openFrontier` with concrete domain details (`--action save-frontier` if customizing wording) and proceed to Step 2.
 
-### 2. Present Frontier Round 1 (`2–4` Independent Root Decisions + `➡️ Recommended`)
-Refine the detected `suggestedRootFrontier` using actual domain specifics from `specs/discovery_architecture_and_inventory.md` (`§2.1` legacy objects, `§3.1` open workflow questions, `§5` pain points, `§6.1` `GRP-01..N` capability groups) — **never ask generic boilerplate or facts already answered in the inputs**:
-1. **For Legacy Modernization (`SCENARIO_LEGACY_APP` in `standard` / `delta` mode):**
-   - **Capability Disposition (`CAP-*` / `GRP-*`):** Ask which discovered legacy capabilities/modules should be **`retire`** (drop dead forms/reports), **`parity`** (1:1 behavior verified via `TC-PARITY-*`), or **`reimagine-enhance`** (`REQ-ENH-*`: e.g., external self-service portal, automated workflow/notifications, live `BR-NN` calculation engine, grounded AI triage copilot / `A2UI v0.9` surface, API/event integration).
-   - **Modernization Execution Approach:** `clean-room-rebuild` vs. `in-place-upgrade` (citing `runtimeReadinessSignals`), Strangler wave (`GRP-01` foundation first vs. `ALL`), and regulatory/PII constraints.
-2. **For BRD / Requirements Gaps (`SCENARIO_REQUIREMENTS_DOC` or Legacy Workflow Gaps):**
-   - Ask only the **root** unsettled workflow/rule/acronym branches (`§3.1 Open Workflow Questions`, `[UNVERIFIED_ACRONYM]`, missing boundary thresholds or failure/rejection paths). Keep dependent sub-questions out of Round 1 until the root branch is answered.
-
-Persist the active frontier before ending your turn:
+### 2. Anytime Conflict / Contradiction Interrupt (`--action flag-conflict`)
+Whenever **any** agent or subagent spots conflicting formulas across files (e.g., Form VBA vs. SQL Query vs. Policy PDF), contradictory requirements, or ambiguous acceptance criteria:
 ```bash
 python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
-  --project-root "<PROJECT_ROOT>" --action save-frontier --frontier-json '<JSON_ARRAY>'
+  --project-root "<PROJECT_ROOT>" --stage <pre-spec|pre-stories|stage4a|anytime> --action flag-conflict \
+  --category contradiction-conflict \
+  --evidence "<File A:line vs File B:line>" \
+  --question "<Concise BA question stating both conflicting rules and options>" \
+  --recommended "<Evidence-backed recommended resolution>"
 ```
-Present the `2–4` frontier questions formatted with `❓ **Q1 — ...**` and `➡️ **Recommended:** ...` (and call the native `ask_question` UI tool with `(Recommended)` first when available in the host IDE), remind the user they can reply **`accept recommendations`** to fast-exit, and **END YOUR TURN**.
+Subagents must **STOP immediately** and return the flagged frontier question to the coordinator so the coordinator engages the human / Business Analyst!
 
-### 3. Record Answers & Recompute Dependent Child Frontier (Round 2 Only If Needed)
-When the user replies:
-- If the user replies **"accept recommendations"** (or approves defaults):
-  ```bash
-  python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
-    --project-root "<PROJECT_ROOT>" --action accept-recommendations
-  ```
-- Otherwise, record their answers (`DECISION-01..NN` and `capabilityDispositions`), check whether any answer opens a **dependent child decision** (Round 2, e.g., human-in-the-loop approval thresholds for a newly chosen AI copilot or rejection-reopen guards for a multi-tier workflow):
-  - **If dependent child questions exist (and `< 3` rounds completed):** pass them in `--next-frontier-json` and run Round 2.
-  - **If the frontier is empty (`next-frontier == []`):** `clarificationStatus` becomes `"RESOLVED_BY_HUMAN"` and the interview is complete!
-  ```bash
-  python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
-    --project-root "<PROJECT_ROOT>" --action record-round \
-    --decisions-json '<DECISIONS_JSON_ARRAY>' \
-    [--dispositions-json '<CAPABILITY_DISPOSITIONS_JSON_ARRAY>'] \
-    [--next-frontier-json '[]']
-  ```
+### 3. Present a Visible `🔥 Grill-Me Clarification Round` to the Business Analyst / Human
+Always format the chat presentation with an unmistakable **`## 🔥 Grill-Me Clarification Round (<Pre-Spec | User Stories | Conflict>)`** heading, `1–4` numbered `❓ **Q<N> — <Title>** *(Source: ...)*` items + `➡️ **Recommended:** ...` (and invoke the host IDE's native `ask_question` tool with `(Recommended)` first when available), remind the user they can reply **`accept recommendations`** to fast-exit, and **END YOUR TURN**.
 
-### 4. Stage 4A Technical Frontier Check (`--stage stage4a`)
-Before authoring `design/*` in Stage 4A, run `--action detect --stage stage4a`. Only if `target_stack.json` still has `"tbd"` stack components or unsettled stateless/ORM refactoring branches, run a single concise technical frontier round and update `specs/target_stack.json` (`decidedBy: "user"`) + `specs/clarification_decisions.json`.
+### 4. Record BA Answers (`record-round` or `accept-recommendations`)
+```bash
+# Option A — Record explicit Business Analyst / human answers:
+python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
+  --project-root "<PROJECT_ROOT>" --stage <pre-spec|pre-stories|stage4a> --action record-round \
+  --decisions-json '<DECISIONS_JSON_ARRAY>' \
+  [--dispositions-json '<CAPABILITY_DISPOSITIONS_JSON_ARRAY>'] \
+  [--next-frontier-json '[]']
 
-## Do not
-- Grill the user when `needsClarification == false` or in `--autonomous` mode.
-- Ask questions whose answers already exist in `resources/inputs/` or `resources/policies_and_statutes/`.
-- Dump more than `4` questions in a single round or omit `➡️ Recommended` answers.
-- Advance to Stage 2 (`lint_spec_structure.py`) while `specs/clarification_decisions.json` has `openFrontier` items remaining.
+# Option B — User replied "accept recommendations":
+python3 <PLUGIN>/skills/clarification-griller/scripts/clarification_interview.py \
+  --project-root "<PROJECT_ROOT>" --stage <pre-spec|pre-stories|stage4a> --action accept-recommendations
+```
+Once `openFrontierCount == 0`, the stage is recorded in `stagesSettled` and `lint_spec_structure.py` (`pre-spec`) or `alm_jira_ado_bridge.py` (`pre-stories`) unlocks!

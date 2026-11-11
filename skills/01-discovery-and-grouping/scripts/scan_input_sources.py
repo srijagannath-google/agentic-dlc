@@ -42,15 +42,16 @@ import dlc_common as dlc  # noqa: E402
 # --------------------------------------------------------------------------------------------------
 # Heuristics (generic — no domain literals)
 # --------------------------------------------------------------------------------------------------
-SCHEMA_EXT = {".xsd", ".ddl", ".dbml", ".prisma", ".dbschema", ".dacpac", ".edmx"}
+SCHEMA_EXT = {".xsd", ".ddl", ".dbml", ".prisma", ".dbschema", ".dacpac", ".edmx", ".dcl", ".dclgen"}
 # Binary database containers / backups / data exports are strong legacy-estate evidence even though their
 # content cannot be read as text (weight comes from the legacy_schema category).
 DB_CONTAINER_EXT = {".accdb", ".mdb", ".dbf", ".bak", ".sqlite", ".sqlite3", ".db"}
 DATA_EXPORT_EXT = {".csv", ".xlsx", ".xls"}
 SOURCE_EXT = {
     ".vb", ".bas", ".cls", ".frm", ".cs", ".cshtml", ".vbhtml", ".razor", ".java", ".cbl", ".cob", ".cpy",
-    ".jcl", ".py", ".js", ".jsx", ".ts", ".tsx", ".php", ".rb", ".go", ".pl", ".asp", ".aspx", ".ascx",
-    ".master", ".asax", ".ashx", ".asmx", ".svc", ".sln", ".slnx", ".csproj", ".vbproj", ".fsproj",
+    ".jcl", ".prc", ".proc", ".bms", ".pli", ".pl1", ".asm", ".hlasm", ".mac", ".rexx", ".rex", ".rpg",
+    ".rpgle", ".dspf", ".py", ".js", ".jsx", ".ts", ".tsx", ".php", ".rb", ".go", ".pl", ".asp", ".aspx",
+    ".ascx", ".master", ".asax", ".ashx", ".asmx", ".svc", ".sln", ".slnx", ".csproj", ".vbproj", ".fsproj",
     ".props", ".targets", ".xaml", ".gradle", ".kts", ".jsp", ".vbs", ".c", ".cpp", ".h", ".kt", ".swift",
     ".rs", ".scala",
 }
@@ -456,8 +457,8 @@ def categorise(path: Path, bucket: str, text: str) -> tuple[str, str]:
         return "shared_service", "located in resources/shared_services"
     if DESIGN_KEYWORDS.search(name) or ext in (".fig", ".sketch", ".xd"):
         return "design_reference", "design keyword in file name"
-    if stem.startswith(FORM_PREFIXES) or ext == ".frm":
-        return "legacy_form", "form/screen name prefix"
+    if stem.startswith(FORM_PREFIXES) or ext in (".frm", ".bms", ".dspf"):
+        return "legacy_form", "form/screen name prefix or screen-map file"
     if stem.startswith(REPORT_PREFIXES):
         return "legacy_report", "report name prefix"
     if ext in SCHEMA_EXT or stem.startswith(TABLE_PREFIXES):
@@ -581,6 +582,70 @@ def extract_unverified_acronyms(texts_by_rel: dict[str, str]) -> list[str]:
             continue
         counts[tok] = counts.get(tok, 0) + 1
     return sorted(k for k, v in counts.items() if v >= 2)[:40]
+
+
+_DOMAIN_RULE_CONST_RE = re.compile(
+    r"\b([A-Za-z_][A-Za-z0-9_]*(?:fee|rate|threshold|limit|sla|days|hours|cap|pct|percent|penalty|surcharge|discount|grace|quota|multiplier)[A-Za-z0-9_]*)\b"
+    r"\s*(?:=|:=|:|\bis\b)\s*\$?\s*(\d+(?:\.\d+)?)\s*%?",
+    re.IGNORECASE,
+)
+_UI_LAYOUT_NOISE_RE = re.compile(
+    r"(?:width|height|left|top|right|bottom|font|margin|padding|border|color|tab|index|column|row|version|port|timeout_ms|pixel|twip)",
+    re.IGNORECASE,
+)
+_EXPLICIT_CONFLICT_MARKER_RE = re.compile(
+    r"(?:\[(?:CONFLICT|CONTRADICTION|AMBIGUOUS|TBD|CLARIFY)\]|(?:\bTBD\b|\bFIXME\b|\?\?\?)\s*[:—-]\s*([^\n]{5,120}))",
+    re.IGNORECASE,
+)
+
+
+def detect_cross_artifact_ambiguities(texts_by_rel: dict[str, str]) -> list[dict[str, Any]]:
+    """Detect cross-file numeric business-rule contradictions (same fee/rate/threshold/limit constant assigned
+    conflicting values in different forms, queries, modules, or documents) and explicit TBD/CONFLICT markers."""
+    by_ident: dict[str, dict[str, set[str]]] = {}  # lower_ident -> {value_str -> {rel_paths}}
+    display_name: dict[str, str] = {}
+    explicit_hits: list[dict[str, Any]] = []
+
+    for rel, text in sorted(texts_by_rel.items()):
+        if not text:
+            continue
+        for m in _DOMAIN_RULE_CONST_RE.finditer(text):
+            raw_id, raw_val = m.group(1), m.group(2)
+            if _UI_LAYOUT_NOISE_RE.search(raw_id) or len(raw_id) < 4:
+                continue
+            key = raw_id.lower().replace("_", "")
+            display_name.setdefault(key, raw_id)
+            norm_val = f"{float(raw_val):g}"
+            by_ident.setdefault(key, {}).setdefault(norm_val, set()).add(rel)
+
+        for m_exp in _EXPLICIT_CONFLICT_MARKER_RE.finditer(text):
+            snippet = m_exp.group(0).strip()[:120]
+            explicit_hits.append({
+                "kind": "explicit-ambiguity-marker",
+                "identifier": Path(rel).name,
+                "summary": f"Unresolved ambiguity/conflict marker in `{rel}`: `{snippet}`",
+                "files": [rel],
+            })
+            if len(explicit_hits) >= 10:
+                break
+
+    contradictions: list[dict[str, Any]] = []
+    for key, val_map in sorted(by_ident.items()):
+        if len(val_map) < 2:
+            continue
+        all_files = sorted({f for fs in val_map.values() for f in fs})
+        if len(all_files) < 2:
+            continue  # Same file having tier 1 vs tier 2 assignments is normal; cross-artifact divergence is a BA conflict!
+        parts = [f"{v} (in {', '.join(sorted(fs)[:2])})" for v, fs in sorted(val_map.items())]
+        ident = display_name[key]
+        contradictions.append({
+            "kind": "conflicting-numeric-rule",
+            "identifier": ident,
+            "summary": f"Conflicting values for `{ident}` across input artifacts: {' vs. '.join(parts)}",
+            "files": all_files[:6],
+        })
+
+    return (contradictions + explicit_hits)[:20]
 
 
 def build_dependency_dag(
@@ -750,8 +815,16 @@ def extract_runtime_readiness_signals(
         name_low = f["name"].lower()
         text = texts_by_rel.get(rel, "")
 
-        if ext in (".accdb", ".mdb", ".dbf", ".frm", ".cbl", ".cob", ".cpy", ".jcl", ".asp", ".aspx", ".vbs"):
+        if ext in (".accdb", ".mdb", ".dbf", ".frm", ".cbl", ".cob", ".cpy", ".jcl", ".prc", ".proc", ".bms", ".pli", ".pl1", ".asm", ".hlasm", ".rpg", ".rpgle", ".dspf", ".asp", ".aspx", ".vbs"):
             has_obsolete_non_oop_legacy = True
+        if ext in (".cbl", ".cob", ".cpy", ".jcl", ".prc", ".proc", ".bms") or re.search(r"\bIDENTIFICATION\s+DIVISION\b|\bEXEC\s+CICS\b", text, re.IGNORECASE):
+            frameworks.add("Mainframe COBOL / JCL")
+            if re.search(r"\bEXEC\s+CICS\b", text, re.IGNORECASE) or ext == ".bms":
+                frameworks.add("IBM CICS / BMS")
+            if re.search(r"\bCOMP-3\b|\bPACKED-DECIMAL\b", text, re.IGNORECASE):
+                os_blockers.append({"signal": "COBOL COMP-3 packed-decimal arithmetic (requires exact fixed-point Decimal parity)", "category": "mainframe-comp3", "file": rel})
+            if re.search(r"\bEXEC\s+SQL\b", text, re.IGNORECASE):
+                db_coupling.add("Embedded EXEC SQL (DB2 / Mainframe SQL)")
         if ext in (".csproj", ".fsproj") or name_low in ("pom.xml", "build.gradle", "build.gradle.kts"):
             has_modernizable_oop_manifest = True
 
@@ -1019,6 +1092,7 @@ def scan(
     else:
         dag_summary["dagFile"] = None
     unverified_acronyms = extract_unverified_acronyms(texts_by_rel)
+    detected_ambiguities = detect_cross_artifact_ambiguities(texts_by_rel)
     runtime_signals = extract_runtime_readiness_signals(files, texts_by_rel, scenario)
     large_repo_mr = bool(top_module_count > 15 or len(files) > 60)
 
@@ -1045,6 +1119,7 @@ def scan(
         "topLevelModuleCount": top_module_count,
         "largeRepoMapReduceRecommended": large_repo_mr,
         "unverifiedAcronyms": unverified_acronyms,
+        "detectedAmbiguities": detected_ambiguities,
         "runtimeReadinessSignals": runtime_signals,
         "inputFingerprintSha256": dlc.sha256_bytes(hasher_input),
         "totalFilesScanned": len(files),

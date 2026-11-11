@@ -215,6 +215,27 @@ def cmd_approve(
         setup_data["updatedAtUtc"] = dlc.utc_now_iso(False)
         dlc.write_json(setup_file, setup_data)
 
+    # Enforce Pre-Spec & Pre-Stories Grill-Me resolution before unlocking Gate 1 or Gate 3 in interactive mode
+    if not autonomous and gate_id in ("gate_1_discovery", "gate_3_backlog"):
+        clar_file = root / "specs" / "clarification_decisions.json"
+        req_stage = "pre-spec" if gate_id == "gate_1_discovery" else "pre-stories"
+        if clar_file.is_file():
+            clar_obj = dlc.read_json(clar_file)
+            open_f = (clar_obj.get("openFrontier") or []) if isinstance(clar_obj, dict) else []
+            matching_open = [
+                q for q in open_f
+                if not isinstance(q, dict) or dlc.normalize_clarification_stage(q.get("stage")) in (req_stage, "anytime")
+            ]
+            if matching_open:
+                raise dlc.GateFailure(
+                    f"Cannot approve {gate_id}: {len(matching_open)} unresolved 🔥 Grill-Me question(s) remain in "
+                    f"specs/clarification_decisions.json for stage '{req_stage}'.\n"
+                    "  Engage the Business Analyst / human on those questions first and record their answers via:\n"
+                    f"  python3 \"{dlc.PLUGIN_ROOT / 'skills/clarification-griller/scripts/clarification_interview.py'}\" "
+                    f"--project-root \"{root}\" --stage {req_stage} --action record-round --decisions-json '[...]'\n"
+                    "  (or `--action accept-recommendations` if the user accepted the recommended answers)."
+                )
+
     now_iso = dlc.utc_now_iso(False)
     status_val = dlc.GATE_STATUS_PRE_APPROVED if autonomous else dlc.GATE_STATUS_APPROVED
     entry_out = {

@@ -215,8 +215,9 @@ def main() -> int:
     # 10. Zero internal harness workings leak check
     fails.extend(dlc.scan_deliverable_internal_leaks(root, [args.file]))
 
-    # 11. Conditional Clarification & Modernization Ambition Trigger Assessment (`clarification-griller`)
-    clar_assessment = dlc.assess_clarification_triggers(root, stage="gate1")
+    # 11. Auto-seed & enforce Pre-Spec Grill-Me Clarification (`clarification-griller`)
+    seeded_info = dlc.auto_seed_clarification_stage(root, "pre-spec") if not fails else {"needsClarification": False}
+    clar_assessment = dlc.assess_clarification_triggers(root, stage="pre-spec")
 
     result = {
         "file": str(doc_path), "inputScenario": scenario, "hasPoliciesOrStatutes": has_statutes,
@@ -235,17 +236,13 @@ def main() -> int:
             print(f"  ✗ {f}")
         print(f"[dlc] Gate 1 discovery blueprint: {'PASS' if not fails else 'FAIL'} "
               f"({len(fails)} failure(s), {len(warns)} warning(s); states={len(sm_tbl.states)} transitions={len(sm_tbl.transitions)})")
-        if clar_assessment["needsClarification"]:
-            print(
-                f"[dlc] Conditional Grilling REQUIRED at Gate 1 (reasons={clar_assessment['triggerReasons']}) — "
-                "run `clarification-griller` (`clarification_interview.py --action detect --stage gate1`) to present "
-                "a bounded Frontier Round (2..4 questions with Recommended Answers) before Stage 2."
-            )
+        if not fails and seeded_info.get("needsClarification") and seeded_info.get("openFrontier"):
+            print("\n" + dlc.format_grill_me_banner("pre-spec", seeded_info["openFrontier"]))
         if not fails:
             dlc.mark_gate_awaiting_human(
                 root,
                 "gate_1_discovery",
-                summary="Stage 1 Current-State ('As-Is') Discovery Blueprint validated. Present discovery summary, §6.1 Capability Groupings, and Gate 1 intake / conditional clarification frontier to user and STOP.",
+                summary="Stage 1 Current-State ('As-Is') Discovery Blueprint validated. Present discovery summary, §6.1 Capability Groupings, and the 🔥 Grill-Me Pre-Spec Clarification Frontier (if open) to the Business Analyst / user and STOP.",
             )
     return 0 if not fails else 1
 

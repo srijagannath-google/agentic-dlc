@@ -22,6 +22,10 @@ Subagents: `discovery-architect` (author), `spec-judge` (judge) — kept separat
 
 ## Procedure
 
+### 0. Mandatory Pre-Spec `grill-me` Verification (`SD-GRILL-00` / `SD-GRILL-01`)
+Before `discovery-architect` authors `specs/application_spec.md`, check `specs/clarification_decisions.json` (`clarification_interview.py --stage pre-spec --action detect --auto-bypass-if-clear --seed-if-needed`):
+- If `needsClarification == true` or `openFrontier` is non-empty (legacy app modernization capability dispositions `retire` vs. `parity` vs. `reimagine-enhance`, cross-artifact contradictions in `detectedAmbiguities`, `§3.1` open workflow questions, or unverified acronyms) — or if `discovery-architect` spots any contradiction/ambiguity while drafting (`--action flag-conflict`) — **STOP IMMEDIATELY before finalizing `specs/application_spec.md`**, present a visible **`## 🔥 Grill-Me Clarification Round (Pre-Spec)`** to the Business Analyst / human, and record `DECISION-NN` first! (`lint_spec_structure.py` hard-fails on `SD-GRILL-00`/`SD-GRILL-01` otherwise.)
+
 ### 1. Author the spec (`discovery-architect`)
 Skeleton: `resources/spec_5pillar_template.md`. Structure is a contract (ARCHITECTURE §4.3):
 - Header block: project name, `Input Scenario` (human-readable label: `Legacy Application Modernization` or `Greenfield Requirements Specification` — never internal `SCENARIO_*` enum constants), `Domain Slug`, `Status` (`🟡 IN REVIEW` → `🟡 IN PROGRESS` → `🟢 COMPLETED`, or `🟢 COMPLETED (Retro-Spec)` under `specLifecycleMode == "retro-spec"`), `Author` / optional `Co-Authors`, structured `Approvals` (`* **Approvals:**` with `* **Phases X - Y** - <ticket/PR> - <human_approvers>` sub-bullets; bot/agent identities strictly excluded), accessibility standard(s), regulations, assumptions.

@@ -1,19 +1,19 @@
-# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.6.0`)
+# Enterprise Agentic Development Lifecycle Harness — `agentic-dlc` (`v4.7.0`)
 
-> **Version:** `4.6.0` · **Architecture:** Living Spec-Driven Development (SDD) + Conditional `grill-me` Decision-Tree Intake + Dual-Plane Enterprise ALM & Git Governance
+> **Version:** `4.7.0` · **Architecture:** Living Spec-Driven Development (SDD) + Machine-Enforced BA `grill-me` Intake + Dual-Plane Enterprise ALM & Git Governance
 >
 > **"Think Big, Start Small, Move Fast"** — the **Elephant** (deep-context discovery & living-specification architect), the **Judge**
 > (adversarial spec/architecture critics + closed-loop browser & API test runner), and the **Goldfish** (clean-context target-stack coder).
-> `agentic-dlc` is **domain-neutral**, **scenario-aware**, and **visually verified**: it modernises legacy applications beyond 1:1 lift-and-shift (`clean-room-rebuild` or brownfield `in-place-upgrade`), baselines existing production systems (`retro-spec`), evolves living specifications (`delta`), and builds greenfield systems from requirements documents — interviewing humans in bounded **`grill-me` frontier rounds** *only when clarification or modernization scope is needed*, and tracking approvals via **Jira / Azure DevOps thin-pointer boards** or **Git-Native Docs-as-Code Pull Requests**.
+> `agentic-dlc` is **domain-neutral**, **scenario-aware**, and **visually verified**: it modernises legacy applications (MS Access, `.NET`, Java, Mainframe) beyond 1:1 lift-and-shift (`clean-room-rebuild` or brownfield `in-place-upgrade`), baselines existing production systems (`retro-spec`), evolves living specifications (`delta`), and builds greenfield systems from requirements documents — engaging Business Analysts & humans in bounded **`🔥 Grill-Me` frontier rounds** **before `application_spec.md` is created (`pre-spec`)**, **when `user_stories.json` are created (`pre-stories`)**, and **anytime unclear, contradictory, conflicting, or ambiguous rules arise** (`--action flag-conflict`).
 
 ---
 
-## 1. Key Capabilities (`v4.6.0`)
+## 1. Key Capabilities (`v4.7.0`)
 
-| Dimension | `agentic-dlc` v4.6.0 Capability |
+| Dimension | `agentic-dlc` v4.7.0 Capability |
 | :-- | :-- |
 | **Who Authors vs. Who Verifies** | **The LLM (8 subagents, 13 skills) authors every artefact** from user inputs; Python 3.10+ stdlib scripts **scan, crawl, derive, lint, execute, and enforce human gates** |
-| **Conditional `grill-me` Decision-Tree Intake (`clarification-griller`)** | Runs **bounded Frontier Rounds** (`2–4` independent root questions with evidence citations, `➡️ Recommended` answers, and `accept recommendations` fast-exit) **only when needed**: always at Gate 1 for Legacy Modernization (`retire` vs. `parity` vs. `reimagine-enhance` `REQ-ENH-*` capabilities + approach), conditionally on BRD/codebase workflow/formula/acronym gaps, and **auto-bypassing (`CLEAR_AUTO_BYPASSED`) with zero extra turns when inputs are complete** |
+| **Machine-Enforced BA `grill-me` (`pre-spec`, `pre-stories`, & `flag-conflict`)** | Auto-seeds `specs/clarification_decisions.json#openFrontier` and blocks downstream validators **before `application_spec.md`** (`SD-GRILL-00/01/02`), **when `user_stories.json` are created** (`SD-GRILL-03`), and **anytime contradictions/conflicts/ambiguities arise** (`--action flag-conflict` & `detectedAmbiguities`); auto-bypasses cleanly (`CLEAR_AUTO_BYPASSED`) only when zero gaps exist |
 | **Living Spec-Driven Development (`standard` · `delta` · `retro-spec`)** | Supports full delivery (`standard`), **Phase `N+1` Living Spec Delta Mode** (`delta` with `--baseline-spec` byte-for-byte preservation of completed items and historic approvals), and **Brownfield Retro-Spec Mode** (`retro-spec` with Zero Backlog Ticket Creation Guarantee) |
 | **Dual-Plane Human Review (With ALM or Pure Git PRs)** | **Pattern A (`alm-and-git`):** Thin-pointer, dependency-chained Jira / Azure DevOps stories (`specPointer`, `dependsOnStories`) with 1-page 5-Question Gate Decision Briefs. **Pattern B (`git-pr-docs-as-code`):** Git PRs + `CODEOWNERS` + inline `* **Approvals:**` ledger (`>= 2` distinct humans on `regulated` track, strict bot exclusion) when no external ALM is used |
 | **3D Small-Slice Execution & 3-Tier Spec Deviation Gate** | Enforces `<= 3` prod files, `<= 400` LOC, co-located `unitTestTargets`, and 4-part `verificationPlan` (no bare `"N/A"`), compacts `Done` slices (`compact-completed`), and halts *before* mutating `src/` on `Tier 1B` Spec Deviations |
@@ -63,8 +63,8 @@ flowchart LR
 | :-- | :-- | :-- | :-- | :-- |
 | **0. Setup & Mode** | [`00-setup-and-connection`](skills/00-setup-and-connection/SKILL.md) | coordinator | `specs/project_setup.json` (`ceremonyTrack`, `specLifecycleMode`, `reviewPlane`, `domainPacks`, `activeWave`; disambiguates `"reverse engineer"` → `retro-spec` vs `standard`), `specs/gate_approvals.json` | **Gate 0 (`gate_0_setup`)** · `setup_project_connection.py`, `gate_tracker.py` |
 | **1. Discovery & Grill-Me** | [`01-discovery-and-grouping`](skills/01-discovery-and-grouping/SKILL.md), [`clarification-griller`](skills/clarification-griller/SKILL.md) | `discovery-architect` | `specs/input_inventory.json` (`runtimeReadinessSignals`), `specs/dependency_dag.json`, `specs/discovery_architecture_and_inventory.md` (As-Is only), `specs/clarification_decisions.json` (`DECISION-NN` + `capabilityDispositions`), `specs/target_stack.json` | **Gate 1 (`gate_1_discovery`)** · `scan_input_sources.py`, `validate_discovery_blueprint.py`, `clarification_interview.py` |
-| **2. Living Spec** | [`02-spec-architect-and-judge`](skills/02-spec-architect-and-judge/SKILL.md) | `discovery-architect`, `spec-judge` | `specs/application_spec.md` (with `* **Approvals:**` & `§3.4` `Examples`), `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | **Gate 2 (`gate_2_spec`, `>= 90`)** · `lint_spec_structure.py`, `validate_spec_scorecard.py` |
-| **3. Chained Slices** | [`03-story-and-sprint-planner`](skills/03-story-and-sprint-planner/SKILL.md) | `sprint-planner-agent` | `backlog/user_stories.{md,json}` (`specPointer`, `dependsOnStories`, `scopeBounds`, `verificationPlan`), `backlog/sprint_plan.{md,json}` | **Gate 3 (`gate_3_backlog`)** · `alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`, `compact-completed`) |
+| **2. Living Spec** | [`02-spec-architect-and-judge`](skills/02-spec-architect-and-judge/SKILL.md), [`clarification-griller`](skills/clarification-griller/SKILL.md) | `discovery-architect`, `spec-judge` | `specs/application_spec.md` (enforces `SD-GRILL-00/01/02` `pre-spec` BA `grill-me`, `* **Approvals:**` & `§3.4` `Examples`), `specs/traceability_matrix.md`, `specs/application_eval_scorecard.{md,json}` | **Gate 2 (`gate_2_spec`, `>= 90`)** · `lint_spec_structure.py`, `validate_spec_scorecard.py` |
+| **3. Chained Slices & BA Grill-Me** | [`03-story-and-sprint-planner`](skills/03-story-and-sprint-planner/SKILL.md), [`clarification-griller`](skills/clarification-griller/SKILL.md) | `sprint-planner-agent` | `backlog/user_stories.{md,json}` (enforces `SD-GRILL-03` `pre-stories` BA `grill-me`, `specPointer`, `dependsOnStories`, `scopeBounds`, `verificationPlan`), `backlog/sprint_plan.{md,json}` | **Gate 3 (`gate_3_backlog`)** · `alm_jira_ado_bridge.py` (`audit`, `sync-stories`, `sync-sprints`, `compact-completed`) |
 | **4A. Architecture** | [`04-solution-architect`](skills/04-solution-architect/SKILL.md) | `solution-architect`, `architecture-critic` | 7 perspective `design/*_architecture.md` docs + `architecture_design.md` + `solution_design.md` + `architecture_eval_scorecard.{md,json}` (+ `data_migration_and_cutover.md` if legacy) | **Gate 4A/4B (`gate_4_design_and_tests`)** · `extract_contracts.py`, `validate_architecture_scorecard.py` |
 | **4B. Test Plan** | [`05-test-plan-designer`](skills/05-test-plan-designer/SKILL.md) | `testing-agent` | `test/test_plan.md`, `test/test_cases.json` (incl. `TC-EDGE-BR-*` & `TC-PARITY-*`) | **Gate 4A/4B (`gate_4_design_and_tests`)** · `derive_test_cases.py`, `validate_test_cases.py` |
 | **5. Build** | [`06-coding-agent`](skills/06-coding-agent/SKILL.md), [`google-cloud-ui-design`](skills/google-cloud-ui-design/SKILL.md) | `coding-agent` | Dual-mode `src/{ui,backend,run.sh,README.md}` with co-located unit tests, `@dlc-guard` pragmas (+ `src/MODERNIZATION_CHANGELOG.md` if `in-place-upgrade`) | **Gate 5 (`gate_5_build`)** · `validate_build.py` (Stateless Container check; stories → `In Progress`) |
@@ -89,10 +89,10 @@ flowchart LR
 - **With Jira or Azure DevOps (`alm-and-git`):** Humans review the 1-Page **5-Question Executive Gate Decision Brief** (`specs/gate_briefs/<gate_id>.md`) + Spec PR diff, approve via `gate_tracker.py --action approve --approvers <users>`, and track thin-pointer chained stories (`specPointer` + `dependsOnStories` → Jira `Blocks` / ADO `Predecessor`) moving `To Do → In Progress → Done` on the live board.
 - **Without External ALM (`git-pr-docs-as-code`, when `almPlatform == "none"`):** Humans review a dedicated **Spec & Contract Pull Request** governed by `CODEOWNERS`; CI runs `lint_spec_structure.py --strict-approvals` (verifying human usernames in `* **Approvals:**`, excluding bots, enforcing `>= 2` distinct humans on `regulated` track), and implementation lands as small atomic per-slice PRs answering the 5 Structured Review Questions.
 
-### 3.4 Conditional `grill-me` Clarification & Modernization Ambition (`skills/clarification-griller`)
-- **Legacy Modernization (`SCENARIO_LEGACY_APP` in `standard` / `delta` mode):** Always conducts at least **Frontier Round 1** at Gate 1 (unless already specified in the prompt) so you explicitly decide which discovered capabilities (`CAP-*` / `GRP-*`) to **`retire`**, keep at **1:1 `parity`**, or **`reimagine-enhance`** (`REQ-ENH-*`: self-service UX, workflow automation, live rule calculation, AI/RAG copilot or `A2UI v0.9`), plus `clean-room-rebuild` vs. `in-place-upgrade`.
-- **Greenfield BRD / Requirements (`SCENARIO_REQUIREMENTS_DOC`) & `retro-spec` Mode:** Activates **only when concrete gaps exist** (`§3.1 Open Workflow Questions`, `[UNVERIFIED_ACRONYM]`, missing formula edge cases, or `scenarioConfidence == LOW`). When inputs are complete, `clarification_interview.py --action detect --auto-bypass-if-clear` records `CLEAR_AUTO_BYPASSED` and asks **zero extra questions**.
-- **Bounded Frontier Rounds:** `2–4` independent root questions per round with file/section citations, `➡️ Recommended` answers, dependent child Round 2 *only if* opened by Round 1 answers, and a 1-phrase **`accept recommendations`** fast-exit persisted to `specs/clarification_decisions.json` (`DECISION-01..NN`, enforced by `SD-GRILL-01` & `SD-GRILL-02` in `lint_spec_structure.py`).
+### 3.4 Machine-Enforced BA `grill-me` Checkpoints & Conflict Interrupt (`skills/clarification-griller`)
+- **Checkpoint 1 — Before `specs/application_spec.md` Is Created (`--stage pre-spec` / `SD-GRILL-00`, `SD-GRILL-01`, `SD-GRILL-02`):** `validate_discovery_blueprint.py` automatically seeds `specs/clarification_decisions.json#openFrontier` on Legacy Modernization estates (MS Access, `.NET`, Java, Mainframe: `retire` vs. `parity` vs. `reimagine-enhance` `REQ-ENH-*`), cross-artifact numeric/rule contradictions (`detectedAmbiguities`), `§3.1` open workflow questions, and `[UNVERIFIED_ACRONYM]` items — blocking `gate_1_discovery` approval and `lint_spec_structure.py` until answered by the Business Analyst / human.
+- **Checkpoint 2 — When `backlog/user_stories.json` Are Created (`--stage pre-stories` / `SD-GRILL-03`):** `validate_spec_scorecard.py` and Stage 3 entry inspect Spec `§3.4` rules missing boundary `Examples`, `§3.3` transitions missing `Guard` conditions, residual `ASSUMPTION-NN` items, and multi-group Sprint 1 MVP slicing order — blocking `alm_jira_ado_bridge.py --action audit` until BA acceptance-criteria questions are settled.
+- **Checkpoint 3 — Anytime Contradiction / Ambiguity Interrupt (`--action flag-conflict`):** Whenever any agent or subagent in any stage encounters unclear, contradictory, conflicting, or ambiguous artifacts, `--action flag-conflict` pushes a `🔥 Grill-Me` frontier question and halts progression until resolved (with `➡️ Recommended` answers and a 1-phrase **`accept recommendations`** fast-exit).
 
 ---
 
@@ -151,18 +151,18 @@ flowchart LR
 **Option A — New or Standalone Repository (`git` or `./push-to-github.sh`):**
 ```bash
 # 1. Extract the release bundle (extracts into ./agentic-dlc/)
-unzip -q agentic-dlc-v4.6.0.zip -d ~/workspace/
+unzip -q agentic-dlc-v4.7.0.zip -d ~/workspace/
 cd ~/workspace/agentic-dlc
 
-# 2. Initialize Git and create the v4.6.0 commit + tag
+# 2. Initialize Git and create the v4.7.0 commit + tag
 git init -b main
 git add .
-git commit -m "feat: release agentic-dlc v4.6.0 (Conditional grill-me intake + Living SDD + .NET/Java readiness)"
-git tag v4.6.0
+git commit -m "feat: release agentic-dlc v4.7.0 (Pre-Spec, Pre-Stories & Conflict grill-me + Mainframe/.NET/Java readiness)"
+git tag v4.7.0
 
 # 3a. Push with GitHub CLI helper (creates a private repo if missing)
 GITHUB_OWNER="<your-org-or-user>" GITHUB_REPO="agentic-dlc" ./push-to-github.sh main
-git push origin v4.6.0
+git push origin v4.7.0
 
 # 3b. Or push manually to any Git remote (GitHub, GitLab, Azure Repos)
 git remote add origin https://github.com/<your-org>/agentic-dlc.git
@@ -172,15 +172,15 @@ git push -u origin main --tags
 **Option B — Updating an Existing `agentic-dlc` Git Checkout:**
 ```bash
 # Extract into a staging directory and sync cleanly over your existing checkout (preserving .git/)
-unzip -q agentic-dlc-v4.6.0.zip -d /tmp/dlc-stage
+unzip -q agentic-dlc-v4.7.0.zip -d /tmp/dlc-stage
 rsync -a --delete --exclude '.git' /tmp/dlc-stage/agentic-dlc/ ~/workspace/agentic-dlc/
 rm -rf /tmp/dlc-stage
 
 cd ~/workspace/agentic-dlc
 git status
 git add -A
-git commit -m "feat: upgrade agentic-dlc to v4.6.0 (Conditional grill-me intake, Living SDD, .NET/Java readiness)"
-git tag v4.6.0
+git commit -m "feat: upgrade agentic-dlc to v4.7.0 (Pre-Spec, Pre-Stories & Conflict grill-me + Mainframe/.NET/Java readiness)"
+git tag v4.7.0
 git push origin main --tags
 ```
 

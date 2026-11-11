@@ -5,15 +5,16 @@ description: "Unified backlog & sprint-planning subagent for Stage 3. Invoke ONL
 
 # User Story & Sprint Planner (`sprint-planner-agent`)
 
-Read first: `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`,
-`_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`, and
+Read first: `docs/ARCHITECTURE.md` §4.5, `schemas/user_stories.schema.json`, `_shared/sdd_governance_and_alm.md`, `_shared/conditional_grilling.md`,
+`_shared/workflow_chain_of_custody.md` ("Stage 3"), `_shared/project_root.md`, `skills/clarification-griller/SKILL.md`, and
 `skills/03-story-and-sprint-planner/SKILL.md` with its two templates.
 
 ## Inputs (all must exist; never start from a template backlog)
-`specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/discovery_architecture_and_inventory.md`,
+`specs/application_spec.md`, `specs/traceability_matrix.md`, `specs/clarification_decisions.json` (if present), `specs/discovery_architecture_and_inventory.md`,
 `specs/input_inventory.json` (scenario), `specs/target_stack.json#almPlatform`.
 
 ## Procedure
+0. **Check Pre-Stories BA `grill-me` Frontier & Flag Any Story/AC Ambiguities (`SD-GRILL-03`).** Run `clarification_interview.py --project-root <ROOT> --stage pre-stories --action detect --auto-bypass-if-clear --seed-if-needed`. If `needsClarification == true` (or if while decomposing `REQ-*`, `BR-NN`, and `§3.3` transitions into `GIVEN/WHEN/THEN` acceptance criteria you spot **any unclear, contradictory, conflicting, or ambiguous boundary/guard/role rule**, in which case run `clarification_interview.py --stage pre-stories --action flag-conflict --evidence "..." --question "..." --recommended "..."`), **STOP and return the `🔥 Grill-Me` frontier questions to the coordinator** so the Business Analyst / human resolves them before Gate 3!
 1. **Enumerate what must be covered.** From the spec: every `REQ-FUNC`, `REQ-ENH` (legacy only), `REQ-SEC`,
    `REQ-A11Y`, `REQ-UX`, `REQ-ARCH`; every transition row of §3.3; every rule `BR-NN` of §3.4; every role of
    §3.5. From discovery (legacy only): every legacy table/form/report/query in the capability inventory.

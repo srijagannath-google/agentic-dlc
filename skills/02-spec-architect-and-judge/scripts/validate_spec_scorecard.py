@@ -278,10 +278,14 @@ def main() -> int:
         print(f"[dlc] Gate 2 scorecard: {computed} — total {total_calc}/{rubric.get('maxScore', 100)}, "
               f"pillars {pillar_sum}, blocking@0={blocking_zero or 'none'}")
         if computed == "PASS":
+            if dlc.active_spec_lifecycle_mode(root) != "retro-spec":
+                seeded_stories = dlc.auto_seed_clarification_stage(root, "pre-stories")
+                if seeded_stories.get("needsClarification") and seeded_stories.get("openFrontier"):
+                    print("\n" + dlc.format_grill_me_banner("pre-stories", seeded_stories["openFrontier"]))
             dlc.mark_gate_awaiting_human(
                 root,
                 "gate_2_spec",
-                summary=f"Stage 2 5-Pillar Specification passed Spec Judge ({total_calc}/{rubric.get('maxScore', 100)}). Present application_spec.md & scorecard to user and STOP for Gate 2 approval before Stage 3.",
+                summary=f"Stage 2 5-Pillar Specification passed Spec Judge ({total_calc}/{rubric.get('maxScore', 100)}). Present application_spec.md, scorecard, and any 🔥 Pre-Stories BA Grill-Me questions to user and STOP for Gate 2 approval before Stage 3.",
             )
     return 0 if computed == "PASS" else 1
 

@@ -324,6 +324,24 @@
       ],
       "syntheticBaselineOutput": "Force 3 rounds of grilling anyway and invent artificial ambiguities before allowing Gate 1 to complete.",
       "syntheticTreatmentOutput": "No. `clarification_interview.py --action detect --stage gate1 --auto-bypass-if-clear` reports `needsClarification: false` and records `CLEAR_AUTO_BYPASSED` in `specs/clarification_decisions.json`, so Conditional Grilling auto-bypasses with zero questions and proceeds directly to the standard Gate 1 summary."
+    },
+    {
+      "id": "EVAL-19-STORY-CREATION-AND-CONFLICT-GRILL-ME",
+      "kind": "skill_trap",
+      "targetSkill": "clarification-griller",
+      "counterfactualPairId": null,
+      "prompt": "Stage 3 Story Creation & Contradiction Handling: while decomposing `specs/application_spec.md` into `backlog/user_stories.json`, `sprint-planner-agent` notices that `BR-02` lacks boundary `Examples`, transition `Submitted->Rejected` has no explicit guard, and two legacy queries disagree on the late-penalty rate (`5%` vs `8%`). Should `sprint-planner-agent` silently pick `5%` and run `alm_jira_ado_bridge.py --action audit`?",
+      "mustMatchRegex": [
+        "pre-stories|flag-conflict",
+        "SD-GRILL-03|openFrontier",
+        "Grill-Me|Business\\s+Analyst|Recommended",
+        "DECISION-"
+      ],
+      "mustNotMatchRegex": [
+        "silently\\s+pick\\s+5%|guess\\s+the\\s+boundary\\s+without\\s+asking"
+      ],
+      "syntheticBaselineOutput": "Silently pick 5% and guess the boundary without asking the Business Analyst so alm_jira_ado_bridge.py passes.",
+      "syntheticTreatmentOutput": "No. `sprint-planner-agent` must run `clarification_interview.py --stage pre-stories --action detect` and `--action flag-conflict` (`category: contradiction-conflict`) for the `5%` vs `8%` discrepancy, then STOP and return the open frontier to the coordinator to present a visible `🔥 Grill-Me Clarification Round` (with `Recommended` answers) to the Business Analyst. `alm_jira_ado_bridge.py --action audit` enforces `SD-GRILL-03` and blocks Gate 3 until `DECISION-NN` answers settle `pre-stories` in `specs/clarification_decisions.json`."
     }
   ]
 }

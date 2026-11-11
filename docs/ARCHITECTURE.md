@@ -1,4 +1,4 @@
-# agentic-dlc v4.6 — Architecture & Artefact Contracts
+# agentic-dlc v4.7 — Architecture & Artefact Contracts
 
 This document is the **single source of truth** for how v4 differs from v3 and for the file/JSON
 contracts that every skill, agent and script must honour. Anyone (human or agent) editing this
